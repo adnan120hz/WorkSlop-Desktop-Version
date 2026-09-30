@@ -332,6 +332,12 @@ def _authenticate_once(
 
     spd = _decrypt_spd(usr.get_session_key(), complete["spd"])
     secondary = complete.get("Status", {}).get("au")
+    # Wipe the derived password material from the SRP object immediately.
+    # The raw password was already hashed; clear even the derived bytes.
+    try:
+        usr.p = b"\x00" * len(usr.p) if isinstance(usr.p, bytes) else None
+    except Exception:
+        pass
     return spd, secondary
 
 
