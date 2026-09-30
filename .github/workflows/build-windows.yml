@@ -23,12 +23,16 @@ jobs:
           .env\Scripts\activate.bat
           pip install -r requirements.txt
 
+      - name: Set up MSBuild (for zsign)
+        uses: microsoft/setup-msbuild@v2
+
       - name: Build zsign (sideload signing)
         shell: powershell
         run: |
           git clone --depth 1 https://github.com/zhlynn/zsign.git .zsign-build
           msbuild .zsign-build/build/windows/vs2022/zsign.sln /p:Configuration=Release /p:Platform=x64
           $exe = Get-ChildItem -Path .zsign-build -Recurse -Filter zsign.exe | Select-Object -First 1
+          if (-not $exe) { throw "zsign.exe not produced by msbuild" }
           New-Item -ItemType Directory -Force -Path vendor | Out-Null
           Copy-Item $exe.FullName vendor/zsign.exe
           Remove-Item -Recurse -Force .zsign-build
