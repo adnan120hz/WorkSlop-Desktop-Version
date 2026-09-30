@@ -21,14 +21,15 @@ from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFileDialog,
-    QMessageBox, QLineEdit, QProgressBar, QInputDialog, QListWidget,
-    QListWidgetItem, QCheckBox,
+    QMessageBox, QLineEdit, QProgressBar, QProgressDialog, QInputDialog,
+    QListWidget, QListWidgetItem, QCheckBox,
 )
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
 from src.gui.theme import t, ColorThemeManager
 from src.gui.thread_workers.sideload_worker import (
     LoginThread, SideloadThread, InstalledAppsThread, UninstallThread,
+    SignOnlyThread,
 )
 
 
@@ -46,6 +47,9 @@ class IOSSideloadPage(QWidget):
         self._ipa_info = None
         self._threads = []
         self._login_thread = None
+        self._sign_thread = None
+        self._sign_btn = None
+        self._sign_progress = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -263,6 +267,7 @@ class IOSSideloadPage(QWidget):
         sign_btn = IOSPrimaryButton(tr("Sign Only"))
         sign_btn.clicked.connect(self._on_manual_sign)
         row.addWidget(sign_btn)
+        self._sign_btn = sign_btn
         lay.addLayout(row)
         return card
 
@@ -566,6 +571,8 @@ class IOSSideloadPage(QWidget):
                 tr("Pick both a .p12 certificate and a .mobileprovision "
                    "profile first."))
             return
+        if self._sign_thread is not None:
+            return  # a signing run is already in progress
         password, ok = QInputDialog.getText(
             self.window, tr("Certificate Password"),
             tr("Password for the .p12 (empty if none):"),
@@ -577,19 +584,42 @@ class IOSSideloadPage(QWidget):
             tr("iOS Apps (*.ipa)"))
         if not out:
             return
-        try:
-            from src.sideload.ipaside_engine import signing
-            signing.sign_ipa(self._ipa_path, out,
-                             p12_path=self._p12_path,
-                             p12_password=password,
-                             profile_path=self._prov_path)
-        except Exception as exc:
-            QMessageBox.warning(self.window, tr("Sign Failed"), str(exc))
-            return
-        QMessageBox.information(
-            self.window, tr("Signed"),
-            tr("Signed IPA saved. Install it with the Sideload card or "
-               "another installer."))
+        # Sign off the UI thread so the page stays responsive while zsign
+        # works (signing an IPA can take a while on large apps).
+        thread = SignOnlyThread(
+            self._ipa_path, out, self._p12_path, password,
+            self._prov_path, self)
+        password = ""
+        thread.finished_with_result.connect(self._on_sign_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._threads.append(thread)
+        self._sign_thread = thread
+        if self._sign_btn is not None:
+            self._sign_btn.setEnabled(False)
+        progress = QProgressDialog(
+            tr("Signing IPA..."), None, 0, 0, self.window)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        self._sign_progress = progress
+        progress.show()
+        thread.start()
+
+    def _on_sign_finished(self, ok, message):
+        self._threads = [t for t in self._threads
+                         if t is not getattr(self, "_sign_thread", None)]
+        self._sign_thread = None
+        if self._sign_progress is not None:
+            self._sign_progress.close()
+            self._sign_progress = None
+        if self._sign_btn is not None:
+            self._sign_btn.setEnabled(True)
+        if ok:
+            QMessageBox.information(
+                self.window, tr("Signed"),
+                tr("Signed IPA saved. Install it with the Sideload card or "
+                   "another installer."))
+        else:
+            QMessageBox.warning(self.window, tr("Sign Failed"), message)
 
     # -- misc -----------------------------------------------------------
     def refresh(self):

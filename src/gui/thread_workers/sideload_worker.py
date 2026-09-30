@@ -154,3 +154,36 @@ class UninstallThread(QThread):
             self.finished_with_result.emit(True, self._bundle_id)
         except Exception as exc:
             self.finished_with_result.emit(False, str(exc))
+
+
+class SignOnlyThread(QThread):
+    """Manual IPA signing with a user-supplied .p12 + .mobileprovision.
+
+    Runs off the UI thread so the page stays responsive while zsign works.
+    """
+
+    finished_with_result = Signal(bool, str)  # ok, output path | error text
+
+    def __init__(self, input_ipa: str, output_ipa: str, p12_path: str,
+                 p12_password: str, profile_path: str, parent=None):
+        super().__init__(parent)
+        self._input_ipa = input_ipa
+        self._output_ipa = output_ipa
+        self._p12_path = p12_path
+        self._p12_password = p12_password
+        self._profile_path = profile_path
+
+    def run(self):
+        from src.sideload.ipaside_engine import signing
+        try:
+            signing.sign_ipa(
+                self._input_ipa, self._output_ipa,
+                p12_path=self._p12_path,
+                p12_password=self._p12_password,
+                profile_path=self._profile_path)
+            self.finished_with_result.emit(True, self._output_ipa)
+        except Exception as exc:
+            self.finished_with_result.emit(False, str(exc))
+        finally:
+            # Don't keep the certificate password in memory longer than needed.
+            self._p12_password = ""
