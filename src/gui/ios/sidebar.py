@@ -72,7 +72,7 @@ class WorkSlopSidebar(QWidget):
 
         layout.addStretch(1)
 
-        self._version_lbl = QLabel(f"v{App_Version}", self)
+        self._version_lbl = QLabel(f"WorkSlop Desktop v{App_Version}", self)
         self._version_lbl.setAlignment(Qt.AlignCenter)
         self._version_lbl.setObjectName("sidebarVersion")
         layout.addWidget(self._version_lbl)
