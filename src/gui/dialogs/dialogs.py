@@ -74,7 +74,7 @@ class AboutProgramDialog(QDialog):
         header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         icon_label = QLabel()
-        icon_label.setPixmap(QPixmap(":/credits/big_nugget.png").scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        icon_label.setPixmap(QPixmap(":/credits/workslop.png").scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         header_layout.addWidget(icon_label)
         
         name_layout = QVBoxLayout()
@@ -141,7 +141,6 @@ class AboutProgramDialog(QDialog):
             ("Owner & Developer", "Adnan.120hz", "https://github.com/adnan120hz"),
             ("Fork utama", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
             ("Portingan MobileGestalt", "Nugget by leminlimez", "https://github.com/leminlimez/Nugget"),
-            ("Portingan menu MobileGestalt", "misakaReborn", "https://github.com/straight-tamago/misakaReborn"),
             ("Main Developer (upstream)", "awesomenull", "https://github.com/awesomenull-dev"),
             ("Co-Developer (upstream)", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
             ("PosterRestore Team", "PosterRestore Discord", "https://discord.gg/gWtzTVhMvh"),

@@ -630,7 +630,7 @@ class Ui_Nugget(object):
 "	padding: 0px;\n"
 "}")
         icon15 = QIcon()
-        icon15.addFile(u":/credits/big_nugget.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon15.addFile(u":/credits/workslop.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.bigNuggetBtn.setIcon(icon15)
         self.bigNuggetBtn.setIconSize(QSize(150, 200))
 

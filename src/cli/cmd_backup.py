@@ -1,6 +1,6 @@
 """``Nugget backup`` — create / inspect the live protective backups.
 
-The protective backup is the selective device backup GoldenNugget keeps so a
+The protective backup is the selective device backup WorkSlop Desktop keeps so a
 "safe state recovery" wipe (iOS 27 Phase 2) does not destroy the user's photos,
 Apple ID and settings. These commands run it standalone and list the stored runs.
 """
@@ -14,7 +14,7 @@ def add_parser(subp):
     parser = subp.add_parser(
         "backup",
         help="Create / list protective backups",
-        description="Manage GoldenNugget's live protective backups (the selective "
+        description="Manage WorkSlop Desktop's live protective backups (the selective "
                     "device backup that protects photos/Apple ID/settings through "
                     "an iOS 27 wipe).",
     )

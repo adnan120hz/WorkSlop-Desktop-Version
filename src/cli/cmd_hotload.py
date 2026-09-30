@@ -31,7 +31,7 @@ def _connected_device(dm):
 def add_parser(subp):
     parser = subp.add_parser(
         "hotload",
-        help="Inspect GoldenNugget safety rules",
+        help="Inspect WorkSlop Desktop safety rules",
         description="Report the local HotLoad rules cache (kill switch, flagged "
                     "tweaks, hidden features, forced daemons) or refresh it from "
                     "the remote rules JSON.",

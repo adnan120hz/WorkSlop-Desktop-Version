@@ -1,4 +1,4 @@
-"""Shared helpers for the GoldenNugget CLI commands.
+"""Shared helpers for the WorkSlop Desktop CLI commands.
 
 Everything here mirrors the GUI wiring (``apply_wallpaper.py`` / the ``Settings``
 + ``PreferencesMixin`` pattern) so a headless command exercises exactly the same
@@ -31,7 +31,7 @@ def bootstrap() -> Settings:
     _qapp()
     from PySide6.QtCore import QCoreApplication
     QCoreApplication.setOrganizationDomain("com.leemin")
-    QCoreApplication.setApplicationName("GoldenNugget")
+    QCoreApplication.setApplicationName("WorkSlop Desktop")
     return Settings("settings")
 
 

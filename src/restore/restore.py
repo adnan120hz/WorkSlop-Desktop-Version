@@ -1118,20 +1118,20 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                  "reboot-then-wipe flow (sparse restore reboots the device "
                  "and iOS fully wipes before the protective restore)")
 
-    if os.environ.get("GOLDENNUGGET_NO_PROTECTIVE_BACKUP") == "1":
+    if os.environ.get("WORK SLOP_NO_PROTECTIVE_BACKUP") == "1":
         # Kill switch: force the iOS 26-style apply — a single-pass sparse
         # restore with NO three-phase restore at all (no Phase 0/1/3 backup,
         # no security-recovery wipe). Handy for fast iteration (e.g. daemon
         # bootloop testing). skip_setup then rides on reconnect + cloud config
         # instead of the legacy crash_on_purpose trick.
         skip_protective_backup = True
-        log_warn("GOLDENNUGGET_NO_PROTECTIVE_BACKUP=1 — forcing iOS 26-style "
+        log_warn("WORK SLOP_NO_PROTECTIVE_BACKUP=1 — forcing iOS 26-style "
                  "single-pass sparse restore (no protective backups, no "
                  "security-recovery wipe)")
 
     if device_ver >= _V("27.0"):
         if skip_protective_backup:
-            # Raw sparse mode (GOLDENNUGGET_NO_PROTECTIVE_BACKUP=1): the iOS 27
+            # Raw sparse mode (WORK SLOP_NO_PROTECTIVE_BACKUP=1): the iOS 27
             # three-phase restore would trigger Apple's security-recovery erasure
             # and restore an empty backup — exactly what bootloop-testing must
             # avoid. Run the plain sparse pass instead; the reboot to apply the

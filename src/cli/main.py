@@ -1,4 +1,4 @@
-"""GoldenNugget unified CLI dispatch logic.
+"""WorkSlop Desktop unified CLI dispatch logic.
 
 Houses the subcommand routing and usage text for the bundled ``Nugget``
 binary. The executable entry point (root ``nugget_cli.py``) is only a thin
@@ -9,7 +9,7 @@ keeps the top-level script trivial and the dispatch logic unit-testable.
 import sys
 
 USAGE = """\
-GoldenNugget - unified CLI
+WorkSlop Desktop - unified CLI
 
 Usage:
   Nugget                              Launch the GUI
@@ -101,7 +101,7 @@ def _build_parser():
 
     parser = argparse.ArgumentParser(
         prog="Nugget",
-        description="GoldenNugget unified CLI (GUI when run with no command).",
+        description="WorkSlop Desktop unified CLI (GUI when run with no command).",
         add_help=True,
     )
     subp = parser.add_subparsers(dest="command", required=True)

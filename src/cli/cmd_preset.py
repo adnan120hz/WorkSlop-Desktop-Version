@@ -36,7 +36,7 @@ def add_parser(subp):
         help="Save / load / manage tweak presets",
         description="Presets snapshot the current tweak state the same way the "
                     "GUI's Settings → Presets page does. They live in the "
-                    "GoldenNugget app-data folder as JSON files.",
+                    "WorkSlop app-data folder as JSON files.",
     )
     sub = parser.add_subparsers(dest="preset_sub", required=True)
 

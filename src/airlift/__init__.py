@@ -396,7 +396,7 @@ class AirTrafficClient:
         host_info = {
             "Type": "iTunes",
             "Version": "13.7.0.161",
-            "MacOSVersion": "GoldenNugget",
+            "MacOSVersion": "WorkSlop",
             "SyncHostName": "airlift",
             "LibraryID": str(uuid.uuid4()),
             "SyncedDataclasses": ["Book"],

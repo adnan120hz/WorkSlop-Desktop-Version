@@ -68,14 +68,15 @@ Feature gating per build:
 | Tweaks (Apply) | All 49 builds. iOS 26.x and below: partial sparse restore (no wipe). iOS 27: classic protective flow (backup → tweak → **reboot** → wipe → reconnect → restore). The device reboots on Apply, like the original GoldenNugget. |
 | MobileGestalt | **Open on iOS 16.0 → iOS 26.2 beta 1** (builds `20A362`–`23C5027f`). Locked on 26.2 beta 2 and newer — menu stays visible with the reason. |
 | Status Bar | **Locked on any iOS 27 build** (`24A…`). Open on iOS 26 and below. |
-| Daemons / Liquid Glass | Unchanged, as before. |
+| Daemons | No build gating — available on all 49 builds. |
+| Liquid Glass | iOS 26.0 and newer only (hidden on older versions); no upper lock. |
 
 > Standalone backup actions (**Full Backup**) do **not** reboot the device —
 > they just export the backup file to the folder you choose, like saving it
 > for later. Only **Restore Backup** and **Apply** reboot the device.
 
 The MobileGestalt menu stays visible on all versions but locks itself automatically
-on iOS 26.2 and newer.
+on iOS 26.2 beta 2 and newer.
 
 ## Requirements
 
@@ -144,7 +145,6 @@ python compile.py
 | Owner & Developer | [@Adnan.120hz](https://github.com/adnan120hz) |
 | Main upstream (this is a fork of) | [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) |
 | MobileGestalt module port | [Nugget](https://github.com/leminlimez/Nugget) by leminlimez |
-| MobileGestalt menu port | [misakaReborn](https://github.com/straight-tamago/misakaReborn) by straight-tamago |
 
 The full contributor list (upstream developers, PosterRestore team, translators and
 library authors) is shown in the app under **Settings → About → Credits**.

@@ -8,7 +8,7 @@ class ThemeManager:
 
     def __init__(self, parent: QWidget):
         self.parent = parent
-        self.settings = QSettings("GoldenNugget", "GoldenNugget")
+        self.settings = QSettings("WorkSlop", "WorkSlop")
         self.stack = QStackedWidget(parent)
         # Classic container will be inserted by integration
         # IOS container will be added by screens

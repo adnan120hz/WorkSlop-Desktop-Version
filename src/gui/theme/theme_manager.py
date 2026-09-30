@@ -18,7 +18,7 @@ class ColorThemeManager(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._settings = QSettings("GoldenNugget", "GoldenNugget")
+        self._settings = QSettings("WorkSlop", "WorkSlop")
         self._accent_name = self._settings.value("accent_color", "blue")
         self._colors = self._build_colors()
 

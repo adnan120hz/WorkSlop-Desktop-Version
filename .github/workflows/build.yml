@@ -1,4 +1,4 @@
-name: Build Nugget
+name: Build WorkSlop Desktop
 
 on:
   workflow_dispatch:
