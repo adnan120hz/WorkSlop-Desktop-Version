@@ -220,7 +220,13 @@ async def _watch_install(proxy: Any, remote_path: str, report: ProgressCallback)
     from pymobiledevice3.exceptions import AppInstallError
 
     await proxy.service.send_plist(
-        {"Command": "Install", "ClientOptions": {}, "PackagePath": remote_path}
+        {
+            "Command": "Install",
+            # Free 7-day developer certificates require PackageType "Developer"
+            # (same as pymobiledevice3's install_from_local(developer=True)).
+            "ClientOptions": {"PackageType": "Developer"},
+            "PackagePath": remote_path,
+        }
     )
     while True:
         response = await proxy.service.recv_plist()
