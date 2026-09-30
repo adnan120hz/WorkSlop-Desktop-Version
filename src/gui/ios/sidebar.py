@@ -1,9 +1,8 @@
-"""WorkSlop Desktop sidebar: white terminal navigation menu.
+"""WorkSlop Desktop sidebar: light navigation rail.
 
-Terminal theme: solid white rail on the black app body, monospace labels
-with a green ``>`` prompt. The active item is a solid black block (an
-inverted terminal cursor) with white text. No translucency, no gradients —
-everything is opaque so text stays crisp.
+Sky theme: solid white rail on the light-blue app body, clean labels with
+icons. The active item is a solid Apple-blue pill with white text. No
+translucency, no gradients — everything is opaque so text stays crisp.
 """
 from PySide6.QtCore import Qt, QCoreApplication, Signal, QSize
 from PySide6.QtWidgets import (
@@ -31,7 +30,7 @@ SIDEBAR_WIDTH = 216
 
 
 class WorkSlopSidebar(QWidget):
-    """Left navigation rail for the Terminal shell."""
+    """Left navigation rail for the Sky shell."""
 
     menu_selected = Signal(str)
 
@@ -45,12 +44,12 @@ class WorkSlopSidebar(QWidget):
         layout.setContentsMargins(12, 16, 12, 12)
         layout.setSpacing(6)
 
-        # Wordmark: plain monospace, no logo effects.
+        # Wordmark.
         self._brand = QLabel("WORKSLOP", self)
         self._brand.setObjectName("sidebarBrand")
         self._brand.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         layout.addWidget(self._brand)
-        self._brand_sub = QLabel("// desktop", self)
+        self._brand_sub = QLabel("desktop", self)
         self._brand_sub.setObjectName("sidebarBrandSub")
         layout.addWidget(self._brand_sub)
         layout.addSpacing(10)
@@ -59,11 +58,7 @@ class WorkSlopSidebar(QWidget):
         self._group.setExclusive(True)
         self._buttons = {}
         for menu_id, label, icon_res in MENUS:
-            # "> label" — the prompt is part of the text; the green color
-            # comes from the stylesheet via the ::first-letter trick is not
-            # available, so the prompt glyph is colored through the button
-            # text itself in _retheme (rich text is avoided for crispness).
-            btn = QPushButton(f">  {QCoreApplication.translate('Nugget', label)}", self)
+            btn = QPushButton(QCoreApplication.translate('Nugget', label), self)
             btn.setObjectName(f"menu_{menu_id}")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)
@@ -77,7 +72,7 @@ class WorkSlopSidebar(QWidget):
 
         layout.addStretch(1)
 
-        self._version_lbl = QLabel(f"v{App_Version} // terminal", self)
+        self._version_lbl = QLabel(f"v{App_Version}", self)
         self._version_lbl.setAlignment(Qt.AlignCenter)
         self._version_lbl.setObjectName("sidebarVersion")
         layout.addWidget(self._version_lbl)
@@ -111,22 +106,19 @@ class WorkSlopSidebar(QWidget):
     # -- theming --------------------------------------------------------
     def _retheme(self):
         c = ColorThemeManager.instance().colors
-        mono = "'%s'" % c.__dict__.get("font_family", "monospace")
-        # White terminal rail on the dark body: the menu_* palette entries
-        # are dark-on-white, so the rail must be menu_bg (white) — using
-        # bg_primary here would render near-black text on a near-black
-        # rail and make every menu label unreadable.
+        # White rail on the light-blue body: the menu_* palette entries are
+        # dark-on-white, so the rail must be menu_bg (white).
         rail_bg = c.menu_bg
         self.setStyleSheet(
-            f"WorkSlopSidebar {{ background-color: {rail_bg}; }}")
+            f"WorkSlopSidebar {{ background-color: {rail_bg}; "
+            f"border-right: 1px solid {c.divider}; }}")
         # Ensure the stylesheet background actually paints on this custom QWidget.
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._brand.setStyleSheet(
-            f"color: {c.menu_text}; font-size: 20px; font-weight: 800; "
-            f"letter-spacing: 3px; background: transparent; font-family: {mono};")
+            f"color: {c.accent}; font-size: 20px; font-weight: 800; "
+            f"letter-spacing: 3px; background: transparent;")
         self._brand_sub.setStyleSheet(
-            f"color: {c.menu_dim}; font-size: 12px; "
-            f"background: transparent; font-family: {mono};")
+            f"color: {c.menu_dim}; font-size: 12px; background: transparent;")
         for menu_id, (btn, icon_res) in self._buttons.items():
             btn.setIcon(theme_icon(icon_res, c.menu_text))
             btn.setIconSize(QSize(18, 18))
@@ -138,12 +130,11 @@ class WorkSlopSidebar(QWidget):
                     color: {c.menu_text};
                     font-size: 14px;
                     font-weight: 600;
-                    font-family: {mono};
                     text-align: left;
                     padding-left: 16px;
                 }}
                 QPushButton:hover {{
-                    background-color: #EDEDED;
+                    background-color: {c.surface_hover};
                 }}
                 QPushButton:checked {{
                     background-color: {c.menu_active_bg};
@@ -154,8 +145,7 @@ class WorkSlopSidebar(QWidget):
                     color: {c.menu_dim};
                 }}
             """)
-            # Keep the icon readable on the inverted (black) active block.
+            # Keep the icon readable on the inverted (blue) active pill.
             btn.setProperty("iconColor", c.menu_text)
         self._version_lbl.setStyleSheet(
-            f"color: {c.menu_dim}; font-size: 11px; background: transparent; "
-            f"font-family: {mono};")
+            f"color: {c.menu_dim}; font-size: 11px; background: transparent;")

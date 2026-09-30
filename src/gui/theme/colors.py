@@ -53,26 +53,77 @@ class ThemeColors:
     glass_border: str = "rgba(150, 180, 255, 40)"
     bubble: str = "rgba(140, 175, 255, 26)"
 
-    # Terminal theme (WorkSlop Desktop): white navigation menu on a black
-    # terminal body. Defaults keep older constructions working.
+    # Sky theme (WorkSlop Desktop): white navigation rail on a light-blue
+    # body. Defaults keep older constructions working.
     menu_bg: str = "#FFFFFF"
     menu_text: str = "#0A0A0A"
     menu_dim: str = "#6B6B6B"
     menu_active_bg: str = "#0A0A0A"
     menu_active_text: str = "#FFFFFF"
-    term_green: str = "#00E676"
-    term_green_dim: str = "#00884a"
+    brand: str = "#00E676"
+    brand_dim: str = "#00884a"
 
     def with_accent(self, accent: str, hover: str, pressed: str) -> "ThemeColors":
         return replace(self, accent=accent, accent_hover=hover, accent_pressed=pressed)
 
 
 # ---------------------------------------------------------------------------
-# Terminal palette (WorkSlop Desktop): soft-black body (pure black + pure
-# white at full brightness strains the eyes, so the background is lifted
-# to a very dark blue-gray and text to an off-white), white navigation
-# menu, terminal-green accents, monospace type. Flat and solid — no
-# gradients, no blur, no translucency on text surfaces.
+# Sky palette (WorkSlop Desktop): fresh light UI — comfortable white-blue
+# tech theme. Soft blue-white body, deep navy text, Apple-blue accents.
+# Flat and solid — no gradients, no blur, no translucency on text surfaces.
+# ---------------------------------------------------------------------------
+SKY = ThemeColors(
+    bg_primary="#F2F7FF",
+    bg_secondary="#FFFFFF",
+    bg_tertiary="#E7F0FE",
+    bg_input="#FFFFFF",
+    bg_elevated="#FFFFFF",
+
+    text_primary="#0B1E3A",
+    text_secondary="#4A5F7F",
+    text_disabled="#9AA9C0",
+    text_inverse="#FFFFFF",
+
+    accent="#007AFF",
+    accent_hover="#3395FF",
+    accent_pressed="#005FCC",
+
+    success="#16A34A",
+    error="#E5484D",
+    error_hover="#F0666A",
+    error_pressed="#C03540",
+    warning="#D99400",
+
+    border="#D7E3F5",
+    divider="#E3ECFA",
+
+    scrollbar="#C3D6EE",
+    scrollbar_pressed="#A9C4E8",
+    selection="#007AFF",
+
+    card_border="#DCE7F8",
+    surface_hover="#EAF2FE",
+    danger_text="#E5484D",
+
+    bg_gradient_start="#F2F7FF",
+    bg_gradient_end="#E4EEFD",
+    glass_bg="#FFFFFF",
+    glass_border="#DCE7F8",
+    bubble="rgba(0, 122, 255, 0.05)",
+
+    menu_bg="#FFFFFF",
+    menu_text="#0B1E3A",
+    menu_dim="#7A8CA8",
+    menu_active_bg="#007AFF",
+    menu_active_text="#FFFFFF",
+    brand="#007AFF",
+    brand_dim="#5AA9FF",
+)
+
+
+# ---------------------------------------------------------------------------
+# Terminal palette (retired): soft-black body. Kept for reference; the app
+# now ships the SKY light theme. Do not use for new UI.
 # ---------------------------------------------------------------------------
 DARK = ThemeColors(
     bg_primary="#0B0E12",
@@ -118,8 +169,8 @@ DARK = ThemeColors(
     menu_dim="#6B6B6B",
     menu_active_bg="#10141A",
     menu_active_text="#FFFFFF",
-    term_green="#00C853",
-    term_green_dim="#007A43",
+    brand="#00C853",
+    brand_dim="#007A43",
 )
 
 

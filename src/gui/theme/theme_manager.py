@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtGui import QColor, QPalette
 
-from src.gui.theme.colors import ThemeColors, DARK, ACCENT_PRESETS
+from src.gui.theme.colors import ThemeColors, SKY, ACCENT_PRESETS
 from src.controllers.settings import migrate_legacy_key
 
 
@@ -62,11 +62,11 @@ class ColorThemeManager(QObject):
 
     @property
     def mode(self) -> str:
-        return "dark"
+        return "light"
 
     @property
     def is_dark(self) -> bool:
-        return True
+        return False
 
     def c(self, slot: str) -> str:
         """Shortcut: return the hex value for *slot* from the active palette."""
@@ -162,7 +162,7 @@ class ColorThemeManager(QObject):
             pressed = QColor(accent).darker(130).name()
         else:
             accent, hover, pressed = ACCENT_PRESETS[self._accent_name]
-        return DARK.with_accent(accent, hover, pressed)
+        return SKY.with_accent(accent, hover, pressed)
 
     def accent_hex(self) -> str:
         """Return the ``#rrggbb`` string for the current accent."""

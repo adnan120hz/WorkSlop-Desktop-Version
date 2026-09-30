@@ -7,29 +7,38 @@ Usage::
 """
 
 
-# Single UI font used on every platform. Terminal theme: the real monospace
-# font of the OS (resolved lazily once a QApplication exists), so the UI
-# reads like a terminal on Windows, macOS and Linux alike.
-FONT_FAMILY = "monospace"
-
-_MONO_FAMILY_CACHE: str | None = None
+# Single UI font used on every platform. Sky theme: the bundled Inter
+# variable font (registered by main_app at startup as "Inter Variable"),
+# falling back to the OS default UI font if it is missing.
+FONT_FAMILY = "Inter Variable"
 
 
-def mono_family() -> str:
-    """Return the OS monospace font family, resolved once and cached."""
-    global _MONO_FAMILY_CACHE
-    if _MONO_FAMILY_CACHE is None:
+_FONT_FAMILY_CACHE: str | None = None
+
+
+def ui_font_family() -> str:
+    """Return the UI font family, resolved once and cached."""
+    global _FONT_FAMILY_CACHE
+    if _FONT_FAMILY_CACHE is None:
         try:
             from PySide6.QtGui import QFontDatabase
             from PySide6.QtWidgets import QApplication
-            if QApplication.instance() is not None:
-                _MONO_FAMILY_CACHE = QFontDatabase.systemFont(
-                    QFontDatabase.SystemFont.FixedFont).family()
+            if (QApplication.instance() is not None
+                    and FONT_FAMILY in QFontDatabase.families()):
+                _FONT_FAMILY_CACHE = FONT_FAMILY
+            elif QApplication.instance() is not None:
+                _FONT_FAMILY_CACHE = QFontDatabase.systemFont(
+                    QFontDatabase.SystemFont.GeneralFont).family()
             else:
-                _MONO_FAMILY_CACHE = FONT_FAMILY
+                _FONT_FAMILY_CACHE = FONT_FAMILY
         except Exception:
-            _MONO_FAMILY_CACHE = FONT_FAMILY
-    return _MONO_FAMILY_CACHE
+            _FONT_FAMILY_CACHE = FONT_FAMILY
+    return _FONT_FAMILY_CACHE
+
+
+# Backwards-compat alias (old name from the terminal theme era).
+def mono_family() -> str:
+    return ui_font_family()
 
 
 STYLES = {
@@ -45,7 +54,7 @@ STYLES = {
             font-size: 15px;
             padding: 12px 16px;
             selection-background-color: {accent};
-            selection-color: #000000;
+            selection-color: #FFFFFF;
         }}
         QPushButton {{
             background-color: {text_primary};
@@ -57,7 +66,7 @@ STYLES = {
             border: none;
             min-width: 80px;
         }}
-        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
+        QPushButton:hover {{ background-color: {accent}; color: #FFFFFF; }}
     """,
 
     "number_input_dialog": """
@@ -71,7 +80,7 @@ STYLES = {
             font-size: 15px;
             padding: 12px 16px;
             selection-background-color: {accent};
-            selection-color: #000000;
+            selection-color: #FFFFFF;
         }}
         QSpinBox::up-button, QSpinBox::down-button {{ width: 0; }}
         QPushButton {{
@@ -84,11 +93,11 @@ STYLES = {
             border: none;
             min-width: 80px;
         }}
-        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
+        QPushButton:hover {{ background-color: {accent}; color: #FFFFFF; }}
     """,
 
     "section_header": (
-        "font-size: 12px; font-weight: 700; color: {term_green}; "
+        "font-size: 12px; font-weight: 700; color: {brand}; "
         "letter-spacing: 1.5px; padding-left: 4px;"
     ),
 
@@ -98,7 +107,7 @@ STYLES = {
         QPushButton#iosCollapsibleHeader {{
             background: transparent;
             border: none;
-            color: {term_green};
+            color: {brand};
             font-size: 12px;
             font-weight: 700;
             letter-spacing: 1.5px;
@@ -109,8 +118,8 @@ STYLES = {
         QPushButton#iosCollapsibleHeader:checked {{ color: {text_primary}; }}
     """,
 
-    # Terminal card: solid near-black surface, fluid 18px radius, one thin
-    # neutral border. No glass, no translucency — text stays crisp.
+    # Sky card: solid white surface, fluid 18px radius, one thin
+    # light-blue border. No glass, no translucency — text stays crisp.
     "card": """
         IOSCard {{
             background-color: {bg_secondary};
@@ -178,8 +187,8 @@ STYLES = {
             border: none;
             padding: 12px 20px;
         }}
-        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
-        QPushButton:pressed {{ background-color: {accent_pressed}; color: #000000; }}
+        QPushButton:hover {{ background-color: {accent}; color: #FFFFFF; }}
+        QPushButton:pressed {{ background-color: {accent_pressed}; color: #FFFFFF; }}
         QPushButton:disabled {{ background-color: {bg_tertiary}; color: {text_disabled}; }}
     """,
 
@@ -214,7 +223,7 @@ STYLES = {
             border: none;
             min-width: 110px;
         }}
-        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
+        QPushButton:hover {{ background-color: {accent}; color: #FFFFFF; }}
         QPushButton#cancelBtn {{
             background-color: {bg_tertiary};
             color: {text_primary};
@@ -284,7 +293,8 @@ STYLES = {
     """,
 
     # ---- Pages -----------------------------------------------------------
-    # Solid black — the terminal body. No translucency, text stays crisp.
+    # Transparent — the SkyBackground canvas shows through. No translucency
+    # on cards themselves, text stays crisp.
     "page_bg": "background: transparent;",
     "scroll_area": "QScrollArea {{ background: transparent; border: none; }} QScrollArea > QWidget > QWidget {{ background: transparent; }}",
 
@@ -401,7 +411,11 @@ STYLES = {
 
     # ---- Home ------------------------------------------------------------
     "home_title": "font-size: 28px; font-weight: 700; color: {text_primary};",
-    "home_subtitle": "color: {term_green}; font-size: 13px;",
+    "home_hero_title": (
+        "font-size: 46px; font-weight: 800; color: {text_primary}; "
+        "background-color: transparent;"
+    ),
+    "home_subtitle": "color: {text_secondary}; font-size: 13px;",
 
     "home_combo": """
         QComboBox {{
@@ -445,22 +459,6 @@ STYLES = {
         }}
         IOSCard:hover {{ border-color: {accent}; }}
     """,
-
-    # Terminal-styled home tile: same card, green hover border.
-    "home_tile_term": """
-        IOSCard {{
-            background-color: {bg_secondary};
-            border-radius: 14px;
-            border: 1px solid {card_border};
-        }}
-        IOSCard:hover {{ border-color: #34d17b; }}
-    """,
-
-    # `$ workslop <command>` header line on each home tile.
-    "home_tile_cmd": (
-        "font-family: monospace; font-size: 11px; color: #34d17b; "
-        "background-color: transparent;"
-    ),
 
     "home_tile_title": (
         "font-size: 16px; font-weight: 600; color: {text_primary}; "
@@ -544,25 +542,25 @@ STYLES = {
     """,
 
     # ---- Global (main window stylesheet) ---------------------------------
-    # Terminal: the window sits on solid black; every surface is opaque so
-    # text stays crisp at any DPI. Monospace everywhere.
+    # Sky: the window sits on the light-blue canvas; every surface is opaque
+    # so text stays crisp at any DPI. Inter everywhere.
     "global": """
         QWidget {{ color: {text_primary}; background-color: {bg_primary}; spacing: 0px; font-family: '{font_family}'; }}
         QWidget:focus {{ outline: none; }}
         QWidget[cls=central] {{ background: transparent; border-radius: 0px; }}
         QLabel {{ font-size: 14px; }}
         QLabel[cls=dim] {{ color: {text_secondary}; }}
-        QLabel[cls=term] {{ color: {term_green}; }}
+        QLabel[cls=term] {{ color: {brand}; }}
         QToolButton {{ background-color: {bg_tertiary}; border: none; color: {text_primary}; font-size: 14px; min-height: 35px; icon-size: 16px; padding-left: 10px; padding-right: 10px; border-radius: 8px; }}
         QToolButton[cls=sidebarBtn] {{ background-color: transparent; icon-size: 24px; }}
         QToolButton:pressed {{ background-color: {scrollbar_pressed}; color: {text_primary}; }}
-        QToolButton:checked {{ background-color: {accent}; color: #000000; }}
+        QToolButton:checked {{ background-color: {accent}; color: #FFFFFF; }}
         QCheckBox {{ spacing: 8px; font-size: 14px; }}
         QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 5px; border: 1px solid {border}; background-color: {bg_tertiary}; }}
         QCheckBox::indicator:checked {{ background-color: {accent}; border: 1px solid {accent}; }}
         QRadioButton {{ spacing: 8px; font-size: 14px; }}
-        QLineEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; padding: 8px 10px; selection-background-color: {accent}; selection-color: #000000; }}
-        QTextEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; selection-background-color: {accent}; selection-color: #000000; }}
+        QLineEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; padding: 8px 10px; selection-background-color: {accent}; selection-color: #FFFFFF; }}
+        QTextEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; selection-background-color: {accent}; selection-color: #FFFFFF; }}
         QScrollBar:vertical {{ background: transparent; width: 8px; }}
         QScrollBar:horizontal {{ background: transparent; height: 8px; }}
         QScrollBar::handle {{ background: {scrollbar}; border-radius: 4px; }}

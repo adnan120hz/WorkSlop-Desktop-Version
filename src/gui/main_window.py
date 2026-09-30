@@ -265,20 +265,19 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.content_stack.addWidget(ios_root)           # 0 = iOS pages
         self.content_stack.setStyleSheet("background: transparent;")
         shell = QtWidgets.QWidget(self)
-        shell.setProperty("cls", "central")  # picks up the global #1e1e1e background
-        # Overlay grid: animated terminal background behind the content.
+        shell.setProperty("cls", "central")  # shell background comes from SkyBackground
+        # Overlay grid: animated sky background behind the content.
         overlay = QtWidgets.QGridLayout(shell)
         overlay.setContentsMargins(0, 0, 0, 0)
         overlay.setSpacing(0)
-        from src.gui.ios.terminal_bg import TerminalBackground
-        self._term_bg = TerminalBackground(shell)
-        self._term_bg.set_opacity(0.85)
-        self._term_bg.start()
-        overlay.addWidget(self._term_bg, 0, 0)
+        from src.gui.ios.sky_bg import SkyBackground
+        self._sky_bg = SkyBackground(shell)
+        self._sky_bg.start()
+        overlay.addWidget(self._sky_bg, 0, 0)
         content = QtWidgets.QWidget(shell)
         content.setStyleSheet("background: transparent; border: none;")
         overlay.addWidget(content, 0, 0)
-        content.raise_()  # keep content above the terminal background
+        content.raise_()  # keep content above the sky background
         self.shell_layout = QtWidgets.QVBoxLayout(content)
         self.shell_layout.setContentsMargins(0, 0, 0, 0)
         self.shell_layout.setSpacing(0)
@@ -286,7 +285,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.body_row = QtWidgets.QHBoxLayout()
         self.body_row.setContentsMargins(0, 0, 0, 0)
         self.body_row.setSpacing(0)
-        # WorkSlop sidebar: white terminal rail. The generated-UI
+        # WorkSlop sidebar: white navigation rail. The generated-UI
         # sidebar is parked hidden — old flows still touch its buttons, but
         # navigation now goes through the new rail.
         from src.gui.ios.sidebar import WorkSlopSidebar
@@ -303,9 +302,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # overriding here keeps mainwindow_ui.py untouched).
         self.setWindowTitle("WorkSlop Desktop")
 
-        # Terminal theme: solid black shell, no painted backdrop. The
-        # CobaltBackdrop is retired — keeping it would repaint bubbles every
-        # frame for no visible effect on an opaque background.
+        # Sky theme: light-blue shell with the animated SkyBackground canvas.
+        # The CobaltBackdrop is retired — keeping it would repaint bubbles
+        # every frame for no visible effect on an opaque background.
         self._backdrop = None
 
         self.apply_theme(self.theme_manager.current_theme)
@@ -372,7 +371,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self._retheme_classic()
 
     def _style_device_pill(self):
-        """Restyle the top device bar as a terminal status line.
+        """Restyle the top device bar as a clean status pill.
 
         The picker group moves to the right; the old title text becomes a
         plain expanding spacer.

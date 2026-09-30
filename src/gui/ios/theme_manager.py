@@ -1,5 +1,5 @@
 """WorkSlop Desktop UI mode. The classic GoldenNugget shell is removed;
-the app always runs the terminal-style iOS interface."""
+the app always runs the Sky-style iOS interface."""
 from PySide6.QtCore import QSettings
 
 

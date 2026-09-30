@@ -1,5 +1,4 @@
 from PySide6.QtCore import Qt, QCoreApplication, Slot, QTimer, QSize, QEvent
-from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QComboBox, QSizePolicy, QScrollArea
@@ -22,25 +21,13 @@ _FEATURE_ICONS = {
     "App Data": ":/icon/folder.svg",
 }
 
-# Terminal command shown on each home tile (`$ workslop <cmd>`).
-_TILE_COMMANDS = {
-    "PosterBoard": "posterboard",
-    "Tweaks": "tweaks",
-    "Daemons": "daemons",
-    "Status Bar": "statusbar",
-    "Custom Icon": "customicon",
-    "Passcode Theme": "passthm",
-    "MobileGestalt": "gestalt",
-    "Sideload": "sideload",
-    "App Data": "appdata",
-}
 
 
 class _TileCard(IOSCard):
     """A home feature tile (icon + name). Same look as a card, plus hover."""
 
     def _retheme(self):
-        self.setStyleSheet(t("home_tile_term"))
+        self.setStyleSheet(t("home_tile"))
 
 
 class _CardGrid(QWidget):
@@ -156,37 +143,39 @@ class IOSHomePage(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(16)
 
-        # Logo + Title row
-        header = QHBoxLayout()
-        header.setSpacing(16)
+        # ---- Centered hero: big Apple logo + brand + device row ------------
+        hero = QVBoxLayout()
+        hero.setSpacing(8)
+        hero.setContentsMargins(0, 30, 0, 6)
 
-        # Load logo from resources
-        self._logo = QLabel(self)
-        self._logo.setFixedSize(80, 80)
-        self._logo.setScaledContents(True)
-        pixmap = QPixmap(":/credits/workslop.png")
-        if not pixmap.isNull():
-            self._logo.setPixmap(pixmap)
-        else:
-            self._logo.setStyleSheet(f"background-color: {self._c.bg_secondary}; border-radius: 14px;")
-        header.addWidget(self._logo)
+        self._hero_logo = QLabel(self)
+        self._hero_logo.setFixedSize(112, 112)
+        self._hero_logo.setAlignment(Qt.AlignCenter)
+        hero.addWidget(self._hero_logo, 0, Qt.AlignHCenter)
 
-        title_layout = QVBoxLayout()
-        self._title = QLabel(QCoreApplication.translate("Nugget", "WorkSlop Desktop"), self)
-        self._title.setStyleSheet(t("home_title"))
-        title_layout.addWidget(self._title)
+        self._title = QLabel("WorkSlop", self)
+        self._title.setAlignment(Qt.AlignCenter)
+        self._title.setStyleSheet(t("home_hero_title"))
+        hero.addWidget(self._title)
 
-        self.subtitle = QLabel(QCoreApplication.translate("Nugget", "iPhone (iOS —)"), self)
+        self.subtitle = QLabel(
+            QCoreApplication.translate("Nugget", "iPhone (iOS —)"), self)
+        self.subtitle.setAlignment(Qt.AlignCenter)
         self.subtitle.setStyleSheet(t("home_subtitle"))
-        title_layout.addWidget(self.subtitle)
-        header.addLayout(title_layout, 1)
+        hero.addWidget(self.subtitle)
+
+        device_row = QHBoxLayout()
+        device_row.setSpacing(10)
+        device_row.setContentsMargins(0, 8, 0, 0)
+        device_row.addStretch(1)
 
         self.device_combo = QComboBox(self)
         self.device_combo.setFixedHeight(36)
+        self.device_combo.setMinimumWidth(220)
         self._style_device_combo()
         self.populate_device_picker()
         self.device_combo.currentIndexChanged.connect(self.on_device_changed)
-        header.addWidget(self.device_combo)
+        device_row.addWidget(self.device_combo)
 
         self._refresh_btn = QPushButton(self)
         self._refresh_btn.setFixedSize(36, 36)
@@ -194,7 +183,7 @@ class IOSHomePage(QWidget):
         self._refresh_btn.setStyleSheet(t("home_icon_button"))
         self._apply_icon(self._refresh_btn, ":/icon/arrow-clockwise.svg")
         self._refresh_btn.clicked.connect(self.refresh_devices)
-        header.addWidget(self._refresh_btn)
+        device_row.addWidget(self._refresh_btn)
 
         self._settings_btn = QPushButton(self)
         self._settings_btn.setFixedSize(36, 36)
@@ -202,9 +191,13 @@ class IOSHomePage(QWidget):
         self._settings_btn.setStyleSheet(t("home_icon_button"))
         self._apply_icon(self._settings_btn, ":/icon/gear.svg")
         self._settings_btn.clicked.connect(self.open_settings)
-        header.addWidget(self._settings_btn)
+        device_row.addWidget(self._settings_btn)
 
-        layout.addLayout(header)
+        device_row.addStretch(1)
+        hero.addLayout(device_row)
+
+        layout.addLayout(hero)
+        self._paint_hero_logo()
 
         self.status_lbl = QLabel("", self)
         self.status_lbl.setWordWrap(True)
@@ -291,13 +284,24 @@ class IOSHomePage(QWidget):
     def _apply_icon(self, button, resource_path: str):
         button.setIcon(theme_icon(resource_path, self._c.text_primary))
 
+    def _paint_hero_logo(self):
+        """Big Apple logo for the home hero, tinted with the accent color."""
+        c = self._c
+        try:
+            dpr = self.devicePixelRatioF()
+        except Exception:
+            dpr = 1.0
+        self._hero_logo.setPixmap(
+            theme_pixmap(":/icon/apple.svg", c.accent, 112, dpr))
+
     def _retheme(self):
         self._c = ColorThemeManager.instance().colors
         c = self._c
-        self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
-        if self._logo.pixmap() is None or self._logo.pixmap().isNull():
-            self._logo.setStyleSheet(f"background-color: {c.bg_secondary}; border-radius: 14px;")
-        self._title.setStyleSheet(t("home_title"))
+        # Transparent scroll: the animated sky background shows through the
+        # page; cards stay solid white so text is always readable.
+        self._scroll.setStyleSheet("background: transparent; border: none;")
+        self._paint_hero_logo()
+        self._title.setStyleSheet(t("home_hero_title"))
         self.subtitle.setStyleSheet(t("home_subtitle"))
         self._style_device_combo()
         self._refresh_btn.setStyleSheet(t("home_icon_button"))
@@ -470,8 +474,7 @@ class IOSHomePage(QWidget):
             self.statusbar_card.setToolTip("")
 
     def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:
-        """One home feature tile: terminal `$ workslop <cmd>` header over
-        a big themed icon with the name below it."""
+        """One home feature tile: a big themed icon with the name below it."""
         card = _TileCard()
         card.setSizePolicy(QSizePolicy.Policy.Expanding,
                            QSizePolicy.Policy.Preferred)
@@ -479,12 +482,6 @@ class IOSHomePage(QWidget):
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(12, 12, 12, 14)
         card_layout.setSpacing(8)
-
-        # Terminal command header, e.g. `$ workslop sideload ▊`
-        cmd = _TILE_COMMANDS.get(title, title.lower().replace(" ", ""))
-        cmd_lbl = QLabel(f"$ workslop {cmd} \u258a", card)
-        cmd_lbl.setStyleSheet(t("home_tile_cmd"))
-        card_layout.addWidget(cmd_lbl, 0, Qt.AlignLeft)
 
         icon_res = _FEATURE_ICONS.get(title, ":/icon/compass.svg")
         icon_lbl = QLabel(card)

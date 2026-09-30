@@ -91,7 +91,7 @@ class IOSSettingsPage(QWidget):
         lbl.setFixedSize(32, 32)
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setStyleSheet(
-            f"background-color: {c.bg_input}; color: {c.term_green}; "
+            f"background-color: {c.bg_input}; color: {c.brand}; "
             f"font-size: 11px; font-weight: 700; border-radius: 9px;")
         return lbl
 
@@ -443,7 +443,7 @@ class IOSSettingsPage(QWidget):
         h.addWidget(self.org_value_lbl)
         edit_btn = QLabel("\u270e")
         edit_btn.setStyleSheet(
-            f"color: {c.term_green}; font-size: 17px; background-color: transparent;")
+            f"color: {c.brand}; font-size: 17px; background-color: transparent;")
         edit_btn.setCursor(Qt.PointingHandCursor)
         edit_btn.mousePressEvent = lambda e: self._on_text_row_edit(
             tr("Enter Organization Name"), self._on_org_name_edited)

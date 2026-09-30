@@ -391,7 +391,7 @@ class SettingsMixin:
 
 
     def apply_theme(self, theme: int):
-        """Apply the terminal UI chrome (classic mode is removed)."""
+        """Apply the Sky UI chrome (classic mode is removed)."""
         self.theme_manager.save_theme(theme)
         self.ui.sidebar.setVisible(False)
         self.ui.deviceBar.setVisible(False)

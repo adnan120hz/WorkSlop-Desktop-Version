@@ -129,7 +129,7 @@ class IOSBackupPage(QWidget):
         title_lbl = QLabel("⚠  " + tr(title))
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            "font-size: 14px; font-weight: 700; color: #ffb86b; "
+            f"font-size: 14px; font-weight: 700; color: {self._tm.colors.warning}; "
             "background-color: transparent;")
         lay.addWidget(title_lbl)
         desc_lbl = QLabel(tr(desc))
@@ -189,7 +189,9 @@ class IOSBackupPage(QWidget):
         self._apply_btn.setEnabled(has)
         if has:
             self._apply_status.setText(
-                tr("%n tweak(s) enabled — ready to apply.", "", total))
+                QCoreApplication.translate(
+                    "Nugget", "%n tweak(s) enabled — ready to apply.",
+                    "", total))
         else:
             self._apply_status.setText(
                 tr("Apply is disabled: enable at least one tweak toggle "

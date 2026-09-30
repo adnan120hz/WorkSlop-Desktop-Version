@@ -171,7 +171,7 @@ class IOSSideloadPage(QWidget):
         self._ipa_warn = QLabel()
         self._ipa_warn.setWordWrap(True)
         self._ipa_warn.setStyleSheet(
-            "font-size: 13px; color: #ffb86b; background-color: transparent;")
+            f"font-size: 13px; color: {self._tm.colors.warning}; background-color: transparent;")
         self._ipa_warn.setVisible(False)
         lay.addWidget(self._ipa_warn)
         row = QHBoxLayout()

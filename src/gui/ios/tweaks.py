@@ -70,7 +70,7 @@ def _save_collapsed_section(name: str, collapsed: bool):
     store.setValue(_COLLAPSED_KEY, ",".join(sorted(names)))
 
 
-# Layout rhythm for the tweaks page (terminal UI): one set of numbers for the
+# Layout rhythm for the tweaks page: one set of numbers for the
 # whole page so every section and every tweak row lines up. The row-card
 # constants are also used by eligibility.py / risky.py, which render their
 # rows inside this page's collapsible sections (imported lazily there to

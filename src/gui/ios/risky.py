@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSSwitch,
 )
+from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_risky
 
@@ -112,7 +113,9 @@ class RiskySection(QWidget):
             "WARNING: risky, use with caution. A bad value here can "
             "bootloop the device."))
         warn.setWordWrap(True)
-        warn.setStyleSheet("font-size: 13px; color: #ff9d9d; background-color: transparent;")
+        c = ColorThemeManager.instance().colors
+        warn.setStyleSheet(
+            f"font-size: 13px; color: {c.danger_text}; background-color: transparent;")
         self._layout.addWidget(warn)
 
         # Disable OTA Updates (file) (Nugget: disableOTAChk)

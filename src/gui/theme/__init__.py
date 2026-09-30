@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
 
 from src.gui.theme.theme_manager import ColorThemeManager
-from src.gui.theme.colors import DARK, ACCENT_PRESETS
+from src.gui.theme.colors import DARK, SKY, ACCENT_PRESETS
 from src.gui.theme.styles import STYLES, FONT_FAMILY, mono_family
 from src.gui.theme.accent_picker import AccentPicker
 
@@ -58,7 +58,7 @@ def theme_pixmap(resource_path: str, color_hex: str, size: int,
 
 
 __all__ = [
-    "ColorThemeManager", "DARK", "ACCENT_PRESETS", "STYLES", "FONT_FAMILY",
+    "ColorThemeManager", "DARK", "SKY", "ACCENT_PRESETS", "STYLES", "FONT_FAMILY",
     "AccentPicker", "t", "themed_stylesheet", "theme_icon",
     "theme_pixmap",
 ]
