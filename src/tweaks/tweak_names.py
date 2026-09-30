@@ -51,6 +51,22 @@ class TweakID(Enum):
     AOD = auto()
     AODVibrancy = auto()
 
+    # feature flags (ported from leminlimez/Nugget; removed by GoldenNugget,
+    # re-added here using Nugget's original flag definitions)
+    ClockAnim = auto()
+    Lockscreen = auto()
+    PhotoUI = auto()
+    AI = auto()
+    KioskMode = auto()
+    SolariumFFSwiftUI = auto()
+    SolariumFFSpringBoard = auto()
+    SolariumFFIconServices = auto()
+    SolariumFFDocumentCamera = auto()
+    SolariumFFPhotos = auto()
+    SolariumFFAppleMediaServices = auto()
+    SolariumFFSharing = auto()
+    SolariumFFMail = auto()
+
     # internal
     SBBuildNumber = auto()
     RTL = auto()

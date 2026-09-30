@@ -290,3 +290,38 @@ class MobileGestaltCacheDataTweak(Tweak):
         data = "".join(data_list)
         plist["CacheData"] = bytes.fromhex(data)
         return plist
+
+
+# ---------------------------------------------------------------------------
+# FeatureFlagTweak — ported verbatim from leminlimez/Nugget
+# (src/tweaks/tweak_classes.py). Writes into the "Global.plist" feature flags
+# file (/var/preferences/FeatureFlags/Global.plist). Removed by GoldenNugget,
+# re-added here per user request using Nugget's original code.
+# ---------------------------------------------------------------------------
+class FeatureFlagTweak(Tweak):
+    def __init__(
+            self,
+                flag_category: str, flag_names: list,
+                is_list: bool=True, inverted: bool=False
+            ):
+        super().__init__(key=None)
+        self.flag_category = flag_category
+        self.flag_names = flag_names
+        self.is_list = is_list
+        self.inverted = inverted
+
+    def apply_tweak(self, plist: dict):
+        to_enable = self.enabled
+        if self.inverted:
+            to_enable = not self.enabled
+        # create the category list if it doesn't exist
+        if not self.flag_category in plist:
+            plist[self.flag_category] = {}
+        for flag in self.flag_names:
+            if self.is_list:
+                plist[self.flag_category][flag] = {
+                    'Enabled': to_enable
+                }
+            else:
+                plist[self.flag_category][flag] = to_enable
+        return plist

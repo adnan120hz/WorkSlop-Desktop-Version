@@ -20,6 +20,9 @@ you can copy it somewhere safe before the apply continues.
 - **Home** — device overview, quick actions and status
 - **Tweaks** — SpringBoard options, internal options, status bar, daemons and more
 - **MobileGestalt** — device feature flags ported from Nugget (see version support below)
+- **Feature Flags** — SpringBoard/Photos/SwiftUI feature flags ported from Nugget
+  (Lockscreen Clock Animation, Old Photo UI, Apple Intelligence, Solarium/Liquid
+  Glass toggles, Kiosk Mode); writes to `/var/preferences/FeatureFlags/Global.plist`
 - **Wallpaper** — PosterBoard animated wallpapers, descriptors and templates
 - **Backup** — full iTunes-style backup, protective backup, and restore
 - **Themes** — icon themes and passcode themes

@@ -46,7 +46,7 @@ from src.exceptions.nugget_exception import NuggetException
 from src.tweaks.tweaks import (
     tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
     StatusBarTweak, MobileGestaltTweak, MobileGestaltPickerTweak,
-    MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+    MobileGestaltMultiTweak, MobileGestaltCacheDataTweak, FeatureFlagTweak,
 )
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks
 from src.tweaks.status_bar.statusbar_archive import build_reset_archive
@@ -1070,7 +1070,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                             device_model=hotload_model) is not None):
                     hotload_skipped.append(tweak_name)
                     continue
-                if isinstance(tweak, BasicPlistTweak) or isinstance(tweak, AdvancedPlistTweak):
+                if isinstance(tweak, FeatureFlagTweak):
+                    # ported from leminlimez/Nugget: collect every enabled
+                    # feature flag into one plist, written to
+                    # /var/preferences/FeatureFlags/Global.plist below
+                    flag_plist = tweak.apply_tweak(flag_plist)
+                elif isinstance(tweak, BasicPlistTweak) or isinstance(tweak, AdvancedPlistTweak):
                     basic_plists = tweak.apply_tweak(basic_plists)
                     basic_plists_ownership[tweak.file_location] = tweak.owner
                 elif isinstance(tweak, NullifyFileTweak):

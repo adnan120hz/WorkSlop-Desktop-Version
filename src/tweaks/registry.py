@@ -18,6 +18,7 @@ from .tweak_names import TweakID
 class Section(Enum):
     LIQUID_GLASS = "Liquid Glass"
     SPRINGBOARD = "SpringBoard"
+    FEATURE_FLAGS = "Feature Flags"
     INTERNAL = "Internal Options"
 
 
@@ -33,6 +34,7 @@ class Kind(Enum):
 SECTION_FEATURES: dict[Section, str] = {
     Section.LIQUID_GLASS: "Liquid Glass",
     Section.SPRINGBOARD: "Springboard",
+    Section.FEATURE_FLAGS: "Feature Flags",
     Section.INTERNAL: "Internal",
 }
 
@@ -100,6 +102,70 @@ def _usol(member: TweakID, title: str, kind: Kind = Kind.SWITCH, value=True, *,
 
 
 GP = FileLocation.globalPreferences
+
+
+def _ff(id_: TweakID, title: str, flag_category: str, flag_names: list,
+        description: str = "", **kwargs) -> TweakSpec:
+    """Feature-flag tweak (ported verbatim from leminlimez/Nugget's
+    ``load_featureflags()``).
+
+    GoldenNugget removed the whole feature-flags system; the flag
+    definitions below are Nugget's originals. The ``factory`` builds a
+    ``FeatureFlagTweak`` which writes into
+    ``/var/preferences/FeatureFlags/Global.plist`` during apply.
+    """
+    from .tweak_classes import FeatureFlagTweak
+    return TweakSpec(
+        id=id_, section=Section.FEATURE_FLAGS,
+        title=QT_TRANSLATE_NOOP("Nugget", title),
+        description=QT_TRANSLATE_NOOP("Nugget", description) if description else None,
+        location=FileLocation.featureflags, key="",
+        factory=lambda: FeatureFlagTweak(
+            flag_category=flag_category, flag_names=flag_names, **kwargs),
+    )
+
+
+_FF_SPECS: tuple[TweakSpec, ...] = (
+    _ff(TweakID.ClockAnim, "Enable Lockscreen Clock Animation",
+        'SpringBoard', ['SwiftUITimeAnimation'],
+        description="Enables the SwiftUI time animation on the lockscreen clock."),
+    _ff(TweakID.Lockscreen, "Enable Duplicate Lockscreen Button and Lockscreen Quickswitch",
+        "SpringBoard", ['AutobahnQuickSwitchTransition', 'SlipSwitch', 'PosterEditorKashida'],
+        description="Enables the duplicate lockscreen button and the lockscreen quick-switch transition."),
+    _ff(TweakID.PhotoUI, "Enable Old Photo UI",
+        'Photos', ['Lemonade'], is_list=False, inverted=True,
+        description="Restores the old Photos app UI (disables the Lemonade redesign)."),
+    _ff(TweakID.AI, "Enable Apple Intelligence",
+        'SpringBoard', ['Domino', 'SuperDomino'],
+        description="Enables the Apple Intelligence feature flags (Domino / SuperDomino)."),
+    _ff(TweakID.KioskMode, "Enable Kiosk Mode",
+        'PreferencesFramework', ['ForcedRetailKioskMode'],
+        description="Forces retail kiosk mode."),
+    _ff(TweakID.SolariumFFSwiftUI, "Disable Solarium (Liquid Glass) — SwiftUI",
+        'SwiftUI', ['Solarium'], inverted=True,
+        description="Disables the Solarium (Liquid Glass) look in SwiftUI via feature flags."),
+    _ff(TweakID.SolariumFFSpringBoard, "Disable Solarium (Liquid Glass) — SpringBoard",
+        'SpringBoard', ['SolariumElasticHUD'], inverted=True,
+        description="Disables the Solarium elastic HUD in SpringBoard via feature flags."),
+    _ff(TweakID.SolariumFFIconServices, "Disable Solarium (Liquid Glass) — Icon Services",
+        'IconServices', ['EnhancedGlass', 'SolariumCornerRadius'], inverted=True,
+        description="Disables enhanced glass and the Solarium corner radius in IconServices."),
+    _ff(TweakID.SolariumFFDocumentCamera, "Disable Liquid Glass in Documents Camera",
+        'DocumentCamera', ['CaptureLiquidGlass'], inverted=True,
+        description="Disables the Liquid Glass capture UI in DocumentCamera."),
+    _ff(TweakID.SolariumFFPhotos, "Disable Liquid Glass in Photos",
+        'Photos', ['SolariumGridMagicPocket'], inverted=True,
+        description="Disables the Liquid Glass grid magic pocket in Photos."),
+    _ff(TweakID.SolariumFFAppleMediaServices, "Disable Liquid Glass in Apple Media Services",
+        'AppleMediaServices', ['Solarium'], inverted=True,
+        description="Disables Solarium (Liquid Glass) in Apple Media Services."),
+    _ff(TweakID.SolariumFFSharing, "Disable Liquid Glass in Share Sheet",
+        'Sharing', ['ShareSheetSolarium'], inverted=True,
+        description="Disables the Solarium share sheet."),
+    _ff(TweakID.SolariumFFMail, "Disable Liquid Glass in Mail",
+        'Mail', ['SolariumSearch'], inverted=True,
+        description="Disables Solarium search in Mail."),
+)
 
 SPECS: tuple[TweakSpec, ...] = (
     # --- Liquid Glass ---
@@ -596,7 +662,7 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Plays a sound every time content is pasted anywhere on the device.")),
     _t(TweakID.AnnounceAllPastes, Section.INTERNAL, "Show Notifications for System Pastes", FileLocation.pasteboard, "AnnounceAllPastes",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a system notification whenever an app reads the pasteboard, acting as a privacy indicator for system-level pastes.")),
-)
+) + _FF_SPECS
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}
 SPECS_BY_ID = {spec.id: spec for spec in SPECS if not spec.disabled}
