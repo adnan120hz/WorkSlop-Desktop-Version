@@ -58,6 +58,21 @@ srp.no_username_in_x()
 _GS_ENDPOINT = "https://gsa.apple.com/grandslam/GsService2"
 _TRUSTED_TRIGGER = "https://gsa.apple.com/auth/verify/trusteddevice"
 _VALIDATE = "https://gsa.apple.com/grandslam/GsService2/validate"
+
+
+def _secure_write(path, text: str) -> None:
+    """Write account/session data with owner-only permissions.
+
+    Session tokens are sensitive: restrict the file to the current user
+    (0o600) so other local users cannot read them. The password itself is
+    never written to disk anywhere in this engine.
+    """
+    import os
+    path.write_text(text, encoding="utf-8")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass  # e.g. Windows: ACLs already restrict per-user dirs
 _SMS_ENDPOINT = "https://gsa.apple.com/auth/verify/phone"
 _SMS_SUBMIT = "https://gsa.apple.com/auth/verify/phone/securitycode"
 
@@ -539,9 +554,9 @@ def _finalize_session(email: str, spd: dict[str, Any], headers: dict[str, str]) 
 # Session persistence
 # --------------------------------------------------------------------------- #
 def _save_pending(email: str, adsid: str, idms_token: str, method: str) -> None:
-    paths.pending_2fa_file().write_text(
+    _secure_write(
+        paths.pending_2fa_file(),
         json.dumps({"email": email, "adsid": adsid, "idms": idms_token, "method": method}),
-        encoding="utf-8",
     )
 
 
@@ -571,7 +586,7 @@ def _migrate_legacy_account() -> None:
         if email:
             target = paths.account_file(email)
             if not target.exists():
-                target.write_text(json.dumps(data), encoding="utf-8")
+                _secure_write(target, json.dumps(data))
             _set_active(email)
     except (OSError, ValueError):
         # A corrupt legacy file is not worth failing a login over; it is about to
@@ -581,9 +596,7 @@ def _migrate_legacy_account() -> None:
 
 
 def _set_active(email: str) -> None:
-    paths.active_account_file().write_text(
-        json.dumps({"email": email}), encoding="utf-8"
-    )
+    _secure_write(paths.active_account_file(), json.dumps({"email": email}))
 
 
 def _active_email() -> str | None:
@@ -614,7 +627,8 @@ def _save_account(email: str, spd: dict[str, Any], app_token: dict[str, Any]) ->
         except ValueError:
             existing = {}
 
-    path.write_text(
+    _secure_write(
+        path,
         json.dumps(
             {
                 # team_id is learned later, by provisioning; carry it across a
@@ -627,7 +641,6 @@ def _save_account(email: str, spd: dict[str, Any], app_token: dict[str, Any]) ->
                 "auth_token_expiry": app_token.get("expiry"),
             }
         ),
-        encoding="utf-8",
     )
     _set_active(email)
 
@@ -700,7 +713,7 @@ def remember_team(email: str, team_id: str) -> None:
     if data.get("team_id") == team_id:
         return
     data["team_id"] = team_id
-    path.write_text(json.dumps(data), encoding="utf-8")
+    _secure_write(path, json.dumps(data))
 
 
 def account_for_team(team_id: str) -> str | None:

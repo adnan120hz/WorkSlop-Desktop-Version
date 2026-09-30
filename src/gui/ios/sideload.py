@@ -142,8 +142,13 @@ class IOSSideloadPage(QWidget):
         lay.addLayout(row)
 
         note = QLabel(tr(
-            "Your password is used once to sign in and is never stored — "
-            "only short-lived session tokens are kept on this computer."))
+            "Privacy: your password is used once to sign in and is never "
+            "stored anywhere — not in the app, not on disk, not in the repo. "
+            "Only short-lived Apple session tokens are kept in a private "
+            "per-user folder on this computer (owner-only permissions), "
+            "exactly like Sideloadly does. Sign Out wipes them completely. "
+            "Your Apple ID never leaves this computer except to Apple's own "
+            "servers (gsa.apple.com)."))
         note.setWordWrap(True)
         note.setStyleSheet(t("value_label") + " background-color: transparent;")
         lay.addWidget(note)

@@ -19,7 +19,7 @@ from PySide6.QtCore import Qt, QCoreApplication, QThread, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFileDialog,
     QMessageBox, QListWidget, QListWidgetItem, QPushButton, QSplitter,
-    QTreeWidget, QTreeWidgetItem, QHeaderView, QProgressBar,
+    QTreeWidget, QTreeWidgetItem, QHeaderView, QProgressBar, QInputDialog,
 )
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
@@ -153,6 +153,51 @@ class _TransferThread(QThread):
                     await ha.push(self.local_path, self.remote_path)
 
 
+class _FileOpThread(QThread):
+    """Delete / rename / mkdir inside an app container via house_arrest."""
+    done = Signal(str)  # human-readable result message
+    error = Signal(str)
+
+    def __init__(self, udid: str, bundle_id: str, op: str,
+                 path: str, new_name: str = ""):
+        super().__init__()
+        self.udid = udid
+        self.bundle_id = bundle_id
+        self.op = op  # "delete" | "rename" | "mkdir"
+        self.path = path
+        self.new_name = new_name
+
+    def run(self):
+        try:
+            import asyncio
+            msg = asyncio.run(self._execute())
+            self.done.emit(msg)
+        except Exception as e:
+            self.error.emit(str(e))
+
+    async def _execute(self) -> str:
+        from src.devicemanagement.session import lockdown_session
+        from pymobiledevice3.services.house_arrest import HouseArrestService
+        async with lockdown_session(self.udid) as lockdown:
+            async with HouseArrestService(lockdown=lockdown) as ha:
+                try:
+                    await ha.send_command(self.bundle_id, "VendContainer")
+                except Exception:
+                    await ha.send_command(self.bundle_id, "VendDocuments")
+                if self.op == "delete":
+                    await ha.rm(self.path)
+                    return tr(f"Deleted {self.path}")
+                if self.op == "rename":
+                    parent = "/".join(self.path.rstrip("/").split("/")[:-1])
+                    new_path = f"{parent}/{self.new_name}".replace("//", "/")
+                    await ha.rename(self.path, new_path)
+                    return tr(f"Renamed to {self.new_name}")
+                if self.op == "mkdir":
+                    await ha.makedirs(self.path, exist_ok=True)
+                    return tr(f"Created folder {self.path}")
+                raise ValueError(f"Unknown op: {self.op}")
+
+
 class IOSAppDataPage(QWidget):
     """iMazing-style app data browser."""
 
@@ -245,6 +290,18 @@ class IOSAppDataPage(QWidget):
         self.upload_btn.setStyleSheet(t("mini_button"))
         self.upload_btn.clicked.connect(self._upload_file)
         btn_row.addWidget(self.upload_btn)
+        self.mkdir_btn = QPushButton(tr("New Folder"))
+        self.mkdir_btn.setStyleSheet(t("mini_button"))
+        self.mkdir_btn.clicked.connect(self._new_folder)
+        btn_row.addWidget(self.mkdir_btn)
+        self.rename_btn = QPushButton(tr("Rename"))
+        self.rename_btn.setStyleSheet(t("mini_button"))
+        self.rename_btn.clicked.connect(self._rename_selected)
+        btn_row.addWidget(self.rename_btn)
+        self.delete_btn = QPushButton(tr("Delete"))
+        self.delete_btn.setStyleSheet(t("mini_button"))
+        self.delete_btn.clicked.connect(self._delete_selected)
+        btn_row.addWidget(self.delete_btn)
         right_layout.addLayout(btn_row)
 
         self.progress = QProgressBar()
@@ -396,3 +453,62 @@ class IOSAppDataPage(QWidget):
                                       QMessageBox.warning(self, tr("App Data"), err)))
         th.start()
         self._threads.append(th)
+
+    def _selected_entry(self):
+        """Return the currently selected file entry dict, or None."""
+        item = self.file_tree.currentItem()
+        if not item or not self._current_app:
+            return None
+        return item.data(0, Qt.UserRole)
+
+    def _run_file_op(self, op: str, path: str, new_name: str = ""):
+        self.progress.show()
+        th = _FileOpThread(
+            self._udid(), self._current_app["bundle_id"], op, path, new_name,
+        )
+        th.done.connect(lambda msg: (self.progress.hide(),
+                                     self._browse(self._current_app["bundle_id"],
+                                                  self._current_path)))
+        th.error.connect(lambda err: (self.progress.hide(),
+                                       QMessageBox.warning(self, tr("App Data"), err)))
+        th.start()
+        self._threads.append(th)
+
+    def _new_folder(self):
+        if not self._current_app:
+            QMessageBox.information(self, tr("App Data"), tr("Select an app first."))
+            return
+        name, ok = QInputDialog.getText(
+            self, tr("New Folder"), tr("Folder name:"))
+        if not ok or not name.strip():
+            return
+        name = name.strip().replace("/", "_")
+        remote = f"{self._current_path}/{name}".replace("//", "/")
+        self._run_file_op("mkdir", remote)
+
+    def _rename_selected(self):
+        e = self._selected_entry()
+        if not e:
+            QMessageBox.information(self, tr("App Data"), tr("Select a file or folder first."))
+            return
+        new_name, ok = QInputDialog.getText(
+            self, tr("Rename"), tr("New name:"), text=e["name"])
+        if not ok or not new_name.strip() or new_name.strip() == e["name"]:
+            return
+        new_name = new_name.strip().replace("/", "_")
+        self._run_file_op("rename", e["path"], new_name)
+
+    def _delete_selected(self):
+        e = self._selected_entry()
+        if not e:
+            QMessageBox.information(self, tr("App Data"), tr("Select a file or folder first."))
+            return
+        kind = tr("folder") if e["is_dir"] else tr("file")
+        confirm = QMessageBox.question(
+            self, tr("Delete"),
+            tr(f"Delete {kind} '{e['name']}' from the device?\nThis cannot be undone."),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        self._run_file_op("delete", e["path"])
