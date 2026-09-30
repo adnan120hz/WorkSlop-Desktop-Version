@@ -27,11 +27,15 @@ you can copy it somewhere safe before the apply continues.
 
 ### Version support
 
-| iOS version | Tweaks | MobileGestalt |
+| iOS version | Apply (tweaks) | MobileGestalt |
 |---|---|---|
-| 26.x | Partial restore (sparse restore, no wipe) | iOS 26.1 and below only |
-| 27 and newer | Backup → tweak → restore flow | Not supported (locked in the UI) |
+| 26.x | Partial restore (sparse restore, no wipe). The device still reboots when you press Apply, following the original GoldenNugget. | iOS 26.1 and below only |
+| 27 and newer | Classic GoldenNugget flow: protective backup → sparse restore → **reboot** → wipe → reconnect → restore backup. | Not supported (locked in the UI) |
 | 25 and older | Not supported | iOS 17.0 – 25.x supported |
+
+> Standalone backup actions (**Full Backup**) do **not** reboot the device —
+> they just export the backup file to the folder you choose, like saving it
+> for later. Only **Restore Backup** and **Apply** reboot the device.
 
 The MobileGestalt menu stays visible on all versions but locks itself automatically
 on iOS 26.2 and newer.
