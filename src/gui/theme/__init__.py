@@ -1,5 +1,6 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 
 from src.gui.theme.theme_manager import ColorThemeManager
 from src.gui.theme.colors import DARK, SKY, ACCENT_PRESETS
@@ -39,17 +40,29 @@ def theme_pixmap(resource_path: str, color_hex: str, size: int,
                  dpr: float = 1.0) -> QPixmap:
     """Rasterize a monochrome SVG at *size* logical pixels, tinted to a color.
 
-    Unlike ``theme_icon`` the icon is scaled by the SVG engine *before* the
-    tint is applied, so icons with a small viewBox (11x11, 16x16) stay crisp
-    when blown up to home-tile size. ``dpr`` renders extra device pixels on
-    HiDPI screens and sets the pixmap's device pixel ratio accordingly.
+    The SVG is scaled to *fit* the square (aspect ratio preserved, centered)
+    via QSvgRenderer — never stretched. ``dpr`` renders extra device pixels
+    on HiDPI screens and sets the pixmap's device pixel ratio accordingly.
     """
     scale = max(1.0, float(dpr))
-    pm = QPixmap(int(round(size * scale)), int(round(size * scale)))
+    px = int(round(size * scale))
+    pm = QPixmap(px, px)
     pm.setDevicePixelRatio(scale)
     pm.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pm)
-    painter.drawPixmap(pm.rect(), QIcon(resource_path).pixmap(pm.size()))
+    # Fit the viewBox into the square, centered, keeping the aspect ratio.
+    # (QIcon.pixmap() also keeps aspect, but drawPixmap(rect, pixmap) would
+    # stretch the result to fill the square — that squished the 3:4 Apple
+    # logo ~33% wider.)
+    renderer = QSvgRenderer(resource_path)
+    vb = renderer.viewBoxF()
+    if vb.isValid() and vb.width() > 0 and vb.height() > 0:
+        s = min(size / vb.width(), size / vb.height())
+        w, h = vb.width() * s, vb.height() * s
+        target = QRectF((size - w) / 2.0, (size - h) / 2.0, w, h)
+    else:
+        target = QRectF(0, 0, size, size)
+    renderer.render(painter, target)
     painter.setCompositionMode(
         QPainter.CompositionMode.CompositionMode_SourceIn)
     painter.fillRect(pm.rect(), QColor(color_hex))

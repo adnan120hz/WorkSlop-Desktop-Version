@@ -14,15 +14,16 @@ Performance notes:
 from __future__ import annotations
 
 import math
-import os
 import random
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtCore import Qt, QRectF, QTimer
+from PySide6.QtGui import QColor, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QWidget
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-APPLE_SVG = os.path.join(HERE, "..", "..", "qt", "icon", "apple.svg")
+# Qt resource path (registered via resources_rc) — safe in frozen builds,
+# unlike a filesystem path next to the source tree.
+APPLE_SVG = ":/icon/apple.svg"
 
 BASE_BG = "#F2F7FF"
 
@@ -34,14 +35,26 @@ FLOAT_COUNT = 16
 
 def _tinted_apple(size: int, color_hex: str, opacity: float,
                   dpr: float = 1.0) -> QPixmap:
-    """Rasterize apple.svg at *size* px, tinted, with baked-in opacity."""
+    """Rasterize apple.svg at *size* px, tinted, with baked-in opacity.
+
+    The SVG is fitted into the square (aspect preserved, centered) — never
+    stretched, so the 3:4 Apple logo keeps its true proportions.
+    """
     scale = max(1.0, float(dpr))
     px = max(1, int(round(size * scale)))
     pm = QPixmap(px, px)
     pm.setDevicePixelRatio(scale)
     pm.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pm)
-    painter.drawPixmap(pm.rect(), QIcon(APPLE_SVG).pixmap(pm.size()))
+    renderer = QSvgRenderer(APPLE_SVG)
+    vb = renderer.viewBoxF()
+    if vb.isValid() and vb.width() > 0 and vb.height() > 0:
+        s = min(size / vb.width(), size / vb.height())
+        w, h = vb.width() * s, vb.height() * s
+        target = QRectF((size - w) / 2.0, (size - h) / 2.0, w, h)
+    else:
+        target = QRectF(0, 0, size, size)
+    renderer.render(painter, target)
     painter.setCompositionMode(
         QPainter.CompositionMode.CompositionMode_SourceIn)
     col = QColor(color_hex)
