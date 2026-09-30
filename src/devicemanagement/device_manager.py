@@ -279,10 +279,10 @@ class DeviceManager:
         else:
             self.data_singleton.current_device = self.devices[index]
             if not is_supported_by_fork(self.devices[index].version):
-                # Version rules follow the original repos 100%:
-                # - GoldenNugget flow: iOS 26.2+ only (main tweaks blocked below).
-                # - Nugget MobileGestalt: iOS 26.1 and below (never 26.2+).
-                # So a 26.1-and-below device stays usable for MobileGestalt.
+                # Version rules:
+                # - Main tweaks (partial restore): iOS 26 and newer.
+                # - Nugget MobileGestalt: iOS 26.1 and below (never 26.2+),
+                #   so a pre-26 device stays usable for MobileGestalt.
                 self.data_singleton.device_available = is_gestalt_supported(
                     self.devices[index].version)
             else:
@@ -410,8 +410,8 @@ class DeviceManager:
         if not self.get_current_device_is_supported_by_fork():
             raise NuggetException(QCoreApplication.tr(
                 "This version of iOS is not supported by this fork.\n\n"
-                "GoldenNugget only supports iOS 26.2 and newer. "
-                "Please use the original Nugget for iOS 26.1 and earlier."))
+                "WorkSlop Desktop supports iOS 26 and newer. "
+                "Please use the original Nugget for iOS 18 and earlier."))
 
     def get_current_device_is_gestalt_supported(self) -> bool:
         """Nugget's MobileGestalt rule: available on iOS 26.1 and below,

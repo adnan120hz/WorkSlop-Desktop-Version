@@ -121,6 +121,9 @@ class IOSHomePage(QWidget):
         self._c = ColorThemeManager.instance().colors
         # (icon label, icon resource, title label, subtitle label) per tile
         self._tiles = []
+        # locked tiles (e.g. MobileGestalt on unsupported iOS): clicking
+        # shows why instead of opening the page
+        self._tile_locks = {}
 
         # Scroll area: the tile grid must never be squeezed below the tile
         # content height, so a short window scrolls instead of overlapping.
@@ -154,7 +157,7 @@ class IOSHomePage(QWidget):
         header.addWidget(self._logo)
 
         title_layout = QVBoxLayout()
-        self._title = QLabel(QCoreApplication.translate("Nugget", "GoldenNugget"), self)
+        self._title = QLabel(QCoreApplication.translate("Nugget", "WorkSlop Desktop"), self)
         self._title.setStyleSheet(t("home_title"))
         title_layout.addWidget(self._title)
 
@@ -402,6 +405,34 @@ class IOSHomePage(QWidget):
         self.mobilegestalt_card.setVisible(visible)
         self.cards_grid.reflow()
 
+    def set_mobilegestalt_locked(self, locked: bool, device_version: str = ""):
+        """Lock the MobileGestalt tile on unsupported iOS versions.
+
+        The tile stays visible (user asked for it) but clicking explains
+        the version requirement instead of opening the page.
+        """
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+        if locked:
+            msg = QCoreApplication.translate(
+                "Nugget",
+                "MobileGestalt is supported on iOS 17.0 – 26.1 only.\n\n"
+                "This device is on iOS {ver}, so MobileGestalt is locked. "
+                "It will never be supported on iOS 26.2+."
+            ).replace("{ver}", device_version or "—")
+            self._tile_locks[self.mobilegestalt_card] = msg
+            effect = QGraphicsOpacityEffect(self.mobilegestalt_card)
+            effect.setOpacity(0.45)
+            self.mobilegestalt_card.setGraphicsEffect(effect)
+            self.mobilegestalt_card.setCursor(Qt.ArrowCursor)
+            self.mobilegestalt_card.setToolTip(
+                QCoreApplication.translate("Nugget", "Requires iOS 26.1 or below"))
+        else:
+            self._tile_locks.pop(self.mobilegestalt_card, None)
+            self.mobilegestalt_card.setGraphicsEffect(None)
+            self.mobilegestalt_card.setCursor(Qt.PointingHandCursor)
+            self.mobilegestalt_card.setToolTip(
+                QCoreApplication.translate("Nugget", "Device feature flags (iOS 26.1-)"))
+
     def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:
         """One home feature tile: a big themed icon with the name below it."""
         card = _TileCard()
@@ -440,10 +471,21 @@ class IOSHomePage(QWidget):
         # kept for _retheme(): icons are recolored, labels restyled
         self._tiles.append((icon_lbl, icon_res, title_lbl, sub_lbl))
 
-        card.mousePressEvent = lambda e: self.switch_to_ios_page(page_index)
+        card.mousePressEvent = lambda e, c=card: self._on_tile_clicked(c, page_index)
         card.setCursor(Qt.PointingHandCursor)
         card.setToolTip(QCoreApplication.translate("Nugget", subtitle))
         return card
+
+    def _on_tile_clicked(self, card: IOSCard, page_index: int):
+        lock_msg = self._tile_locks.get(card)
+        if lock_msg:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.information(
+                self.window,
+                QCoreApplication.translate("Nugget", "Unavailable"),
+                lock_msg)
+            return
+        self.switch_to_ios_page(page_index)
 
     def _paint_tile_icon(self, label: QLabel, icon_res: str):
         """Draw a feature icon at tile size (and screen density) in the

@@ -50,7 +50,7 @@ class CobaltBackdrop(QWidget):
     def _bubbles(self):
         """Deterministic bubble layout for the current size."""
         w, h = max(1, self.width()), max(1, self.height())
-        rng = random.Random((w // 8, h // 8))
+        rng = random.Random((w // 8) * 100003 + (h // 8))
         for _ in range(_BUBBLE_COUNT):
             r = rng.uniform(14, 90)
             x = rng.uniform(-r, w + r)

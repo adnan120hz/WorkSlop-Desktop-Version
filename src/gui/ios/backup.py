@@ -1,0 +1,197 @@
+"""WorkSlop Desktop Backup page: full backup, restore, and backup location.
+
+The three actions reuse the exact flows already wired in the Settings page —
+this page only gives them a dedicated home under the Backup sidebar menu.
+"""
+from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFileDialog,
+    QMessageBox,
+)
+
+from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
+from src.gui.theme import t, ColorThemeManager
+
+
+def tr(text: str) -> str:
+    return QCoreApplication.translate("Nugget", text)
+
+
+class IOSBackupPage(QWidget):
+    def __init__(self, window, parent=None):
+        super().__init__(parent)
+        self.window = window
+        self.setObjectName("iosContainer")
+        self._tm = ColorThemeManager.instance()
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        self._scroll = scroll
+        content = QWidget()
+        self._content_layout = QVBoxLayout(content)
+        self._content_layout.setContentsMargins(16, 16, 16, 24)
+        self._content_layout.setSpacing(12)
+
+        self._content_layout.addWidget(IOSSectionHeader(tr("Backup")))
+
+        self._content_layout.addWidget(self._make_card(
+            tr("Full Backup"),
+            tr("Create a complete backup of the iPhone, the way iTunes/Finder "
+               "does. Make sure this computer has enough free storage — the "
+               "backup can be as large as the used storage on the iPhone — "
+               "and note this takes much longer than the protective backup."),
+            tr("Start Full Backup"),
+            self._on_full_backup))
+
+        self._content_layout.addWidget(self._make_card(
+            tr("Restore Backup"),
+            tr("Restore a backup to the iPhone. Two formats are supported: a "
+               "standard full-backup folder (iTunes/Finder format), or the "
+               "protective backup this app keeps on this computer."),
+            tr("Restore..."),
+            self._on_restore))
+
+        self._location_lbl = QLabel()
+        self._location_lbl.setWordWrap(True)
+        self._content_layout.addWidget(self._make_card(
+            tr("Backup Location"),
+            tr("The protective backup cache and temporary backup/restore "
+               "files are stored here. The protective backup runs "
+               "automatically before tweaks are applied."),
+            tr("Open Folder"),
+            self._on_open_location,
+            extra_widget=self._location_lbl))
+
+        self._content_layout.addStretch(1)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
+
+        self._retheme()
+        self._tm.theme_changed.connect(self._retheme)
+
+    # -- cards ----------------------------------------------------------
+    def _make_card(self, title, desc, btn_text, handler, extra_widget=None):
+        card = IOSCard()
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(8)
+        title_lbl = QLabel(tr(title))
+        title_lbl.setStyleSheet(
+            "font-size: 15px; font-weight: 600; background-color: transparent;")
+        lay.addWidget(title_lbl)
+        desc_lbl = QLabel(tr(desc))
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")
+        lay.addWidget(desc_lbl)
+        if extra_widget is not None:
+            extra_widget.setStyleSheet(
+                t("value_label") + " background-color: transparent;")
+            lay.addWidget(extra_widget)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        btn = IOSPrimaryButton(tr(btn_text))
+        btn.clicked.connect(handler)
+        row.addWidget(btn)
+        lay.addLayout(row)
+        return card
+
+    # -- actions (same flows as Settings) -------------------------------
+    def _on_full_backup(self):
+        reply = QMessageBox.warning(
+            self.window, tr("Full Backup"),
+            tr("This creates a COMPLETE backup of the iPhone, the way "
+               "iTunes/Finder does.\n\n"
+               "Make sure this computer has enough free storage — the backup "
+               "can be as large as the used storage on the iPhone — and note "
+               "this takes much longer than the protective backup.\n\n"
+               "Continue?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        folder = QFileDialog.getExistingDirectory(
+            self.window, tr("Where to save the full backup"), "",
+            QFileDialog.Option.ShowDirsOnly)
+        if not folder:
+            return
+        self.window._start_full_backup(folder)
+
+    def _on_restore(self):
+        mbox = QMessageBox(self.window)
+        mbox.setWindowTitle(tr("Restore Backup"))
+        mbox.setText(tr("Choose the backup format to restore:"))
+        mbox.setInformativeText(
+            tr("Full Backup: a standard iPhone backup folder in iTunes/Finder "
+               "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
+               "Protective Backup: the selective protective backup this app "
+               "keeps on this computer (only restorable from this app)."))
+        full_btn = mbox.addButton(tr("Full Backup..."), QMessageBox.ButtonRole.ActionRole)
+        prot_btn = mbox.addButton(tr("Protective Backup"), QMessageBox.ButtonRole.ActionRole)
+        mbox.addButton(QMessageBox.StandardButton.Cancel)
+        mbox.exec()
+        clicked = mbox.clickedButton()
+        if clicked == full_btn:
+            self._on_restore_full()
+        elif clicked == prot_btn:
+            self._on_restore_protective()
+
+    def _on_restore_full(self):
+        folder = QFileDialog.getExistingDirectory(
+            self.window, tr("Select Full Backup Folder"), "",
+            QFileDialog.Option.ShowDirsOnly)
+        if not folder:
+            return
+        reply = QMessageBox.question(
+            self.window, tr("Restore Full Backup?"),
+            tr("This restores the selected backup to the connected iPhone, "
+               "then reboots it.\n\n"
+               "Make sure the iPhone is connected, unlocked and awake, "
+               "then do you want to continue?"))
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.window._start_full_backup_restore(folder)
+
+    def _on_restore_protective(self):
+        reply = QMessageBox.question(
+            self.window, tr("Restore Data From Backup?"),
+            tr("This restores photos, messages, contacts and settings from "
+               "the last protective backup on this computer.\n\n"
+               "Applied tweaks and wallpapers are KEPT.\n\n"
+               "Make sure the iPhone is connected, unlocked and awake, "
+               "then do you want to continue?"))
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.window._start_cache_restore()
+
+    def _on_open_location(self):
+        import os
+        path = self._backup_dir()
+        if path and os.path.isdir(path):
+            from PySide6.QtGui import QDesktopServices
+            from PySide6.QtCore import QUrl
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
+    # -- helpers --------------------------------------------------------
+    def _backup_dir(self) -> str:
+        try:
+            custom = str(self.window.settings.value("backup_storage_dir", "", type=str)).strip()
+            if custom:
+                return custom
+            from src.restore.storage import cache_base
+            return str(cache_base())
+        except Exception:
+            return ""
+
+    def refresh(self):
+        path = self._backup_dir()
+        self._location_lbl.setText(path if path else tr("Default (system drive)"))
+
+    def _retheme(self):
+        c = self._tm.colors
+        self._scroll.setStyleSheet(
+            f"background-color: {c.bg_primary}; border: none;")
+        self.refresh()

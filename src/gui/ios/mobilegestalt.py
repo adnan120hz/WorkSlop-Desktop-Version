@@ -17,7 +17,7 @@ from src.gui.ios.components import (
 )
 from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
-from src.tweaks.tweak_loader import load_mobilegestalt, get_mobilegestalt_tweaks
+from src.tweaks.tweak_loader import load_mobilegestalt
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks, ValueTypeStrings
 from src.devicemanagement.constants import is_gestalt_supported
 
@@ -72,6 +72,15 @@ class _GestaltContent(QWidget):
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(16, 16, 16, 24)
         self._layout.setSpacing(12)
+
+        # Support banner: always visible, states the supported iOS range.
+        self._support_card = IOSCard()
+        support_layout = QHBoxLayout(self._support_card)
+        support_layout.setContentsMargins(16, 12, 16, 12)
+        self._support_lbl = QLabel()
+        self._support_lbl.setWordWrap(True)
+        support_layout.addWidget(self._support_lbl)
+        self._layout.addWidget(self._support_card)
 
         self._notice_card = IOSCard()
         notice_layout = QHBoxLayout(self._notice_card)
@@ -137,6 +146,7 @@ class _GestaltContent(QWidget):
         self._build_tweaks_ui()
         self._update_mga_label()
         self._sync_switches()
+        self._update_support_banner(version)
 
         if device is None or not dm.data_singleton.device_available:
             self._show_notice(tr("Connect a device to use MobileGestalt tweaks."))
@@ -321,6 +331,19 @@ class _GestaltContent(QWidget):
             self._mga_status.setText(tr("Using the saved file for this device."))
         else:
             self._mga_status.setText(selected)
+
+    def _update_support_banner(self, version: str):
+        """Persistent banner stating the supported iOS range."""
+        from src.devicemanagement.constants import is_gestalt_supported
+        ok = is_gestalt_supported(version) if version else False
+        ver_txt = f"iOS {version}" if version else "no device"
+        state = (tr("This device ({ver}) is supported.")
+                 if ok else tr("This device ({ver}) is NOT supported — "
+                              "MobileGestalt locks itself on iOS 26.2+."))
+        self._support_lbl.setText(
+            tr("Supported: iOS 17.0 \u2013 26.1. ") + state.replace("{ver}", ver_txt))
+        self._support_lbl.setStyleSheet(
+            t("value_label") + " background-color: transparent;")
 
     def _on_choose_file(self):
         dm = self.window.device_manager

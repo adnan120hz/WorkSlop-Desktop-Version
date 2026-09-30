@@ -147,7 +147,7 @@ class IOSSettingsPage(QWidget):
         restore_btn.setToolTip(QCoreApplication.translate(
             "Nugget",
             "Restore a backup to the iPhone: full backup folder or "
-            "GoldenNugget protective backup."))
+            "WorkSlop protective backup."))
         restore_btn.clicked.connect(self._on_restore_data_clicked)
         self.content_layout.addWidget(restore_btn)
 
@@ -186,7 +186,7 @@ class IOSSettingsPage(QWidget):
         # About
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "About")))
 
-        about_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "About GoldenNugget"))
+        about_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "About WorkSlop Desktop"))
         about_btn.clicked.connect(self.show_about)
         self.content_layout.addWidget(about_btn)
 
@@ -388,13 +388,13 @@ class IOSSettingsPage(QWidget):
         mbox.setInformativeText(
             "Full Backup: a standard iPhone backup folder in iTunes/Finder "
             "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
-            "GoldenNugget Backup: the selective protective backup this app "
+            "WorkSlop Backup: the selective protective backup this app "
             "keeps on this computer (only restorable from this app).")
         full_btn = mbox.addButton(
             QCoreApplication.translate("Nugget", "Full Backup..."),
             QMessageBox.ButtonRole.ActionRole)
         gn_btn = mbox.addButton(
-            QCoreApplication.translate("Nugget", "GoldenNugget Backup"),
+            QCoreApplication.translate("Nugget", "WorkSlop Backup"),
             QMessageBox.ButtonRole.ActionRole)
         mbox.addButton(QMessageBox.StandardButton.Cancel)
         mbox.exec()
@@ -431,7 +431,7 @@ class IOSSettingsPage(QWidget):
             "Restore Data From Backup?",
             "This restores photos, messages, contacts and settings from the "
             "last protective backup on this computer.\n\n"
-            "Applied tweaks and GoldenNugget wallpapers are KEPT.\n\n"
+            "Applied tweaks and wallpapers are KEPT.\n\n"
             "Make sure the iPhone is connected, unlocked and awake, "
             "then do you want to continue?",
         )
@@ -492,7 +492,7 @@ class IOSSettingsPage(QWidget):
             reply = QMessageBox.question(
                 self.window,
                 "Enable Encrypted Backups?",
-                "WARNING: Using encrypted backups with GoldenNugget is experimental "
+                "WARNING: Using encrypted backups with WorkSlop Desktop is experimental "
                 "and may cause DATA LOSS or leave your device stuck on the Setup "
                 "screen after applying tweaks.\n\n"
                 "Make sure you know your backup password before continuing.\n\n"

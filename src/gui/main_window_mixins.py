@@ -195,13 +195,27 @@ class DeviceBarMixin:
             }
 
             device_ver = Version(self.device_manager.data_singleton.current_device.version)
-            # MobileGestalt follows Nugget upstream: visible only on iOS 26.1
-            # and below, never on 26.2+.
-            self.ui.gestaltPageBtn.setVisible(is_gestalt_supported(
-                self.device_manager.data_singleton.current_device.version))
+            # MobileGestalt menu stays visible but auto-locks on unsupported
+            # iOS: supported on iOS 17.0 - 26.1, never on 26.2+.
+            gestalt_ok = is_gestalt_supported(
+                self.device_manager.data_singleton.current_device.version)
+            self.ui.gestaltPageBtn.setVisible(True)
+            self.ui.gestaltPageBtn.setEnabled(gestalt_ok)
+            self.ui.gestaltPageBtn.setToolTip(
+                "MobileGestalt (supports iOS 17.0 - 26.1)" if gestalt_ok
+                else "MobileGestalt requires iOS 26.1 or below "
+                     f"(this device: iOS {self.device_manager.data_singleton.current_device.version})")
             if hasattr(self, "ios_home"):
-                self.ios_home.set_mobilegestalt_visible(is_gestalt_supported(
-                    self.device_manager.data_singleton.current_device.version))
+                self.ios_home.set_mobilegestalt_visible(True)
+                self.ios_home.set_mobilegestalt_locked(
+                    not gestalt_ok,
+                    self.device_manager.data_singleton.current_device.version)
+            if hasattr(self, "workslop_sidebar"):
+                self.workslop_sidebar.set_gestalt_locked(
+                    not gestalt_ok,
+                    "MobileGestalt (supports iOS 17.0 - 26.1)" if gestalt_ok
+                    else "MobileGestalt requires iOS 26.1 or below "
+                         f"(this device: iOS {self.device_manager.data_singleton.current_device.version})")
             # toggle option visibility for the minimum versions
             for version, views in MinTweakVersions.items():
                 # show views if the version is higher
@@ -447,40 +461,52 @@ class NavigationMixin:
             self.ios_nav.clear_right_action()
 
 
+    def _on_workslop_menu(self, menu_id: str):
+        """Navigate from the 7-pill WorkSlop sidebar."""
+        if menu_id == "home":
+            self.show_home()
+        elif menu_id == "tweaks":
+            self.show_ios_page(1)
+        elif menu_id == "gestalt":
+            self.on_mobileGestaltPageBtn_clicked()
+            return  # already syncs the sidebar
+        elif menu_id == "wallpaper":
+            self.on_posterboardPageBtn_clicked()
+            return
+        elif menu_id == "backup":
+            self.ios_backup.refresh()
+            self.show_ios_page(13)
+        elif menu_id == "themes":
+            self.show_ios_page(14)
+        elif menu_id == "settings":
+            self.on_settingsPageBtn_clicked()
+            return
+        self._sync_sidebar_selection()
+
     def _sync_sidebar_selection(self):
-        """Move the checked highlight of the sidebar to the active view."""
-        btns = (self.ui.homePageBtn, self.ui.posterboardPageBtn,
-            self.ui.springboardOptionsPageBtn, self.ui.internalOptionsPageBtn,
-            self.ui.liquidGlassPageBtn, self.ui.daemonsPageBtn,
-            self.ui.applyPageBtn, self.ui.settingsPageBtn,
-            self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn,
-            self.ui.gestaltPageBtn)
-        page_to_btn = {
-            0: 0,   # home
-            2: 1,   # posterboard
-            7: 2,   # springboard
-            8: 3,   # internal
-            9: 4,   # liquid glass
-            3: 5,   # daemons
-            6: 6,   # apply
-            4: 7,   # settings
-            5: 8,   # status bar
-            10: 9,  # icon themes
-            12: 10, # mobilegestalt
+        """Move the checked highlight of the WorkSlop sidebar to the active view."""
+        page_to_menu = {
+            0: "home",
+            1: "tweaks", 3: "tweaks", 5: "tweaks", 6: "tweaks",
+            7: "tweaks", 8: "tweaks", 9: "tweaks",
+            12: "gestalt",
+            2: "wallpaper",
+            13: "backup",
+            10: "themes", 11: "themes", 14: "themes",
+            4: "settings",
         }
-        idx = None
+        menu = None
         if self.theme_manager.current_theme == ThemeManager.CLASSIC:
             if self.content_stack.currentIndex() == 0:
-                idx = 0
-            elif self.content_stack.currentIndex() == 1:
-                idx = page_to_btn.get(self.ios_pages.currentIndex())
+                menu = "home"
             elif self.content_stack.currentIndex() == 2:
-                idx = 5
+                menu = "tweaks"  # classic daemons page
+            else:
+                menu = page_to_menu.get(self.ios_pages.currentIndex())
         else:
-            idx = page_to_btn.get(self.ios_pages.currentIndex())
-        target = btns[idx] if idx is not None else None
-        for b in btns:
-            b.setChecked(b is target)
+            menu = page_to_menu.get(self.ios_pages.currentIndex())
+        if menu is not None and hasattr(self, "workslop_sidebar"):
+            self.workslop_sidebar.select(menu)
 
 
     def show_home(self):

@@ -108,7 +108,7 @@ class AboutProgramDialog(QDialog):
         layout.addWidget(separator)
         
         # Description
-        desc = QLabel(self.tr("Customize your iOS device with animated wallpapers, system tweaks, and more. Built for iOS 26.2+."))
+        desc = QLabel(self.tr("Customize your iOS device with animated wallpapers, system tweaks, and more. Built for iOS 26 and newer."))
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 15px; padding: 0 20px;")
@@ -136,15 +136,14 @@ class AboutProgramDialog(QDialog):
         credits_layout.setSpacing(8)
         credits_layout.setContentsMargins(8, 8, 8, 8)
         
-        # Credits data - from original home page
+        # Credits data: WorkSlop's own credits first, then upstream contributors
         credits = [
             ("Owner & Developer", "Adnan.120hz", "https://github.com/adnan120hz"),
-            ("Upstream (forked from)", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
-            ("Nugget", "leminlimez", "https://github.com/leminlimez"),
-            ("misakaReborn", "straight-tamago", "https://github.com/straight-tamago"),
-            ("Main Developer", "awesomenull", "https://github.com/awesomenull-dev"),
-            ("Co-Developer", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
-            ("Nugget Creator", "leminlemiz", "https://github.com/leminlemiz"),
+            ("Fork utama", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
+            ("Portingan MobileGestalt", "Nugget by leminlimez", "https://github.com/leminlimez/Nugget"),
+            ("Portingan menu MobileGestalt", "misakaReborn", "https://github.com/straight-tamago/misakaReborn"),
+            ("Main Developer (upstream)", "awesomenull", "https://github.com/awesomenull-dev"),
+            ("Co-Developer (upstream)", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
             ("PosterRestore Team", "PosterRestore Discord", "https://discord.gg/gWtzTVhMvh"),
             ("PosterBoard Help", "dootskyre, Middo, dulark, forcequitOS, pingubow", "https://twitter.com/dootskyre"),
             ("Wallpaper Website", "SerStars", "https://cowabun.ga/wallpapers"),

@@ -166,6 +166,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_iconthemes = IOSIconThemesPage(self)
         self.ios_passthemes = IOSPasscodeThemePage(self)
         self.ios_gestalt = IOSMobileGestaltPage(self)
+        from src.gui.ios.backup import IOSBackupPage
+        from src.gui.ios.themes_hub import IOSThemesHubPage
+        self.ios_backup = IOSBackupPage(self)
+        self.ios_themes_hub = IOSThemesHubPage(self)
         self.ios_pages.addWidget(self.ios_home)
         self.ios_pages.addWidget(self.ios_tweaks)
         self.ios_pages.addWidget(self.ios_posterboard)
@@ -179,6 +183,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.addWidget(self.ios_iconthemes)
         self.ios_pages.addWidget(self.ios_passthemes)
         self.ios_pages.addWidget(self.ios_gestalt)
+        # WorkSlop menus: appended at the end so no existing page index shifts.
+        # 13 = backup, 14 = themes hub.
+        self.ios_pages.addWidget(self.ios_backup)
+        self.ios_pages.addWidget(self.ios_themes_hub)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -198,6 +206,8 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             10: QtCore.QCoreApplication.translate("Nugget", "Icon Themes"),
             11: QCoreApplication.translate("Nugget", "Passcode Themes"),
             12: QCoreApplication.translate("Nugget", "MobileGestalt"),
+            13: QCoreApplication.translate("Nugget", "Backup"),
+            14: QCoreApplication.translate("Nugget", "Themes"),
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
@@ -242,8 +252,16 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.body_row = QtWidgets.QHBoxLayout()
         self.body_row.setContentsMargins(0, 0, 0, 0)
         self.body_row.setSpacing(0)
-        self.body_row.addWidget(self.ui.sidebar)
+        # WorkSlop sidebar: 7 glass pills (photo target). The generated-UI
+        # sidebar is parked hidden — old flows still touch its buttons, but
+        # navigation now goes through the new rail.
+        from src.gui.ios.sidebar import WorkSlopSidebar
+        self.ui.sidebar.hide()
+        self.workslop_sidebar = WorkSlopSidebar(self)
+        self.workslop_sidebar.menu_selected.connect(self._on_workslop_menu)
+        self.body_row.addWidget(self.workslop_sidebar)
         self.body_row.addWidget(self.content_stack, 1)
+        self._style_device_pill()
         self.shell_layout.addLayout(self.body_row)
         self.setCentralWidget(shell)
 
@@ -321,6 +339,72 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # Re-style the classic chrome (sidebar icons, device bar, home toolbar)
         self._retheme_classic()
 
+    def _style_device_pill(self):
+        """Restyle the top device bar as a floating glass pill (photo target).
+
+        The picker group moves to the right; the old "GoldenNugget" title
+        text becomes a plain expanding spacer.
+        """
+        c = self._color_theme.colors
+        bar = self.ui.deviceBar
+        bar.setStyleSheet("background-color: transparent;")
+        layout = self.ui.horizontalLayout_4
+        # title spacer first (expanding), device pill last (right-aligned)
+        layout.insertWidget(0, self.ui.titleBar)
+        self.ui.titleBar.setText("")
+        self.ui.titleBar.setStyleSheet("background-color: transparent; border: none;")
+        pill = self.ui.horizontalWidget_2
+        pill.setStyleSheet(f"""
+            QWidget#horizontalWidget_2 {{
+                background-color: rgba(255, 255, 255, 0.07);
+                border: 1px solid rgba(255, 255, 255, 0.14);
+                border-radius: 19px;
+            }}
+        """)
+        self.ui.devicePicker.setStyleSheet(f"""
+            QComboBox {{
+                background-color: transparent;
+                border: none;
+                color: {c.text_primary};
+                font-size: 13px;
+                font-weight: 500;
+                min-height: 36px;
+                padding-left: 10px;
+            }}
+            QComboBox::drop-down {{ border: none; width: 22px; }}
+            QComboBox::down-arrow {{
+                image: url(:/icon/caret-down-fill.svg);
+                width: 12px; height: 12px; margin-right: 8px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {c.bg_tertiary};
+                border: 1px solid {c.border};
+                border-radius: 10px;
+                color: {c.text_primary};
+                selection-background-color: {c.accent};
+            }}
+        """)
+        self.ui.refreshBtn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 14px;
+                color: {c.text_primary};
+            }}
+            QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.12); }}
+        """)
+        self.ui.phoneIconBtn.setStyleSheet(
+            "background-color: transparent; border: none;")
+        # green status dot like the mockup ("iPhone 15 • iOS 26.1 • USB")
+        if not hasattr(self, "_device_dot"):
+            from PySide6.QtWidgets import QLabel
+            self._device_dot = QLabel(pill)
+            self._device_dot.setFixedSize(10, 10)
+            self._device_dot.setStyleSheet(
+                "background-color: #34c759; border-radius: 5px;")
+            self.ui.horizontalLayout_19.insertWidget(0, self._device_dot)
+            self.ui.horizontalLayout_19.setContentsMargins(12, 1, 6, 1)
+
     def _retheme_classic(self):
         """Re-color the classic shell: chrome icons, device picker, version
         link and the hardcoded-dark credit buttons."""
@@ -369,6 +453,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         try:
             _c = self._color_theme.colors
             self._backdrop.set_colors(_c.bubble, "rgba(180, 205, 255, 40)")
+        except Exception:
+            pass
+        # Keep the device pill themed too.
+        try:
+            self._style_device_pill()
         except Exception:
             pass
         # Force re-render of all iOS page stylesheets by re-applying them

@@ -18,9 +18,11 @@ class Device:
         self.locale = locale
 
 def is_supported_by_fork(version: str) -> bool:
-    # this fork only supports iOS 26.2 and newer (the iOS 27 era)
+    # WorkSlop rule (user decision 2026-09-30): ALL iOS 26 versions use the
+    # partial restore path (sparse restore, no wipe). iOS 27+ keeps the
+    # three-phase protective flow. Below iOS 26 stays unsupported.
     try:
-        return Version(str(version)) > Version("26.1")
+        return Version(str(version)) >= Version("26.0")
     except Exception:
         # an empty or unparsable version cannot be verified, so treat it as
         # unsupported rather than letting Version() raise into the UI
