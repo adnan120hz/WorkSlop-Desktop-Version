@@ -17,7 +17,7 @@ from src.gui.ios.components import (
 )
 from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
-from src.tweaks.tweak_loader import load_mobilegestalt
+from src.tweaks.tweak_loader import load_mobilegestalt, load_rdar_fix
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks, ValueTypeStrings
 from src.devicemanagement.constants import is_gestalt_supported_build
 
@@ -145,9 +145,11 @@ class _GestaltContent(QWidget):
         build = device.build if device is not None else ""
         gestalt_ok = is_gestalt_supported_build(build)
         load_mobilegestalt(build)
+        load_rdar_fix(device)
         self._build_tweaks_ui()
         self._update_mga_label()
         self._sync_switches()
+        self._update_rdar_label()
         self._update_support_banner(version, build)
 
         if device is None:
@@ -223,6 +225,22 @@ class _GestaltContent(QWidget):
         self._di_combo.activated.connect(self._on_di_activated)
         di_lay.addWidget(self._di_combo, 2)
         self._tweaks_layout.addWidget(di_card)
+
+        # RDAR / status bar resolution fix (ported from leminlimez/Nugget's
+        # gestalt page: rdarFixChk + set_rdar_fix_label). Shown only for
+        # models where get_rdar_mode() found a fix; label follows the
+        # Dynamic Island dropdown via set_di_type().
+        rdar_card, rdar_lay = self._row_card()
+        self._rdar_label = QLabel("")
+        self._rdar_label.setStyleSheet("font-size: 15px; background-color: transparent;")
+        self._rdar_label.setWordWrap(True)
+        rdar_lay.addWidget(self._rdar_label, 1)
+        rdar_sw = IOSSwitch()
+        rdar_sw.toggled.connect(lambda c: self._on_switch(TweakID.RdarFix, c))
+        rdar_lay.addWidget(rdar_sw)
+        self._tweaks_layout.addWidget(rdar_card)
+        self._rdar_card = rdar_card
+        self._switches[TweakID.RdarFix] = rdar_sw
 
         self._add_switch("Supports Dynamic Island", TweakID.SupportsDynamicIsland)
 
@@ -308,13 +326,26 @@ class _GestaltContent(QWidget):
         if hasattr(self, "_model_name_edit") and TweakID.ModelName in tweaks:
             self._model_name_edit.setText(str(tweaks[TweakID.ModelName].value or ""))
 
+    def _update_rdar_label(self):
+        # Ported from leminlimez/Nugget's gestalt.py::set_rdar_fix_label.
+        if TweakID.RdarFix not in tweaks or not hasattr(self, "_rdar_card"):
+            return
+        rdar_title = tweaks[TweakID.RdarFix].get_rdar_title()
+        if rdar_title == "hide":
+            self._rdar_card.hide()
+        else:
+            self._rdar_card.show()
+            res_title = tr("modifies resolution")
+            self._rdar_label.setText(f"{rdar_title} ({res_title})")
+
     def _on_di_activated(self, index: int):
-        # Nugget's on_dynamicIslandDrp_activated, without the RdarFix tweak
-        # (desk does not port Nugget's resolution fix).
+        # Ported from leminlimez/Nugget's gestalt.py::on_dynamicIslandDrp_activated.
         if TweakID.DynamicIsland not in tweaks:
             return
         if index == 0:
             tweaks[TweakID.DynamicIsland].set_enabled(False)
+            if TweakID.RdarFix in tweaks:
+                tweaks[TweakID.RdarFix].set_di_type(-1)
         else:
             model = ""
             try:
@@ -326,6 +357,10 @@ class _GestaltContent(QWidget):
                 tweaks[TweakID.DynamicIsland].set_selected_option(index - 1)
             else:
                 tweaks[TweakID.DynamicIsland].set_enabled(False)
+            if TweakID.RdarFix in tweaks:
+                tweaks[TweakID.RdarFix].set_di_type(
+                    tweaks[TweakID.DynamicIsland].value[tweaks[TweakID.DynamicIsland].get_selected_option()])
+        self._update_rdar_label()
         self._sync_switches()
 
     # -- MobileGestalt file --------------------------------------------------

@@ -159,6 +159,92 @@ class AdvancedPlistTweak(BasicPlistTweak):
 
 
 # ---------------------------------------------------------------------------
+# RdarFixTweak — ported verbatim from leminlimez/Nugget
+# (src/tweaks/tweak_classes.py). Resolution fix for the Dynamic Island status
+# bar on certain models; driven by the MobileGestalt page (di_type follows the
+# Dynamic Island dropdown selection).
+# ---------------------------------------------------------------------------
+class RdarFixTweak(BasicPlistTweak):
+    def __init__(self):
+        super().__init__(file_location=FileLocation.resolution, key=None)
+        self.mode = 0
+        self.di_type = -1
+
+    def get_rdar_mode(self, model: str) -> int:
+        if (model == "iPhone11,2" or model == "iPhone11,4" or model == "iPhone11,6"
+            or model == "iPhone11,8"
+            or model == "iPhone12,1" or model == "iPhone12,3" or model == "iPhone12,5"):
+            self.mode = 1
+        elif (model == "iPhone13,2" or model == "iPhone13,3" or model == "iPhone13,4"
+              or model == "iPhone14,5" or model == "iPhone14,2" or model == "iPhone14,3"
+              or model == "iPhone14,7" or model == "iPhone14,8" or model == "iPhone17,5"):
+            self.mode = 2
+        elif (model == "iPhone12,8" or model == "iPhone14,6"):
+            self.mode = 3
+        return self.mode
+
+    def get_rdar_title(self) -> str:
+        if self.mode == 1 or self.mode == 3:
+            if self.di_type == -1:
+                return QCoreApplication.tr("Revert RDAR fix")
+            return QCoreApplication.tr("RDAR Fix")
+        elif self.mode == 2:
+            if self.di_type == -1:
+                return QCoreApplication.tr("Revert Status Bar Fix")
+            return QCoreApplication.tr("Dynamic Island Status Bar Fix")
+        return "hide"
+
+    def set_di_type(self, type: int):
+        self.di_type = type
+
+    def apply_tweak(self, other_tweaks: dict, risky_allowed: bool = False) -> dict:
+        if not self.enabled:
+            return other_tweaks
+        if self.di_type == -1:
+            # revert the fix
+            other_tweaks[self.file_location] = {"nugget": 0} # data needed for revert to actually work
+        elif self.mode == 1:
+            # iPhone XR, XS, and 11
+            plist = {
+                "canvas_height": 1791,
+                "canvas_width": 828
+            }
+            other_tweaks[self.file_location] = plist
+        elif self.mode == 3:
+            # iPhone SEs
+            plist = {
+                "canvas_height": 1779,
+                "canvas_width": 1000
+            }
+            other_tweaks[self.file_location] = plist
+        elif self.mode == 2:
+            # Status bar fix (iPhone 12+)
+            width = 2868
+            height = 1320
+            if self.di_type == 2556:
+                width = 1179
+                height = 2556
+            elif self.di_type == 2796:
+                width = 1290
+                height = 2796
+            elif self.di_type == 2622:
+                width = 1206
+                height = 2622
+            elif self.di_type == 2868:
+                width = 1320
+                height = 2868
+            elif self.di_type == 2736:
+                width = 1260
+                height = 2736
+            plist = {
+                "canvas_height": height,
+                "canvas_width": width
+            }
+            other_tweaks[self.file_location] = plist
+        return other_tweaks
+
+
+# ---------------------------------------------------------------------------
 # MobileGestalt tweaks — ported verbatim from leminlimez/Nugget
 # (src/tweaks/tweak_classes.py). These write into the "CacheExtra" dict of the
 # device's com.apple.MobileGestalt.plist. Per Nugget upstream: not supported

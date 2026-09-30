@@ -14,6 +14,7 @@ from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Sectio
 from src.tweaks.tweak_loader import load_plist_tweaks, load_eligibility
 from src.tweaks.hidden import current_hidden_feature_names, current_hidden_tweak_names
 from src.gui.ios.eligibility import EligibilitySection
+from src.gui.ios.risky import RiskySection
 
 # Feature (page) name -> registry Section it maps to in the iOS tweaks UI.
 # A HotLoad-hidden feature loses its whole section here (and the Sidebar/Home
@@ -268,6 +269,19 @@ class IOSSectionContent(QWidget):
         elig_section = EligibilitySection(self.window)
         elig_collapsible.body_layout.addWidget(elig_section)
         elig_section.refresh()
+
+        # Risky section (ported from leminlimez/Nugget's risky page:
+        # Disable OTA Updates, Custom Resolution). Rendered as a
+        # collapsible section like Eligibility above.
+        risky_collapsible = IOSCollapsibleSection(
+            QCoreApplication.translate("Nugget", "Risky"),
+            expanded="Risky" not in collapsed_sections)
+        risky_collapsible.toggled.connect(
+            lambda expanded: _save_collapsed_section("Risky", not expanded))
+        layout.addWidget(risky_collapsible)
+        risky_section = RiskySection(self.window)
+        risky_collapsible.body_layout.addWidget(risky_section)
+        risky_section.refresh()
 
         layout.addStretch()
 

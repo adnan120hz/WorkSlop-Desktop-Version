@@ -642,6 +642,9 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Enables FaceTime / VoIP engineering debug diagnostics.")),
     _t(TweakID.AccessoryDeveloperEnabled, Section.INTERNAL, "Show Accessory Developer Settings", GP, "AccessoryDeveloperEnabled",
        description=QT_TRANSLATE_NOOP("Nugget", "Adds a hidden Accessory Developer settings page to the Settings app for testing accessories.")),
+    # (ported from leminlimez/Nugget's load_internal(): BasicPlistTweak(FileLocation.globalPreferences, "GesturesEnabled"))
+    _t(TweakID.KeyFlick, Section.INTERNAL, "Keyboard Key Flicks", GP, "GesturesEnabled",
+       description=QT_TRANSLATE_NOOP("Nugget", "Enables the iPad-style keyboard keyflicks on iPhones.")),
     _t(TweakID.DisableSecondsHand, Section.INTERNAL, "Disable Clock Icon Seconds Hand", GP, "SBDisableClockIconSecondsHand",
        description=QT_TRANSLATE_NOOP("Nugget", "Stops the animated second hand on the Clock app's Home Screen icon.")),
     _t(TweakID.DisableSearchingWebsites, Section.INTERNAL, "Disable Spotlight Searching in Websites", GP, "SBSearchDisabledDomains",

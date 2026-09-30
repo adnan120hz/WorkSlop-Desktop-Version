@@ -5,7 +5,7 @@ from .tweak_classes import (
     BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
     MobileGestaltTweak, MobileGestaltPickerTweak,
     MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
-    FeatureFlagTweak,
+    RdarFixTweak, FeatureFlagTweak,
 )
 from .eligibility_tweak import EligibilityTweak, AITweak, BookRestoreFileTweak
 from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS
@@ -46,6 +46,22 @@ def get_mobilegestalt_tweaks() -> dict:
         # checkbox; the tweak definition itself is identical.
         TweakID.AIGestalt: MobileGestaltTweak("A62OafQ85EJAiiqKn4agtg"),
     }
+
+
+def load_rdar_fix(dev=None):
+    """Ported from leminlimez/Nugget's load_rdar_fix()
+    (src/tweaks/tweak_loader.py). In Nugget this is called from
+    load_mobilegestalt(dev); here it is called from the MobileGestalt page's
+    refresh() right after load_mobilegestalt(), because this fork's loader
+    takes a build string (build gate) instead of the device.
+    """
+    if TweakID.RdarFix in tweaks:
+        return
+    tweaks.update({TweakID.RdarFix: RdarFixTweak()})
+    if dev is not None:
+        # load settings
+        model = getattr(dev, "model", "") or ""
+        tweaks[TweakID.RdarFix].get_rdar_mode(model)
 
 
 def load_mobilegestalt(build: str = ""):
@@ -98,6 +114,39 @@ def load_daemons():
         ),
         TweakID.ClearScreenTimeAgentPlist: NullifyFileTweak(FileLocation.screentime),
     })
+
+def load_risky():
+    """Ported from leminlimez/Nugget's load_risky()
+    (src/tweaks/tweak_loader.py). Tweak definitions are verbatim.
+
+    One adaptation: Nugget marks these ``is_risky=True`` and gates them
+    behind a ``risky_allowed`` apply flag. This fork's tweak classes have no
+    risky gating (GoldenNugget removed it), so the flag is dropped and the
+    tweaks apply like any other enabled tweak. The key/value payloads are
+    identical to upstream.
+    """
+    if TweakID.CustomResolution in tweaks:
+        return
+    additional_tweaks = {
+        TweakID.DisableOTAFile: AdvancedPlistTweak(
+            FileLocation.ota,
+            {
+                "MobileAssetServerURL-com.apple.MobileAsset.MobileSoftwareUpdate.UpdateBrain": "https://mesu.apple.com/assets/tvOS16DeveloperSeed",
+                "MobileAssetSUAllowOSVersionChange": False,
+                "MobileAssetSUAllowSameVersionFullReplacement": False,
+                "MobileAssetServerURL-com.apple.MobileAsset.RecoveryOSUpdate": "https://mesu.apple.com/assets/tvOS16DeveloperSeed",
+                "MobileAssetServerURL-com.apple.MobileAsset.RecoveryOSUpdateBrain": "https://mesu.apple.com/assets/tvOS16DeveloperSeed",
+                "MobileAssetServerURL-com.apple.MobileAsset.SoftwareUpdate": "https://mesu.apple.com/assets/tvOS16DeveloperSeed",
+                "MobileAssetAssetAudience": "65254ac3-f331-4c19-8559-cbe22f5bc1a6"
+            }
+        ),
+        TweakID.CustomResolution: AdvancedPlistTweak(
+            FileLocation.resolution,
+            {}, # empty as to not cause issues when only 1 value is inputted
+        )
+    }
+    tweaks.update(additional_tweaks)
+
 
 def load_eligibility(dev=None):
     """Ported from leminlimez/Nugget's load_eligibility()

@@ -32,3 +32,8 @@ class FileLocation(Enum):
 
     # MobileGestalt cache (ported from leminlimez/Nugget)
     mga = "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"
+    # (ported from leminlimez/Nugget; used by RdarFixTweak/CustomResolution)
+    resolution = "/var/Managed Preferences/mobile/com.apple.iokit.IOMobileGraphicsFamily.plist"
+
+    # Risky Options (ported from leminlimez/Nugget)
+    ota = "/var/Managed Preferences/mobile/com.apple.MobileAsset.plist"

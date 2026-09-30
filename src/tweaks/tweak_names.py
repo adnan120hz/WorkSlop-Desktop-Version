@@ -33,6 +33,7 @@ class TweakID(Enum):
     BootChime = auto()
     EnableLGLPM = auto()
     DisableLGLPM = auto()
+    RdarFix = auto()
     ChargeLimit = auto()
     CollisionSOS = auto()
     TapToWake = auto()
@@ -91,6 +92,7 @@ class TweakID(Enum):
     IDSDiagnosticsEnabled = auto()
     VCDiagnosticsEnabled = auto()
     AccessoryDeveloperEnabled = auto()
+    KeyFlick = auto()
 
     DisableSecondsHand = auto()
     DisableSearchingWebsites = auto()
@@ -213,6 +215,10 @@ class TweakID(Enum):
     StackedImageContainerModifyTransformMaxWidth = auto()
     StackedImageContainerModifyTransformMinHeight = auto()
     StackedImageContainerModifyTransformMaxHeight = auto()
+
+    # risky (ported from leminlimez/Nugget's load_risky())
+    DisableOTAFile = auto()
+    CustomResolution = auto()
 
     # daemons
     Daemons = auto()
