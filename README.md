@@ -27,11 +27,38 @@ you can copy it somewhere safe before the apply continues.
 
 ### Version support
 
-| iOS version | Apply (tweaks) | MobileGestalt |
-|---|---|---|
-| 26.x | Partial restore (sparse restore, no wipe). The device still reboots when you press Apply, following the original GoldenNugget. | iOS 26.1 and below only |
-| 27 and newer | Classic GoldenNugget flow: protective backup → sparse restore → **reboot** → wipe → reconnect → restore backup. | Not supported (locked in the UI) |
-| 25 and older | Not supported | iOS 17.0 – 25.x supported |
+WorkSlop Desktop only supports the **49 iOS builds** listed below.
+Anything else is rejected, even if its version number looks newer.
+
+| iOS | Builds |
+|---|---|
+| 16.0 – 16.0.3 | 20A362, 20A371, 20A380, 20A392 |
+| 16.1 – 16.1.2 | 20B82, 20B101, 20B110 |
+| 16.2 | 20C65 |
+| 16.3 – 16.3.1 | 20D47, 20D67 |
+| 16.4 – 16.4.1 | 20E247, 20E252 |
+| 16.5 – 16.5.1 | 20F66, 20F75 |
+| 16.6 – 16.6.1 | 20G75, 20G81 |
+| 16.7 – 16.7.11 | 20H19, 20H24, 20H30, 20H57, 20H68, 20H115, 20H219, 20H315, 20H332, 20H350 |
+| 18.0 | 22A3354 |
+| 18.1 betas | 22B5007p, 22B5023e, 22B5034e, 22B5045g |
+| 26.0 / 26.0.1 | 23A341, 23A342 |
+| 26.1 | 23B85 |
+| 26.2 betas | 23C5027f (beta 1), 23C5035e, 23C5042d |
+| 26.2 | 23C89 |
+| 26.3 | 23D57 |
+| 26.4 | 23E215 |
+| 26.5 | 23F72 |
+| 27.0 betas / 27.0 | 24A5264w, 24A5279h, 24A5288g, 24A5299d, 24A5309f, 24A5315a, 24A5320a, 24A335 |
+
+Feature gating per build:
+
+| Feature | Rule |
+|---|---|
+| Tweaks (Apply) | All 49 builds. iOS 26.x and below: partial sparse restore (no wipe). iOS 27: classic protective flow (backup → tweak → **reboot** → wipe → reconnect → restore). The device reboots on Apply, like the original GoldenNugget. |
+| MobileGestalt | **Open on iOS 16.0 → iOS 26.2 beta 1** (builds `20A362`–`23C5027f`). Locked on 26.2 beta 2 and newer — menu stays visible with the reason. |
+| Status Bar | **Locked on any iOS 27 build** (`24A…`). Open on iOS 26 and below. |
+| Daemons / Liquid Glass | Unchanged, as before. |
 
 > Standalone backup actions (**Full Backup**) do **not** reboot the device —
 > they just export the backup file to the folder you choose, like saving it

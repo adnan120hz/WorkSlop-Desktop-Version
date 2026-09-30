@@ -415,9 +415,8 @@ class IOSHomePage(QWidget):
         if locked:
             msg = QCoreApplication.translate(
                 "Nugget",
-                "MobileGestalt is supported on iOS 17.0 – 26.1 only.\n\n"
-                "This device is on iOS {ver}, so MobileGestalt is locked. "
-                "It will never be supported on iOS 26.2+."
+                "MobileGestalt is supported on iOS 16.0 – 26.2 beta 1 only.\n\n"
+                "This device is on iOS {ver}, so MobileGestalt is locked."
             ).replace("{ver}", device_version or "—")
             self._tile_locks[self.mobilegestalt_card] = msg
             effect = QGraphicsOpacityEffect(self.mobilegestalt_card)
@@ -425,13 +424,39 @@ class IOSHomePage(QWidget):
             self.mobilegestalt_card.setGraphicsEffect(effect)
             self.mobilegestalt_card.setCursor(Qt.ArrowCursor)
             self.mobilegestalt_card.setToolTip(
-                QCoreApplication.translate("Nugget", "Requires iOS 26.1 or below"))
+                QCoreApplication.translate("Nugget", "Requires iOS 16.0 – 26.2 beta 1"))
         else:
             self._tile_locks.pop(self.mobilegestalt_card, None)
             self.mobilegestalt_card.setGraphicsEffect(None)
             self.mobilegestalt_card.setCursor(Qt.PointingHandCursor)
             self.mobilegestalt_card.setToolTip(
-                QCoreApplication.translate("Nugget", "Device feature flags (iOS 26.1-)"))
+                QCoreApplication.translate("Nugget", "Device feature flags (iOS 16.0 – 26.2b1)"))
+
+    def set_statusbar_locked(self, locked: bool):
+        """Lock the Status Bar tile on iOS 27 builds.
+
+        The tile stays visible but clicking explains that Status Bar is
+        only open on iOS 26 and below.
+        """
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
+        if locked:
+            msg = QCoreApplication.translate(
+                "Nugget",
+                "Status Bar is locked on iOS 27.\n\n"
+                "It is only open on iOS 26 and below."
+            )
+            self._tile_locks[self.statusbar_card] = msg
+            effect = QGraphicsOpacityEffect(self.statusbar_card)
+            effect.setOpacity(0.45)
+            self.statusbar_card.setGraphicsEffect(effect)
+            self.statusbar_card.setCursor(Qt.ArrowCursor)
+            self.statusbar_card.setToolTip(
+                QCoreApplication.translate("Nugget", "Requires iOS 26 or below"))
+        else:
+            self._tile_locks.pop(self.statusbar_card, None)
+            self.statusbar_card.setGraphicsEffect(None)
+            self.statusbar_card.setCursor(Qt.PointingHandCursor)
+            self.statusbar_card.setToolTip("")
 
     def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:
         """One home feature tile: a big themed icon with the name below it."""

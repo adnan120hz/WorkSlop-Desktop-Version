@@ -33,7 +33,7 @@ _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 # regeneration, so the count is capped.
 MAX_TENDIES_PER_RESTORE = 5
 
-from src.devicemanagement.constants import Device, Version, is_supported_by_fork, is_gestalt_supported
+from src.devicemanagement.constants import Device, Version, is_build_supported, is_gestalt_supported_build
 from src.devicemanagement.data_singleton import DataSingleton
 from .preference_manager import PreferenceManager
 
@@ -278,16 +278,16 @@ class DeviceManager:
             self.current_device_index = 0
         else:
             self.data_singleton.current_device = self.devices[index]
-            if not is_supported_by_fork(self.devices[index].version):
-                # Version rules:
-                # - Main tweaks (partial restore): iOS 26 and newer.
-                # - Nugget MobileGestalt: iOS 26.1 and below (never 26.2+),
-                #   so a pre-26 device stays usable for MobileGestalt.
-                self.data_singleton.device_available = is_gestalt_supported(
-                    self.devices[index].version)
+            if not is_build_supported(self.devices[index].build):
+                # Build allowlist rules (user decision 2026-09-30):
+                # - Main tweaks: only the 49 listed builds, iOS 16.0 -> 27.0.
+                # - Nugget MobileGestalt: iOS 16.0 -> iOS 26.2 beta 1,
+                #   so an older build stays usable for MobileGestalt.
+                self.data_singleton.device_available = is_gestalt_supported_build(
+                    self.devices[index].build)
             else:
                 self.data_singleton.device_available = True
-            if is_gestalt_supported(self.devices[index].version):
+            if is_gestalt_supported_build(self.devices[index].build):
                 # Nugget's gestalt flow: reuse the saved per-UDID MobileGestalt
                 # copy when it still matches this device's build/model.
                 if self.pref_manager.has_valid_mga_data(
@@ -321,7 +321,7 @@ class DeviceManager:
 
     def get_current_device_is_supported_by_fork(self) -> bool:
         device = self.data_singleton.current_device
-        return is_supported_by_fork(device.version) if device != None else False
+        return is_build_supported(device.build) if device != None else False
 
     def get_current_device_partially_supported(self) -> bool:
         """iOS 27 devices use the experimental three-phase protective restore."""
@@ -409,15 +409,16 @@ class DeviceManager:
     def _raise_if_unsupported(self):
         if not self.get_current_device_is_supported_by_fork():
             raise NuggetException(QCoreApplication.tr(
-                "This version of iOS is not supported by this fork.\n\n"
-                "WorkSlop Desktop supports iOS 26 and newer. "
-                "Please use the original Nugget for iOS 18 and earlier."))
+                "This iOS build is not supported by this fork.\n\n"
+                "WorkSlop Desktop only supports the listed iOS builds "
+                "(16.0 -> 27.0). Please use the original Nugget for "
+                "other builds."))
 
     def get_current_device_is_gestalt_supported(self) -> bool:
-        """Nugget's MobileGestalt rule: available on iOS 26.1 and below,
-        never on 26.2+."""
+        """MobileGestalt rule: open on iOS 16.0 -> iOS 26.2 beta 1,
+        locked on 26.2 beta 2 and newer."""
         device = self.data_singleton.current_device
-        return is_gestalt_supported(device.version) if device != None else False
+        return is_gestalt_supported_build(device.build) if device != None else False
 
     def apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
         asyncio.run(self._apply_gestalt_tweaks(update_label, show_alert))
@@ -425,17 +426,17 @@ class DeviceManager:
     async def _apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
         """Apply only the MobileGestalt tweaks (Nugget's gestalt flow).
 
-        Version rule follows leminlimez/Nugget 100%: gestalt tweaks are never
-        applied on iOS 26.2+. The device's own com.apple.MobileGestalt.plist
-        (provided by the user, Nugget's "Getting the File" flow) is modified
-        in CacheExtra/CacheData and restored to the mga location.
+        Build rule (user decision 2026-09-30): gestalt tweaks are only
+        applied on iOS 16.0 -> iOS 26.2 beta 1 builds. The device's own
+        com.apple.MobileGestalt.plist (provided by the user, Nugget's
+        "Getting the File" flow) is modified in CacheExtra/CacheData and
+        restored to the mga location.
         """
-        version = self.get_current_device_version()
-        if not is_gestalt_supported(version):
+        build = self.get_current_device_build()
+        if not is_gestalt_supported_build(build):
             raise NuggetException(QCoreApplication.tr(
-                "MobileGestalt tweaks are not supported on iOS 26.2 and newer.\n\n"
-                "This follows the original Nugget: it will never be supported "
-                "there. MobileGestalt stays available on iOS 26.1 and below."))
+                "MobileGestalt tweaks are not supported on this iOS build.\n\n"
+                "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
         udid = self.get_current_device_udid()
         if not udid:
             raise NuggetException(QCoreApplication.tr("No device selected."))

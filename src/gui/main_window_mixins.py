@@ -13,7 +13,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
-from src.devicemanagement.constants import Version, is_gestalt_supported
+from src.devicemanagement.constants import Version, is_gestalt_supported_build, is_ios27_build
 from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
@@ -195,16 +195,18 @@ class DeviceBarMixin:
             }
 
             device_ver = Version(self.device_manager.data_singleton.current_device.version)
+            device_build = self.device_manager.data_singleton.current_device.build or ""
             # MobileGestalt menu stays visible but auto-locks on unsupported
-            # iOS: supported on iOS 17.0 - 26.1, never on 26.2+.
-            gestalt_ok = is_gestalt_supported(
-                self.device_manager.data_singleton.current_device.version)
+            # builds: open on iOS 16.0 -> iOS 26.2 beta 1, locked after that.
+            gestalt_ok = is_gestalt_supported_build(device_build)
+            gestalt_tip_ok = "MobileGestalt (supports iOS 16.0 - 26.2 beta 1)"
+            gestalt_tip_locked = (
+                "MobileGestalt requires iOS 16.0 through iOS 26.2 beta 1 "
+                f"(this device build: {device_build or 'unknown'})")
             self.ui.gestaltPageBtn.setVisible(True)
             self.ui.gestaltPageBtn.setEnabled(gestalt_ok)
             self.ui.gestaltPageBtn.setToolTip(
-                "MobileGestalt (supports iOS 17.0 - 26.1)" if gestalt_ok
-                else "MobileGestalt requires iOS 26.1 or below "
-                     f"(this device: iOS {self.device_manager.data_singleton.current_device.version})")
+                gestalt_tip_ok if gestalt_ok else gestalt_tip_locked)
             if hasattr(self, "ios_home"):
                 self.ios_home.set_mobilegestalt_visible(True)
                 self.ios_home.set_mobilegestalt_locked(
@@ -213,9 +215,21 @@ class DeviceBarMixin:
             if hasattr(self, "workslop_sidebar"):
                 self.workslop_sidebar.set_gestalt_locked(
                     not gestalt_ok,
-                    "MobileGestalt (supports iOS 17.0 - 26.1)" if gestalt_ok
-                    else "MobileGestalt requires iOS 26.1 or below "
-                         f"(this device: iOS {self.device_manager.data_singleton.current_device.version})")
+                    gestalt_tip_ok if gestalt_ok else gestalt_tip_locked)
+            # Status Bar menu: locked on any iOS 27 build, open on iOS 26
+            # and below. It stays visible (like MobileGestalt) so the user
+            # sees why it is unavailable.
+            statusbar_locked = is_ios27_build(device_build)
+            statusbar_tip = (
+                "Status Bar"
+                if not statusbar_locked else
+                "Status Bar is locked on iOS 27 "
+                f"(this device: {device_build}). It is open on iOS 26 and below."
+            )
+            self.ui.statusBarPageBtn.setEnabled(not statusbar_locked)
+            self.ui.statusBarPageBtn.setToolTip(statusbar_tip)
+            if hasattr(self, "ios_home"):
+                self.ios_home.set_statusbar_locked(statusbar_locked)
             # toggle option visibility for the minimum versions
             for version, views in MinTweakVersions.items():
                 # show views if the version is higher
@@ -1104,9 +1118,8 @@ class ApplyMixin:
             return
         if not self.device_manager.get_current_device_is_gestalt_supported():
             self.alert_message(ApplyAlertMessage(
-                txt="MobileGestalt tweaks are not supported on iOS 26.2 and newer.\n\n"
-                    "This follows the original Nugget: it will never be supported "
-                    "there. MobileGestalt stays available on iOS 26.1 and below.",
+                txt="MobileGestalt tweaks are not supported on this iOS build.\n\n"
+                    "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only.",
                 title="MobileGestalt",
                 icon=QtWidgets.QMessageBox.Warning,
             ), log_to_console=False)

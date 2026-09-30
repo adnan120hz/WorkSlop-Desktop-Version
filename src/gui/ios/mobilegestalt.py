@@ -1,8 +1,8 @@
 """MobileGestalt page (iOS style).
 
 Tweak logic is ported verbatim from leminlimez/Nugget; this file only renders
-it in the WorkSlop iOS interface. Version rule follows Nugget upstream 100%:
-MobileGestalt is available on iOS 26.1 and below, never on iOS 26.2+.
+it in the WorkSlop iOS interface. Build rule (user decision 2026-09-30):
+MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1, locked after that.
 """
 import plistlib
 
@@ -19,7 +19,7 @@ from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_mobilegestalt
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks, ValueTypeStrings
-from src.devicemanagement.constants import is_gestalt_supported
+from src.devicemanagement.constants import is_gestalt_supported_build
 
 
 def tr(s: str) -> str:
@@ -142,22 +142,23 @@ class _GestaltContent(QWidget):
         dm = self.window.device_manager
         device = dm.data_singleton.current_device
         version = device.version if device is not None else ""
-        load_mobilegestalt(version)
+        build = device.build if device is not None else ""
+        gestalt_ok = is_gestalt_supported_build(build)
+        load_mobilegestalt(build)
         self._build_tweaks_ui()
         self._update_mga_label()
         self._sync_switches()
-        self._update_support_banner(version)
+        self._update_support_banner(version, build)
 
         if device is None or not dm.data_singleton.device_available:
             self._show_notice(tr("Connect a device to use MobileGestalt tweaks."))
-        elif not is_gestalt_supported(version):
+        elif not gestalt_ok:
             self._show_notice(tr(
-                "MobileGestalt tweaks are not supported on iOS 26.2 and newer. "
-                "This follows the original Nugget \u2014 it will never be supported "
-                "there. MobileGestalt stays available on iOS 26.1 and below."))
+                "MobileGestalt tweaks are not supported on this iOS build. "
+                "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
         else:
             self._notice_card.hide()
-        self._set_controls_enabled(device is not None and is_gestalt_supported(version))
+        self._set_controls_enabled(device is not None and gestalt_ok)
 
     def _retheme(self):
         for combo in self.findChildren(QComboBox):
@@ -332,16 +333,16 @@ class _GestaltContent(QWidget):
         else:
             self._mga_status.setText(selected)
 
-    def _update_support_banner(self, version: str):
+    def _update_support_banner(self, version: str, build: str = ""):
         """Persistent banner stating the supported iOS range."""
-        from src.devicemanagement.constants import is_gestalt_supported
-        ok = is_gestalt_supported(version) if version else False
+        ok = is_gestalt_supported_build(build) if build else False
         ver_txt = f"iOS {version}" if version else "no device"
         state = (tr("This device ({ver}) is supported.")
                  if ok else tr("This device ({ver}) is NOT supported — "
-                              "MobileGestalt locks itself on iOS 26.2+."))
+                              "MobileGestalt is open on iOS 16.0 through "
+                              "iOS 26.2 beta 1 only."))
         self._support_lbl.setText(
-            tr("Supported: iOS 17.0 \u2013 26.1. ") + state.replace("{ver}", ver_txt))
+            tr("Supported: iOS 16.0 \u2013 26.2 beta 1. ") + state.replace("{ver}", ver_txt))
         self._support_lbl.setStyleSheet(
             t("value_label") + " background-color: transparent;")
 

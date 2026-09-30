@@ -7,7 +7,7 @@ from .tweak_classes import (
     MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
 )
 from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS
-from src.devicemanagement.constants import Version
+from src.devicemanagement.constants import is_gestalt_supported_build
 
 
 def get_mobilegestalt_tweaks() -> dict:
@@ -41,17 +41,17 @@ def get_mobilegestalt_tweaks() -> dict:
     }
 
 
-def load_mobilegestalt(version: str = ""):
+def load_mobilegestalt(build: str = ""):
     """Register Nugget's MobileGestalt tweaks (idempotent).
 
-    Version rule follows Nugget upstream 100%: MobileGestalt is not
-    supported on iOS 26.2+ (never will be). It stays available on
-    iOS 26.1 and below.
+    Build rule (user decision 2026-09-30): tweaks register only on
+    iOS 16.0 -> iOS 26.2 beta 1 builds. Build-based (not version-based)
+    so 26.2 beta 1 stays included while later 26.2 builds stay out.
     """
     if TweakID.DynamicIsland in tweaks:
         return
     try:
-        if version and Version(str(version)) >= Version("26.2"):
+        if build and not is_gestalt_supported_build(build):
             return
     except Exception:
         return

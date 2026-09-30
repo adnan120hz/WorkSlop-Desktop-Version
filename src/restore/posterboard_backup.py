@@ -22,7 +22,7 @@ from src.devicemanagement.session import lockdown_session
 from src.restore.protective import check_disk_space_for_backup, _validate_sqlite_db
 from src.restore.storage import legacy_backups_dir, posterboard_dir as _posterboard_dir
 from src.exceptions.nugget_exception import NuggetException
-from src.devicemanagement.constants import is_supported_by_fork
+from src.devicemanagement.constants import is_build_supported
 from src.utils.async_retry import async_retry
 
 
@@ -49,7 +49,7 @@ async def backup_posterboard_database(udid: str, update_label=lambda x: None, up
     async def _attempt():
         async with lockdown_session(udid) as service_provider:
             # hard-block fetching the database from an unsupported (old) iOS version
-            if not is_supported_by_fork(service_provider.all_values.get("ProductVersion", "0.0")):
+            if not is_build_supported(service_provider.all_values.get("BuildVersion", "")):
                 raise NuggetException(
                     "This version of iOS is not supported by this fork.\n\n"
                     "GoldenNugget only supports iOS 26.2 and newer. "
@@ -134,11 +134,11 @@ async def targeted_posterboard_database_backup(udid: str, update_label=lambda x:
     async def _attempt():
         with tempfile.TemporaryDirectory(prefix="nugget_pb_only_") as backup_dir:
             async with lockdown_session(udid) as service_provider:
-                if not is_supported_by_fork(service_provider.all_values.get("ProductVersion", "0.0")):
+                if not is_build_supported(service_provider.all_values.get("BuildVersion", "")):
                     raise NuggetException(
-                        "This version of iOS is not supported by this fork.\n\n"
-                        "GoldenNugget only supports iOS 26.2 and newer. "
-                        "Please use the original Nugget for iOS 26.1 and earlier.")
+                        "This iOS build is not supported by this fork.\n\n"
+                        "WorkSlop Desktop only supports the listed iOS builds "
+                        "(16.0 -> 27.0).")
                 async with Mobilebackup2Service(service_provider) as backup_client:
                     def _pb_only(backup_file):
                         device_name = backup_file.device_name or ""
