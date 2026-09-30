@@ -5,7 +5,9 @@ from .tweak_classes import (
     BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
     MobileGestaltTweak, MobileGestaltPickerTweak,
     MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+    FeatureFlagTweak,
 )
+from .eligibility_tweak import EligibilityTweak, AITweak, BookRestoreFileTweak
 from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS
 from src.devicemanagement.constants import is_gestalt_supported_build
 
@@ -96,3 +98,160 @@ def load_daemons():
         ),
         TweakID.ClearScreenTimeAgentPlist: NullifyFileTweak(FileLocation.screentime),
     })
+
+def load_eligibility(dev=None):
+    """Ported from leminlimez/Nugget's load_eligibility()
+    (src/tweaks/tweak_loader.py). Tweak definitions are verbatim.
+
+    Two deliberate adaptations (documented, logic unchanged):
+    - Guard is on TweakID.EUEnabler, not TweakID.AIGestalt: this fork loads
+      AIGestalt via get_mobilegestalt_tweaks(), so Nugget's original guard
+      would wrongly skip the whole module once the MobileGestalt page ran.
+    - TweakID.AIGestalt is not re-added here: it already comes from
+      get_mobilegestalt_tweaks() with the identical definition. Re-adding
+      would replace the instance and clobber the switch state.
+    """
+    if TweakID.EUEnabler in tweaks:
+        return
+    additional_tweaks = {
+        TweakID.EUEnabler: EligibilityTweak(),
+        TweakID.AIEligibility: AITweak(),
+        TweakID.AIFeatureFlags: FeatureFlagTweak(flag_category="Siri", flag_names=['sae_override', 'assistant_engine_override']),
+        TweakID.AIFeatureFlagsUI: FeatureFlagTweak(flag_category="SiriUI", flag_names=["sae"]),
+        TweakID.SpoofModel: MobileGestaltPickerTweak("h9jDsbgj7xIVeIQ8S3/X3Q", values=[
+            # Default
+            "Placeholder", # 0 | Original
+
+            # iPhone
+            "iPhone16,1", # 1 | iPhone 15 Pro
+            "iPhone16,2", # 2 | iPhone 15 Pro Max
+            "iPhone17,3", # 3 | iPhone 16
+            "iPhone17,4", # 4 | iPhone 16 Plus
+            "iPhone17,1", # 5 | iPhone 16 Pro
+            "iPhone17,2", # 6 | iPhone 16 Pro Max
+            "iPhone18,3", # 7 | iPhone 17
+
+            # A17 Pro iPads
+            "iPad16,1", # 8 | iPad Mini (A17 Pro) (W)
+            "iPad16,2", # 9 | iPad Mini (A17 Pro) (C)
+        
+            # M4 iPads
+            "iPad16,5", # 10 | iPad Pro (13-inch) (M4) (W)
+            "iPad16,6", # 11 | iPad Pro (13-inch) (M4) (C)
+            "iPad16,3", # 12 | iPad Pro (11-inch) (M4) (W)
+            "iPad16,4", # 13 | iPad Pro (11-inch) (M4) (C)
+
+            # M2 iPads
+            "iPad14,5", # 14 | iPad Pro (12.9-inch) (M2) (W)
+            "iPad14,6", # 15 | iPad Pro (12.9-inch) (M2) (C)
+            "iPad14,3", # 16 | iPad Pro (11-inch) (M2) (W)
+            "iPad14,4", # 17 | iPad Pro (11-inch) (M2) (C)
+            "iPad14,10", # 18 | iPad Air (13-inch) (M2) (W)
+            "iPad14,11", # 19 | iPad Air (13-inch) (M2) (C)
+            "iPad14,8", # 20 | iPad Air (11-inch) (M2) (W)
+            "iPad14,9", # 21 | iPad Air (11-inch) (M2) (C)
+
+            # M1 iPads
+            "iPad13,4", # 22 | iPad Pro (11-inch) (M1) (W)
+            "iPad13,5", # 23 | iPad Pro (11-inch) (M1) (C)
+            "iPad13,8", # 24 | iPad Pro (12.9-inch) (M1) (W)
+            "iPad13,9", # 25 | iPad Pro (12.9-inch) (M1) (C)
+            "iPad13,16", # 26 | iPad Air (M1) (W)
+            "iPad13,17", # 27 | iPad Air (M1) (C)
+        ]),
+        TweakID.SpoofHardware: MobileGestaltPickerTweak("oYicEKzVTz4/CxxE05pEgQ", values=[
+            # Default
+            "Placeholder", # 0 | Original
+
+            # iPhone
+            "D83AP", # 1 | iPhone 15 Pro
+            "D84AP", # 2 | iPhone 15 Pro Max
+            "D47AP", # 3 | iPhone 16
+            "D48AP", # 4 | iPhone 16 Plus
+            "D93AP", # 5 | iPhone 16 Pro
+            "D94AP", # 6 | iPhone 16 Pro Max
+            "V57AP", # 7 | iPhone 17
+
+            # A17 Pro iPads
+            "J410AP", # 8 | iPad Mini (A17 Pro) (W)
+            "J411AP", # 9 | iPad Mini (A17 Pro) (C)
+        
+            # M4 iPads
+            "J720AP", # 10 | iPad Pro (13-inch) (M4) (W)
+            "J721AP", # 11 | iPad Pro (13-inch) (M4) (C)
+            "J717AP", # 12 | iPad Pro (11-inch) (M4) (W)
+            "J718AP", # 13 | iPad Pro (11-inch) (M4) (C)
+
+            # M2 iPads
+            "J620AP", # 14 | iPad Pro (12.9-inch) (M2) (W)
+            "J621AP", # 15 | iPad Pro (12.9-inch) (M2) (C)
+            "J617AP", # 16 | iPad Pro (11-inch) (M2) (W)
+            "J618AP", # 17 | iPad Pro (11-inch) (M2) (C)
+            "J537AP", # 18 | iPad Air (13-inch) (M2) (W)
+            "J538AP", # 19 | iPad Air (13-inch) (M2) (C)
+            "J507AP", # 20 | iPad Air (11-inch) (M2) (W)
+            "J508AP", # 21 | iPad Air (11-inch) (M2) (C)
+
+            # M1 iPads
+            "J517AP", # 22 | iPad Pro (11-inch) (M1) (W)
+            "J517xAP", # 23 | iPad Pro (11-inch) (M1) (C)
+            "J522AP", # 24 | iPad Pro (12.9-inch) (M1) (W)
+            "J522xAP", # 25 | iPad Pro (12.9-inch) (M1) (C)
+            "J407AP", # 26 | iPad Air (M1) (W)
+            "J408AP", # 27 | iPad Air (M1) (C)
+        ]),
+        TweakID.SpoofCPU: MobileGestaltPickerTweak("5pYKlGnYYBzGvAlIU8RjEQ", values=[
+            # Default
+            "Placeholder", # 0 | Original
+
+            # iPhone
+            "t8130", # 1 | iPhone 15 Pro
+            "t8130", # 2 | iPhone 15 Pro Max
+            "t8140", # 3 | iPhone 16
+            "t8140", # 4 | iPhone 16 Plus
+            "t8140", # 5 | iPhone 16 Pro
+            "t8140", # 6 | iPhone 16 Pro Max
+            "t8150", # 7 | iPhone 17
+
+            # A17 Pro iPads
+            "t8130", # 8 | iPad Mini (A17 Pro) (W)
+            "t8130", # 9 | iPad Mini (A17 Pro) (C)
+        
+            # M4 iPads
+            "t8182", # 10 | iPad Pro (13-inch) (M4) (W)
+            "t8182", # 11 | iPad Pro (13-inch) (M4) (C)
+            "t8182", # 12 | iPad Pro (11-inch) (M4) (W)
+            "t8182", # 13 | iPad Pro (11-inch) (M4) (C)
+
+            # M2 iPads
+            "t8112", # 14 | iPad Pro (12.9-inch) (M2) (W)
+            "t8112", # 15 | iPad Pro (12.9-inch) (M2) (C)
+            "t8112", # 16 | iPad Pro (11-inch) (M2) (W)
+            "t8112", # 17 | iPad Pro (11-inch) (M2) (C)
+            "t8112", # 18 | iPad Air (13-inch) (M2) (W)
+            "t8112", # 19 | iPad Air (13-inch) (M2) (C)
+            "t8112", # 20 | iPad Air (11-inch) (M2) (W)
+            "t8112", # 21 | iPad Air (11-inch) (M2) (C)
+
+            # M1 iPads
+            "t8103", # 22 | iPad Pro (11-inch) (M1) (W)
+            "t8103", # 23 | iPad Pro (11-inch) (M1) (C)
+            "t8103", # 24 | iPad Pro (12.9-inch) (M1) (W)
+            "t8103", # 25 | iPad Pro (12.9-inch) (M1) (C)
+            "t8103", # 26 | iPad Air (M1) (W)
+            "t8103", # 27 | iPad Air (M1) (C)
+        ])
+    }
+    # load settings
+    if dev != None:
+        additional_tweaks[TweakID.SpoofModel].value[0] = dev.model
+        additional_tweaks[TweakID.SpoofHardware].value[0] = dev.hardware
+        additional_tweaks[TweakID.SpoofCPU].value[0] = dev.cpu
+    # add to tweaks
+    tweaks.update(additional_tweaks)
+    # AIGestalt is Nugget's eligibility-page switch for Apple Intelligence;
+    # this fork provides it via get_mobilegestalt_tweaks(). Ensure it exists
+    # so the Eligibility section works even if the MobileGestalt page never
+    # loaded (identical verbatim definition, only added when missing).
+    if TweakID.AIGestalt not in tweaks:
+        tweaks[TweakID.AIGestalt] = MobileGestaltTweak("A62OafQ85EJAiiqKn4agtg")

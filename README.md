@@ -23,6 +23,13 @@ you can copy it somewhere safe before the apply continues.
 - **Feature Flags** — SpringBoard/Photos/SwiftUI feature flags ported from Nugget
   (Lockscreen Clock Animation, Old Photo UI, Apple Intelligence, Solarium/Liquid
   Glass toggles, Kiosk Mode); writes to `/var/preferences/FeatureFlags/Global.plist`
+- **Eligibility** — Nugget's eligibility module, ported verbatim (EU Enabler with
+  region code + Method 1/2, Apple Intelligence for unsupported devices,
+  eligibility file + Siri feature flags, model/hardware/CPU spoofing with the
+  original 27-model list). The EU Enabler's `/var/MobileAsset/...` Config.plist
+  cannot be delivered by this fork: Nugget sends it via BookRestore, which this
+  fork does not have, so that file is skipped with a warning while the
+  `/var/db/...` files go through the normal sparse restore. Not device-tested.
 - **Wallpaper** — PosterBoard animated wallpapers, descriptors and templates
 - **Backup** — full iTunes-style backup, protective backup, and restore
 - **Themes** — icon themes and passcode themes

@@ -54,6 +54,17 @@ class TweakID(Enum):
     # (eligibility page); the tweak definition itself is verbatim.
     AIGestalt = auto()
 
+    # eligibility (ported verbatim from leminlimez/Nugget's load_eligibility();
+    # removed by GoldenNugget, re-added here using Nugget's original code)
+    EUEnabler = auto()
+    AIEligibility = auto()
+    AIFeatureFlags = auto()
+    AIFeatureFlagsUI = auto()
+    SpoofModel = auto()
+    SpoofHardware = auto()
+    SpoofCPU = auto()
+    CreateBRFolders = auto()
+
     # feature flags (ported from leminlimez/Nugget; removed by GoldenNugget,
     # re-added here using Nugget's original flag definitions)
     ClockAnim = auto()

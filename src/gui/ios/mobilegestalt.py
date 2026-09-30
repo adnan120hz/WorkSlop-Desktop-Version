@@ -262,8 +262,9 @@ class _GestaltContent(QWidget):
         self._add_switch("AOD Vibrancy", TweakID.AODVibrancy)
         self._add_switch("Enable Low Power Mode (LGLPM)", TweakID.EnableLGLPM)
         self._add_switch("Disable Low Power Mode (LGLPM)", TweakID.DisableLGLPM)
-        self._add_switch("Enable Apple Intelligence (for Unsupported Devices)",
-                         TweakID.AIGestalt)
+        # NOTE: TweakID.AIGestalt ("Enable Apple Intelligence (for Unsupported
+        # Devices)") lives in the Eligibility section of the Tweaks page,
+        # matching Nugget's original placement on its eligibility page.
 
         self._tweaks_layout.addWidget(IOSSectionHeader(tr("Internal")))
         self._add_switch("Internal Install", TweakID.InternalInstall)

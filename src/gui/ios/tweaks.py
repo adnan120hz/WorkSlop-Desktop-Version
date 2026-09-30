@@ -11,8 +11,9 @@ from src.gui.ios.compat import is_tweak_compatible
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section
-from src.tweaks.tweak_loader import load_plist_tweaks
+from src.tweaks.tweak_loader import load_plist_tweaks, load_eligibility
 from src.tweaks.hidden import current_hidden_feature_names, current_hidden_tweak_names
+from src.gui.ios.eligibility import EligibilitySection
 
 # Feature (page) name -> registry Section it maps to in the iOS tweaks UI.
 # A HotLoad-hidden feature loses its whole section here (and the Sidebar/Home
@@ -249,6 +250,24 @@ class IOSSectionContent(QWidget):
             layout.addWidget(collapsible)
             for spec in SPECS_BY_SECTION[section]:
                 renderers[spec.kind](spec, collapsible.body_layout)
+
+        # Eligibility section (ported from leminlimez/Nugget's eligibility
+        # page: EU Enabler, Apple Intelligence, spoofing). Rendered as a
+        # collapsible section like the registry sections above.
+        try:
+            current_device = self.window.device_manager.data_singleton.current_device
+        except Exception:
+            current_device = None
+        load_eligibility(current_device)
+        elig_collapsible = IOSCollapsibleSection(
+            QCoreApplication.translate("Nugget", "Eligibility"),
+            expanded="Eligibility" not in collapsed_sections)
+        elig_collapsible.toggled.connect(
+            lambda expanded: _save_collapsed_section("Eligibility", not expanded))
+        layout.addWidget(elig_collapsible)
+        elig_section = EligibilitySection(self.window)
+        elig_collapsible.body_layout.addWidget(elig_section)
+        elig_section.refresh()
 
         layout.addStretch()
 

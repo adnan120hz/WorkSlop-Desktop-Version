@@ -47,6 +47,7 @@ from src.tweaks.tweaks import (
     tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
     StatusBarTweak, MobileGestaltTweak, MobileGestaltPickerTweak,
     MobileGestaltMultiTweak, MobileGestaltCacheDataTweak, FeatureFlagTweak,
+    EligibilityTweak, AITweak, BookRestoreFileTweak,
 )
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks
 from src.tweaks.status_bar.statusbar_archive import build_reset_archive
@@ -1040,6 +1041,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             templates = tweaks[TweakID.Templates].templates
         # create the other plists
         flag_plist: dict = {}
+        eligibility_files = None
+        ai_file = None
         basic_plists: dict = {}
         basic_plists_ownership: dict = {}
         files_data: dict = {}
@@ -1101,6 +1104,27 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     )
                     if tweak.uses_domains():
                         uses_domains = True
+                elif isinstance(tweak, EligibilityTweak):
+                    # Ported from leminlimez/Nugget: EU Enabler files.
+                    # Nugget delivers these via BookRestore; this fork has no
+                    # BookRestore, so files that map to a backup domain go
+                    # through the sparse-restore list below, while the
+                    # /var/MobileAsset/... Config.plist (not a backup domain)
+                    # is skipped with a warning (see post-loop handling).
+                    eligibility_files = tweak.apply_tweak()
+                elif isinstance(tweak, AITweak):
+                    # Ported from leminlimez/Nugget: Apple Intelligence
+                    # eligibility file (/var/db/eligibilityd/eligibility.plist,
+                    # DatabaseDomain -> sparse-restorable).
+                    ai_file = tweak.apply_tweak()
+                elif isinstance(tweak, BookRestoreFileTweak):
+                    # Ported from leminlimez/Nugget (there: skipped in the
+                    # sparse loop, delivered via BookRestore). This fork has
+                    # no BookRestore; both placeholder paths live in backup
+                    # domains, so they go straight into the restore list.
+                    br_files = tweak.apply_tweak()
+                    if br_files:
+                        files_to_restore.extend(br_files)
                 elif isinstance(tweak, StatusBarTweak):
                     if Version(self.get_current_device_version()) >= Version("27.0"):
                         # iOS 27: the classic binary statusBarOverrides file is
@@ -1121,6 +1145,32 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 names = sorted(t.name if hasattr(t, "name") else str(t) for t in hotload_skipped)
                 update_label(QCoreApplication.tr(
                     "Skipped HotLoad-flagged tweaks: ") + ", ".join(names))
+
+            # Eligibility / Apple Intelligence files (ported from Nugget).
+            # /var/db/... paths are DatabaseDomain and go through the normal
+            # sparse-restore list. /var/MobileAsset/... is NOT a backup domain:
+            # Nugget delivers it via BookRestore, which this fork does not
+            # have, so it is skipped here with an explicit warning instead of
+            # silently producing a broken restore entry.
+            if eligibility_files:
+                for elig_file in eligibility_files:
+                    _rel_path, domain = self.get_domain_for_path(elig_file.restore_path)
+                    if domain:
+                        self.concat_file(
+                            contents=elig_file.contents,
+                            path=elig_file.restore_path,
+                            files_to_restore=files_to_restore,
+                        )
+                    else:
+                        update_label(QCoreApplication.tr(
+                            "Skipped (needs BookRestore, not supported by this fork): ")
+                            + elig_file.restore_path)
+            if ai_file is not None:
+                self.concat_file(
+                    contents=ai_file.contents,
+                    path=ai_file.restore_path,
+                    files_to_restore=files_to_restore,
+                )
 
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
