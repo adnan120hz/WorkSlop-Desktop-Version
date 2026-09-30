@@ -1899,6 +1899,66 @@ It will be automatically found if this is left blank.</translation>
       <source>* Developer Mode/Administrator permissions required for these options.</source>
       <translation>* Developer Mode/Administrator permissions required for these options.</translation>
     </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>Backup complete — file manager opened. Copy the backup somewhere safe, then the apply continues.</source>
+      <translation>Backup selesai — file manager dibuka. Salin backup ke tempat yang aman, lalu proses apply berlanjut.</translation>
+    </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>Backup complete (saved at {0}).</source>
+      <translation>Backup selesai (tersimpan di {0}).</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Restore Backup</source>
+      <translation>Pulihkan Backup</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Restore a backup to the iPhone: full backup folder or GoldenNugget protective backup.</source>
+      <translation>Pulihkan backup ke iPhone: folder backup penuh atau backup protektif GoldenNugget.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Full Backup...</source>
+      <translation>Backup Penuh...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>GoldenNugget Backup</source>
+      <translation>Backup GoldenNugget</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Select Full Backup Folder</source>
+      <translation>Pilih Folder Backup Penuh</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Backup Password</source>
+      <translation>Kata Sandi Backup</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>This backup is encrypted. Enter its backup password:</source>
+      <translation>Backup ini terenkripsi. Masukkan kata sandi backup:</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Restoring backup... ({0:.1f}%)</source>
+      <translation>Memulihkan backup... ({0:.1f}%)</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Connecting to device...</source>
+      <translation>Menghubungkan ke perangkat...</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Rebooting device...</source>
+      <translation>Me-reboot perangkat...</translation>
+    </message>
   </context>
   <context>
     <name>PBHelpDialog</name>

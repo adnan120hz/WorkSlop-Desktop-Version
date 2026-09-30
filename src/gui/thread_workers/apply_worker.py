@@ -395,6 +395,121 @@ class RestoreCacheThread(QThread):
         return None
 
 
+class RestoreFullBackupThread(QThread):
+    """Restore a standard full backup folder (format 1 of the Restore menu).
+
+    The user picks a backup directory — the standard mobilebackup2 layout
+    (Manifest.db/Manifest.plist + Info.plist), e.g. one saved via the
+    backup-reveal feature — and it is pushed back to the device with
+    mobilebackup2, then the device reboots. Format 2 (GoldenNugget's own
+    protective backup) is handled by ``RestoreCacheThread``.
+    """
+    progress = Signal(str)
+    alert = Signal(object)
+    finished_with_result = Signal(bool, str)
+    request_text = Signal(str, str, object)  # title, label, result box (main-thread password prompt)
+    choice_prompt = Signal(str, str, object)  # title, text, result box ("abort"/"resume", main-thread prompt)
+
+    _PROMPT_TIMEOUT_SEC = 10 * 60
+
+    def __init__(self, manager, backup_dir, backup_password=None):
+        super().__init__()
+        self.manager = manager
+        self.backup_dir = backup_dir
+        self._preset_password = backup_password or ""
+
+    def prompt_password(self, title: str, label: str) -> Optional[str]:
+        # Same queued-signal pattern as ApplyThread: modal dialogs must be
+        # built on the main thread, so the request is relayed while this
+        # worker thread blocks on the queue.
+        box = queue.Queue(maxsize=1)
+        self.request_text.emit(title, label, box)
+        try:
+            return box.get(timeout=self._PROMPT_TIMEOUT_SEC)
+        except queue.Empty:
+            return None
+
+    def update_label(self, txt: str):
+        self.progress.emit(txt)
+
+    def _progress_cb(self, value):
+        if isinstance(value, str):
+            self.update_label(value)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Restoring backup... ({0:.1f}%)").format(value))
+
+    def run(self):
+        import logging
+        from src.controllers.nugget_logger import log_context
+        log = logging.getLogger("GoldenNugget.restore_full")
+        try:
+            log_context("START restore-full",
+                        udid=self.manager.get_current_device_udid() or "unknown",
+                        backup_dir=self.backup_dir)
+            asyncio.run(self._restore())
+            log_context("FINISH restore-full OK")
+            self.finished_with_result.emit(True, "")
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            log.error("restore-full failed: %s\n%s", e, traceback_str)
+            self.alert.emit(ApplyAlertMessage(
+                f"Failed to restore full backup: {e}",
+                title="Restore full backup",
+                icon=QMessageBox.Critical,
+                detailed_txt=traceback_str,
+                exc_type=type(e),
+                exc_value=e,
+            ))
+            self.finished_with_result.emit(False, f"{type(e).__name__}: {e}")
+
+    async def _restore(self):
+        import plistlib
+        from pathlib import Path
+        from src.devicemanagement.session import lockdown_session
+        from src.restore.restore import _start_mobilebackup2
+        from src.restore import reboot_device
+
+        udid = self.manager.get_current_device_udid()
+        if not udid:
+            raise RuntimeError("No device selected.")
+        root = Path(self.backup_dir)
+        has_manifest = (root / "Manifest.db").is_file() or (root / "Manifest.plist").is_file()
+        if not has_manifest or not (root / "Info.plist").is_file():
+            raise RuntimeError(
+                "This folder is not a standard iPhone backup "
+                "(expected Manifest.db/Manifest.plist and Info.plist inside).")
+
+        # Encrypted backup -> the backup password is required to restore.
+        password = self._preset_password
+        try:
+            with open(root / "Manifest.plist", "rb") as f:
+                is_encrypted = bool(plistlib.load(f).get("IsEncrypted"))
+        except Exception:
+            is_encrypted = False
+        if is_encrypted and not password:
+            password = self.prompt_password(
+                QCoreApplication.translate("Nugget", "Backup Password"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "This backup is encrypted. Enter its backup password:")) or ""
+        if is_encrypted and not password:
+            raise RuntimeError("This backup is encrypted — its password is required.")
+
+        self.update_label(QCoreApplication.translate(
+            "Nugget", "Connecting to device..."))
+        async with lockdown_session(udid) as lc:
+            async with _start_mobilebackup2(lc) as mb:
+                await mb.restore(
+                    str(root), system=True, reboot=False, copy=False,
+                    source=".", skip_apps=False,
+                    progress_callback=self._progress_cb,
+                    password=password or None)
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Rebooting device..."))
+            await reboot_device(True, lc)
+
+
 class CacheUpdateThread(QThread):
     """Force a refresh of the backup cache master (pre-apply "Update Cache").
 

@@ -143,11 +143,11 @@ class IOSSettingsPage(QWidget):
         self._make_backup_location_row()
 
         restore_btn = IOSPrimaryButton(
-            QCoreApplication.translate("Nugget", "Restore Data From Backup"))
+            QCoreApplication.translate("Nugget", "Restore Backup"))
         restore_btn.setToolTip(QCoreApplication.translate(
             "Nugget",
-            "Restore photos, messages, contacts and settings from the last "
-            "protective backup. Applied tweaks and wallpapers are kept."))
+            "Restore a backup to the iPhone: full backup folder or "
+            "GoldenNugget protective backup."))
         restore_btn.clicked.connect(self._on_restore_data_clicked)
         self.content_layout.addWidget(restore_btn)
 
@@ -373,6 +373,52 @@ class IOSSettingsPage(QWidget):
             )
 
     def _on_restore_data_clicked(self):
+        # WorkSlop: Restore Backup menu — 2 formats.
+        mbox = QMessageBox(self.window)
+        mbox.setWindowTitle("Restore Backup")
+        mbox.setText("Choose the backup format to restore:")
+        mbox.setInformativeText(
+            "Full Backup: a standard iPhone backup folder "
+            "(Manifest.db/Manifest.plist + Info.plist), e.g. one saved via "
+            "the backup-reveal feature.\n\n"
+            "GoldenNugget Backup: the protective backup this app keeps "
+            "on this computer.")
+        full_btn = mbox.addButton(
+            QCoreApplication.translate("Nugget", "Full Backup..."),
+            QMessageBox.ButtonRole.ActionRole)
+        gn_btn = mbox.addButton(
+            QCoreApplication.translate("Nugget", "GoldenNugget Backup"),
+            QMessageBox.ButtonRole.ActionRole)
+        mbox.addButton(QMessageBox.StandardButton.Cancel)
+        mbox.exec()
+        clicked = mbox.clickedButton()
+        if clicked == full_btn:
+            self._on_restore_full_backup_clicked()
+        elif clicked == gn_btn:
+            self._on_restore_goldennugget_backup_clicked()
+
+    def _on_restore_full_backup_clicked(self):
+        folder = QFileDialog.getExistingDirectory(
+            self.window,
+            QCoreApplication.translate("Nugget", "Select Full Backup Folder"),
+            "",
+            QFileDialog.Option.ShowDirsOnly)
+        if not folder:
+            return
+        reply = QMessageBox.question(
+            self.window,
+            "Restore Full Backup?",
+            "This restores the selected backup to the connected iPhone, "
+            "then reboots it.\n\n"
+            "Make sure the iPhone is connected, unlocked and awake, "
+            "then do you want to continue?",
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.window._start_full_backup_restore(folder)
+
+    def _on_restore_goldennugget_backup_clicked(self):
+        # Original GoldenNugget protective-backup restore, unchanged.
         reply = QMessageBox.question(
             self.window,
             "Restore Data From Backup?",

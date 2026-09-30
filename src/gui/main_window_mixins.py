@@ -929,6 +929,61 @@ class ApplyMixin:
         worker.start()
 
 
+    def _start_full_backup_restore(self, backup_dir: str):
+        """WorkSlop: restore a standard full backup folder (format 1).
+
+        Mirrors ``_start_cache_restore`` (format 2 = GoldenNugget protective
+        backup) with the same threading/guarding discipline.
+        """
+        from src.gui.thread_workers.apply_worker import RestoreFullBackupThread
+        if getattr(self, '_full_restore_in_progress', False):
+            return
+        if self.apply_in_progress or getattr(self, '_cache_restore_in_progress', False):
+            # A restore and an apply/reset must never drive the device at the
+            # same time — both open their own lockdown sessions.
+            self.alert_message(ApplyAlertMessage(
+                txt="Cannot restore a backup while another operation is in progress.",
+                title="Restore full backup",
+                icon=QtWidgets.QMessageBox.Warning,
+            ), log_to_console=False)
+            return
+        self._full_restore_in_progress = True
+        # Hold the thread on the window like ApplyThread/RefreshDevicesThread
+        # do — a bare local reference lets the Python wrapper be garbage-
+        # collected while the native thread is still running.
+        worker = RestoreFullBackupThread(manager=self.device_manager,
+                                         backup_dir=backup_dir)
+        self._full_restore_thread = worker
+        worker.progress.connect(self._update_restore_label)
+        worker.alert.connect(self.alert_message)
+        worker.request_text.connect(self.on_password_request)
+        worker.choice_prompt.connect(self.on_choice_prompt)
+        worker.finished_with_result.connect(self._finish_full_restore)
+        worker.finished.connect(self._full_restore_thread_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _finish_full_restore(self, success: bool, error_msg: str = ""):
+        self._full_restore_in_progress = False
+        if not success or error_msg:
+            try:
+                self.alert_message(ApplyAlertMessage(
+                    txt=f"Restore full backup: {error_msg or 'failed'}",
+                    title="Restore full backup",
+                    icon=QtWidgets.QMessageBox.Critical,
+                ), log_to_console=False)
+            except Exception:
+                pass
+
+    def _full_restore_thread_finished(self):
+        # run() returned, so the native thread is done; drop the window's
+        # reference (deleteLater is already queued via the other connection).
+        try:
+            self._full_restore_thread = None
+        except Exception:
+            pass
+
+
     def _update_restore_label(self, txt: str):
         try:
             self.ios_home.show_process_status(txt)
