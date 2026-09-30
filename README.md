@@ -1,6 +1,24 @@
 ![Artboard][NuggetLogo]
 
-# GoldenNugget
+# WorkSlop Desktop
+**Owner & Developer: Adnan.120hz** — https://github.com/adnan120hz
+
+WorkSlop Desktop is a fork of [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget),
+with a safer backup system: when the protective device backup reaches 100%,
+the file manager opens with the finished backup selected so you can copy it
+somewhere safe before the apply continues.
+
+## Credits
+- [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) — upstream project this is forked from
+- [Nugget](https://github.com/leminlimez/Nugget) by leminlimez — original Nugget
+- [misakaReborn](https://github.com/straight-tamago/misakaReborn) by straight-tamago
+
+## License
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**,
+following the upstream GoldenNugget license. See [LICENSE](LICENSE) for the full text.
+
+---
+# GoldenNugget (upstream README below)
 Unlock your device's full potential, with iOS 27 support!
 
 Customize your device with animated wallpapers, disable pesky daemons, and more!

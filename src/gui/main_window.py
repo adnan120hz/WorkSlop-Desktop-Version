@@ -182,7 +182,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         from src.gui.ios.components import IOSNavBar
         self.ios_nav = IOSNavBar("", on_back=self._go_back)
         self._ios_page_titles = {
-            0: "GoldenNugget",
+            0: "WorkSlop Desktop",
             1: QtCore.QCoreApplication.translate("Nugget", "Tweaks"),
             2: "PosterBoard",
             3: QtCore.QCoreApplication.translate("Nugget", "Daemons"),
@@ -242,6 +242,17 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.body_row.addWidget(self.content_stack, 1)
         self.shell_layout.addLayout(self.body_row)
         self.setCentralWidget(shell)
+
+        # WorkSlop Desktop branding (the generated .ui still says GoldenNugget;
+        # overriding here keeps mainwindow_ui.py untouched).
+        self.setWindowTitle("WorkSlop Desktop")
+
+        # Cobalt Flow bubble backdrop: painted behind every page, under the
+        # transparent page backgrounds so the gradient + bubbles show through.
+        from src.gui.theme.backdrop import CobaltBackdrop
+        self._backdrop = CobaltBackdrop(shell)
+        _c = self._color_theme.colors
+        self._backdrop.set_colors(_c.bubble, "rgba(180, 205, 255, 40)")
 
         self.apply_theme(self.theme_manager.current_theme)
 
@@ -349,6 +360,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
     def _on_color_theme_changed(self):
         """Called when the color theme (dark/light or accent) changes."""
         self._apply_global_stylesheet()
+        # Keep the bubble backdrop in sync with the palette.
+        try:
+            _c = self._color_theme.colors
+            self._backdrop.set_colors(_c.bubble, "rgba(180, 205, 255, 40)")
+        except Exception:
+            pass
         # Force re-render of all iOS page stylesheets by re-applying them
         for i in range(self.ios_pages.count()):
             page = self.ios_pages.widget(i)

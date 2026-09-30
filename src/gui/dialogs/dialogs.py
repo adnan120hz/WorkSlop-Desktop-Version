@@ -57,7 +57,7 @@ from src.gui.theme import ColorThemeManager, FONT_FAMILY
 class AboutProgramDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(self.tr("About GoldenNugget"))
+        self.setWindowTitle(self.tr("About WorkSlop Desktop"))
         self.setMinimumSize(500, 600)
         self.setModal(True)
         self._retheme()
@@ -80,7 +80,7 @@ class AboutProgramDialog(QDialog):
         name_layout = QVBoxLayout()
         name_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        app_name = QLabel("GoldenNugget")
+        app_name = QLabel("WorkSlop Desktop")
         app_name_font = QFont()
         app_name_font.setFamily(FONT_FAMILY)
         app_name_font.setPointSize(28)
@@ -138,6 +138,10 @@ class AboutProgramDialog(QDialog):
         
         # Credits data - from original home page
         credits = [
+            ("Owner & Developer", "Adnan.120hz", "https://github.com/adnan120hz"),
+            ("Upstream (forked from)", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
+            ("Nugget", "leminlimez", "https://github.com/leminlimez"),
+            ("misakaReborn", "straight-tamago", "https://github.com/straight-tamago"),
             ("Main Developer", "awesomenull", "https://github.com/awesomenull-dev"),
             ("Co-Developer", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
             ("Nugget Creator", "leminlemiz", "https://github.com/leminlemiz"),

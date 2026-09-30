@@ -5,6 +5,7 @@ from src.gui.theme.theme_manager import ColorThemeManager
 from src.gui.theme.colors import DARK, ACCENT_PRESETS
 from src.gui.theme.styles import STYLES, FONT_FAMILY
 from src.gui.theme.accent_picker import AccentPicker
+from src.gui.theme.backdrop import CobaltBackdrop
 
 
 def t(style_key: str) -> str:
@@ -59,5 +60,6 @@ def theme_pixmap(resource_path: str, color_hex: str, size: int,
 
 __all__ = [
     "ColorThemeManager", "DARK", "ACCENT_PRESETS", "STYLES", "FONT_FAMILY",
-    "AccentPicker", "t", "themed_stylesheet", "theme_icon", "theme_pixmap",
+    "AccentPicker", "CobaltBackdrop", "t", "themed_stylesheet", "theme_icon",
+    "theme_pixmap",
 ]

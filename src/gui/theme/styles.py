@@ -86,11 +86,13 @@ STYLES = {
         QPushButton#iosCollapsibleHeader:checked {{ color: {text_primary}; }}
     """,
 
+    # Cobalt Flow card: fluid 20px radius, translucent glass, one thin
+    # glass border. No heavy top highlight — reflections stay restrained.
     "card": """
         IOSCard {{
-            background-color: {bg_secondary};
-            border-radius: 12px;
-            border: none;
+            background-color: {glass_bg};
+            border-radius: 20px;
+            border: 1px solid {glass_border};
         }}
     """,
 
@@ -139,7 +141,7 @@ STYLES = {
         QPushButton {{
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                                         stop:0 {accent}, stop:1 {accent_pressed});
-            border-radius: 12px;
+            border-radius: 14px;
             color: {text_inverse};
             font-size: 17px;
             font-weight: 600;
@@ -155,7 +157,7 @@ STYLES = {
         QPushButton {{
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                                         stop:0 {error}, stop:1 {error_pressed});
-            border-radius: 12px;
+            border-radius: 14px;
             color: {text_inverse};
             font-size: 17px;
             font-weight: 600;
@@ -256,8 +258,9 @@ STYLES = {
     """,
 
     # ---- Pages -----------------------------------------------------------
-    "page_bg": "background-color: {bg_primary};",
-    "scroll_area": "QScrollArea {{ background-color: {bg_primary}; border: none; }}",
+    # Transparent so the cobalt gradient + bubble backdrop shows through.
+    "page_bg": "background-color: transparent;",
+    "scroll_area": "QScrollArea {{ background-color: transparent; border: none; }}",
 
     # ---- Settings --------------------------------------------------------
     "settings_list": """
@@ -410,9 +413,9 @@ STYLES = {
     # raised tile against the page background, like the home screen mockup.
     "home_tile": """
         IOSCard {{
-            background-color: {bg_tertiary};
-            border-radius: 14px;
-            border: 1px solid transparent;
+            background-color: {glass_bg};
+            border-radius: 20px;
+            border: 1px solid {glass_border};
         }}
         IOSCard:hover {{ border-color: {accent}; }}
     """,
@@ -499,10 +502,12 @@ STYLES = {
     """,
 
     # ---- Global (main window stylesheet) ---------------------------------
+    # Cobalt Flow: the window sits on a deep cobalt diagonal gradient; pages
+    # are transparent so the gradient (and the bubble backdrop) shows through.
     "global": """
         QWidget {{ color: {text_primary}; background-color: transparent; spacing: 0px; font-family: '{font_family}'; }}
         QWidget:focus {{ outline: none; }}
-        QWidget[cls=central] {{ background-color: {bg_primary}; border-radius: 0px; border: 1px solid {divider}; }}
+        QWidget[cls=central] {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {bg_gradient_start}, stop:1 {bg_gradient_end}); border-radius: 0px; border: 1px solid {divider}; }}
         QLabel {{ font-size: 14px; }}
         QToolButton {{ background-color: {scrollbar}; border: none; color: {text_primary}; font-size: 14px; min-height: 35px; icon-size: 16px; padding-left: 10px; padding-right: 10px; border-radius: 8px; }}
         QToolButton[cls=sidebarBtn] {{ background-color: transparent; icon-size: 24px; }}

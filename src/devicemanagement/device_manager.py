@@ -131,6 +131,12 @@ class DeviceManager:
         # Set when the user chose to continue without data protection (e.g.
         # out of disk space) — Phase 1 must not re-run the protective backup.
         self._protective_backup_skipped = False
+
+        # WorkSlop: root of the last finished live protective backup
+        # (set when the 0->100% device backup completes in _live_backup).
+        # The GUI reveals this path in the file manager so the user can
+        # copy it somewhere safe.
+        self.last_protective_backup_root: str | None = None
         
         # Test mode
         self._test_mode = "--test-mode" in sys.argv
@@ -457,9 +463,9 @@ class DeviceManager:
                 return
             update_label(QCoreApplication.tr("Backing up device... ({0:.1f}%)").format(progress))
         return _cb
-    def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
-        asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice))
-    async def _apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
+    def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None, on_backup_complete=None):
+        asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice, on_backup_complete))
+    async def _apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None, on_backup_complete=None):
         files_to_restore: list[FileToRestore] = []
         final_alert = None
         pb = tweaks[TweakID.PosterBoard]
@@ -506,7 +512,7 @@ class DeviceManager:
                 try:
                     prepared_root, pb_from_cache = await self._prepare_protective_backup(
                         update_label, needs_posterboard=needs_posterboard,
-                        prompt_password=prompt_password)
+                        prompt_password=prompt_password, on_backup_complete=on_backup_complete)
                 except Exception as e:
                     if "disk space" in str(e).lower() or "NotEnoughDiskSpace" in type(e).__name__:
                         # The Yes/No decision must be asked on the main thread
@@ -605,7 +611,7 @@ class DeviceManager:
 
     async def _prepare_protective_backup(self, update_label=lambda x: None,
                                          needs_posterboard: bool = False,
-                                         prompt_password=None) -> tuple:
+                                         prompt_password=None, on_backup_complete=None) -> tuple:
         """Phase 0: build the protective backup that Phase 3 will restore.
 
         Wraps ``_build_protective_backup`` and refuses to hand back a backup that
@@ -614,7 +620,7 @@ class DeviceManager:
         several return paths inside it.
         """
         prepared, pb_ok = await self._build_protective_backup(
-            update_label, needs_posterboard, prompt_password)
+            update_label, needs_posterboard, prompt_password, on_backup_complete)
         self._require_media_copy(prepared)
         return prepared, pb_ok
 
@@ -643,7 +649,7 @@ class DeviceManager:
 
     async def _build_protective_backup(self, update_label=lambda x: None,
                                         needs_posterboard: bool = False,
-                                        prompt_password=None) -> tuple:
+                                        prompt_password=None, on_backup_complete=None) -> tuple:
         """Build the protective backup (LIVE or cached master) — see above.
     
         Two modes:
@@ -749,6 +755,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                      f"media via {'AFC' if use_afc_media else 'mobilebackup2'})")
             prepared = PreparedBackup(root=backup_root, manifest_password="",
                                       master=False, media_src=media_src)
+            # WorkSlop: the live device backup just hit 100%. Record it and
+            # hand it to the GUI (via on_backup_complete) so the file
+            # manager can be opened with the finished backup selected.
+            self.last_protective_backup_root = backup_root
+            if on_backup_complete is not None:
+                on_backup_complete(backup_root)
             if needs_posterboard and is_encrypted:
                 log_warn("Encrypted backup cannot yield a readable PosterBoard DB — "
                          "falling back to a separate backup")

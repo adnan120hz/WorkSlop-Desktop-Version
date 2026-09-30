@@ -44,28 +44,39 @@ class ThemeColors:
     surface_hover: str
     danger_text: str
 
+    # Cobalt Flow (WorkSlop Desktop) — gradient + glass slots. Defaults keep
+    # every existing ThemeColors(...) construction working; the DARK palette
+    # below overrides them with the real values.
+    bg_gradient_start: str = "#0C1C4E"
+    bg_gradient_end: str = "#050A20"
+    glass_bg: str = "rgba(35, 64, 150, 110)"
+    glass_border: str = "rgba(150, 180, 255, 40)"
+    bubble: str = "rgba(140, 175, 255, 26)"
+
     def with_accent(self, accent: str, hover: str, pressed: str) -> "ThemeColors":
         return replace(self, accent=accent, accent_hover=hover, accent_pressed=pressed)
 
 
 # ---------------------------------------------------------------------------
-# Dark palette (matches the current hardcoded colors exactly)
+# Cobalt Flow palette (WorkSlop Desktop): deep cobalt gradient base, glass
+# surfaces, electric-blue accent. Reflections are deliberately restrained —
+# one thin glass border, no heavy top highlights.
 # ---------------------------------------------------------------------------
 DARK = ThemeColors(
-    bg_primary="#1e1e1e",
-    bg_secondary="#1C1C1E",
-    bg_tertiary="#2C2C2E",
-    bg_input="#1C1C1E",
-    bg_elevated="#1e1e1e",
+    bg_primary="#0A1230",
+    bg_secondary="#101B45",
+    bg_tertiary="#16225A",
+    bg_input="#0E1840",
+    bg_elevated="#132052",
 
     text_primary="#FFFFFF",
-    text_secondary="#8E8E93",
-    text_disabled="#787878",
+    text_secondary="#9DB1DC",
+    text_disabled="#5E6E99",
     text_inverse="#FFFFFF",
 
-    accent="#007AFF",
-    accent_hover="#0066CC",
-    accent_pressed="#0055AA",
+    accent="#3D7BFF",
+    accent_hover="#5B93FF",
+    accent_pressed="#2B5FD9",
 
     success="#30D158",
     error="#FF453A",
@@ -73,16 +84,22 @@ DARK = ThemeColors(
     error_pressed="#C2322A",
     warning="#FFD60A",
 
-    border="#3A3A3C",
-    divider="#3A3A3C",
+    border="#26346B",
+    divider="#223063",
 
-    scrollbar="#3b3b3b",
-    scrollbar_pressed="#535353",
-    selection="#007AFF",
+    scrollbar="#2A3A75",
+    scrollbar_pressed="#3A4E96",
+    selection="#3D7BFF",
 
-    card_border="#3A3A3C",
-    surface_hover="#2C2C2E",
+    card_border="#2A3C7E",
+    surface_hover="#1B2A66",
     danger_text="#FF453A",
+
+    bg_gradient_start="#0C1C4E",
+    bg_gradient_end="#050A20",
+    glass_bg="rgba(35, 64, 150, 110)",
+    glass_border="rgba(150, 180, 255, 40)",
+    bubble="rgba(140, 175, 255, 26)",
 )
 
 

@@ -50,6 +50,9 @@ class ApplyThread(QThread):
     finished_with_result = Signal(bool, str)  # success, error_message
     request_text = Signal(str, str, object)  # title, label, result box (main-thread prompt)
     choice_prompt = Signal(str, str, object)  # title, text, result box ("abort"/"resume", main-thread prompt)
+    # WorkSlop: emitted (from the worker thread) with the backup root the
+    # moment the live protective device backup reaches 100%.
+    backup_finished = Signal(str)
 
     # Only the password prompt is guarded by a timeout. The apply/restore itself
     # is allowed to run to completion: a three-phase protective restore can
@@ -139,7 +142,8 @@ class ApplyThread(QThread):
     def _do_work(self):
         if self.reset_pages is None:
             self.manager.apply_changes(self.update_label, self.alert_window,
-                                       self.prompt_password, self.prompt_user_choice)
+                                       self.prompt_password, self.prompt_user_choice,
+                                       on_backup_complete=self.backup_finished.emit)
         else:
             self.manager.reset_tweaks(self.reset_pages, self.settings, self.update_label,
                                       self.alert_window, self.prompt_user_choice)

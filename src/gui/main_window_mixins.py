@@ -819,9 +819,29 @@ class ApplyMixin:
             self.worker_thread.alert.connect(self.alert_message)
             self.worker_thread.request_text.connect(self.on_password_request)
             self.worker_thread.choice_prompt.connect(self.on_choice_prompt)
+            self.worker_thread.backup_finished.connect(self._on_backup_finished)
             self.worker_thread.finished_with_result.connect(self.finish_apply_thread)
             self.worker_thread.finished.connect(self.worker_thread.deleteLater)
             self.worker_thread.start()
+
+    def _on_backup_finished(self, backup_root: str):
+        """WorkSlop: the protective device backup just hit 100%.
+
+        Opens the OS file manager with the finished backup selected so the
+        user can copy it somewhere safe before the apply continues. Runs on
+        the GUI thread (queued from ApplyThread.backup_finished).
+        """
+        from src.utils.file_manager import reveal_in_file_manager
+        revealed = reveal_in_file_manager(backup_root)
+        if revealed:
+            self.update_label(QCoreApplication.translate(
+                "Nugget",
+                "Backup complete — file manager opened. Copy the backup "
+                "somewhere safe, then the apply continues."))
+        else:
+            self.update_label(QCoreApplication.translate(
+                "Nugget",
+                "Backup complete (saved at {0}).").format(backup_root))
 
 
     def alert_message(self, alert: Optional[ApplyAlertMessage], log_to_console: bool = True):
