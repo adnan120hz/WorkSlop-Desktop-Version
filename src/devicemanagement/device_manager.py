@@ -607,13 +607,15 @@ class DeviceManager:
             #    happens through the targeted PosterBoard-only backup below.
             prepared_root = None
             pb_from_cache = False
-            raw_sparse = os.environ.get("WORK SLOP_NO_PROTECTIVE_BACKUP") == "1"
+            # Kill-switch env (new name; legacy GOLDENNUGGET_* still honored).
+            raw_sparse = (os.environ.get("WORKSLOP_NO_PROTECTIVE_BACKUP") == "1"
+                          or os.environ.get("GOLDENNUGGET_NO_PROTECTIVE_BACKUP") == "1")
             if raw_sparse:
                 # Kill switch: straight raw sparse pass, no protective backup at
                 # any phase. The whole Phase 0 is skipped — no live backup, no
                 # cache, no PosterBoard delivery. Flip everything below to the
                 # no-protection path.
-                log_warn("WORK SLOP_NO_PROTECTIVE_BACKUP=1 — raw sparse: "
+                log_warn("WORKSLOP_NO_PROTECTIVE_BACKUP=1 — raw sparse: "
                          "skipping Phase 0 protective backup entirely "
                          "(no data protection)")
                 self._protective_backup_skipped = True

@@ -2,6 +2,7 @@ from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtGui import QColor, QPalette
 
 from src.gui.theme.colors import ThemeColors, DARK, ACCENT_PRESETS
+from src.controllers.settings import migrate_legacy_key
 
 
 class ColorThemeManager(QObject):
@@ -18,6 +19,8 @@ class ColorThemeManager(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # One-time: carry over the accent saved by GoldenNugget/Nugget builds.
+        migrate_legacy_key("accent_color")
         self._settings = QSettings("WorkSlop", "WorkSlop")
         self._accent_name = self._settings.value("accent_color", "blue")
         self._colors = self._build_colors()

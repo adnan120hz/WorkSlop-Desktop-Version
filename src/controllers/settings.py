@@ -10,6 +10,26 @@ NEW_ORG = "WorkSlop"
 LEGACY_ORGS = ("GoldenNugget", "Nugget")
 
 
+def migrate_legacy_key(key: str, app: str = NEW_ORG) -> bool:
+    """One-time copy of *key* from a legacy org store into the WorkSlop store.
+
+    Legacy builds stored their settings under ``QSettings(org, org)``
+    (e.g. ``("GoldenNugget", "GoldenNugget")``), while the rebranded app
+    uses ``("WorkSlop", "WorkSlop")``. If the new store already has the key
+    nothing is done. Returns True when a value was actually migrated.
+    """
+    new_store = QSettings(NEW_ORG, app)
+    if new_store.contains(key):
+        return False
+    for org in LEGACY_ORGS:
+        legacy = QSettings(org, org)
+        if legacy.contains(key):
+            new_store.setValue(key, legacy.value(key))
+            new_store.sync()
+            return True
+    return False
+
+
 class Settings:
     """Stores under "WorkSlop" and reads through to "GoldenNugget", "Nugget"."""
 
