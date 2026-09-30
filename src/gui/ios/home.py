@@ -11,14 +11,15 @@ from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
 
 # Feature tile icon per home card (keyed by the card title).
 _FEATURE_ICONS = {
-    "PosterBoard": ":/icon/wallpaper.svg",
+    "PosterBoard": ":/icon/photo-stack.svg",
     "Tweaks": ":/icon/toggles.svg",
-    "Daemons": ":/icon/hdd.svg",
-    "Status Bar": ":/icon/app-indicator.svg",
-    "Icon Themes": ":/icon/brush.svg",
+    "Daemons": ":/icon/gear.svg",
+    "Status Bar": ":/icon/phone.svg",
+    "Custom Icon": ":/icon/brush.svg",
     "Passcode Theme": ":/icon/lock.svg",
-    "MobileGestalt": ":/icon/iphone-island.svg",
+    "MobileGestalt": ":/icon/flag.svg",
     "Sideload": ":/icon/import.svg",
+    "App Data": ":/icon/folder.svg",
 }
 
 # Terminal command shown on each home tile (`$ workslop <cmd>`).
@@ -27,10 +28,11 @@ _TILE_COMMANDS = {
     "Tweaks": "tweaks",
     "Daemons": "daemons",
     "Status Bar": "statusbar",
-    "Icon Themes": "iconthemes",
+    "Custom Icon": "customicon",
     "Passcode Theme": "passthm",
     "MobileGestalt": "gestalt",
     "Sideload": "sideload",
+    "App Data": "appdata",
 }
 
 
@@ -125,7 +127,7 @@ class _CardGrid(QWidget):
 class IOSHomePage(QWidget):
     # Feature tile: a big icon over the name. The tile height is left to the
     # layout so a subtitle that wraps to two lines grows the whole row.
-    TILE_ICON_PX = 68
+    TILE_ICON_PX = 84
 
     def __init__(self, window, parent=None):
         super().__init__(parent)
@@ -210,25 +212,27 @@ class IOSHomePage(QWidget):
         layout.addWidget(self.status_lbl)
 
         cards_row = [self._make_card(
-            "PosterBoard", "Animated wallpapers & templates", 2),
-            self._make_card(
             "Tweaks", "Customize system settings", 1),
             self._make_card(
             "Sideload", "Install IPA files over USB", 15),
+            self._make_card(
+            "App Data", "Browse app containers", 16),
+            self._make_card(
+            "MobileGestalt", "Device feature flags (iOS 26.1-)", 12),
+            self._make_card(
+            "PosterBoard", "Animated wallpapers & templates", 2),
             self._make_card(
             "Daemons", "Disable system daemons", 3),
             self._make_card(
             "Status Bar", "Customize the status bar", 5),
             self._make_card(
-            "Icon Themes", "Themed app icons & labels", 10),
+            "Custom Icon", "Themed app icons & labels", 10),
             self._make_card(
-            "Passcode Theme", "Custom keypad theme (.passthm)", 11),
-            self._make_card(
-            "MobileGestalt", "Device feature flags (iOS 26.1-)", 12)]
-        (self.posterboard_card, self.tweaks_card, self.sideload_card,
-         self.daemons_card, self.statusbar_card,
-         self.icon_themes_card, self.passcode_theme_card,
-         self.mobilegestalt_card) = cards_row
+            "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
+        (self.tweaks_card, self.sideload_card, self.appdata_card,
+         self.mobilegestalt_card, self.posterboard_card, self.daemons_card,
+         self.statusbar_card, self.icon_themes_card,
+         self.passcode_theme_card) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
