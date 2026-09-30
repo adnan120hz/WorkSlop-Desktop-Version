@@ -69,8 +69,8 @@ jobs:
       - name: Upload macOS Intel
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_macOS_intel
-          path: dist/Nugget-macOS-*.zip
+          name: WorkSlopDesktop_macOS_intel
+          path: dist/WorkSlopDesktop-macOS-*.zip
           if-no-files-found: error
           archive: false
 
@@ -102,8 +102,8 @@ jobs:
       - name: Upload macOS Intel Legacy
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_macOS_intel_legacy
-          path: dist/Nugget-macOS-*.zip
+          name: WorkSlopDesktop_macOS_intel_legacy
+          path: dist/WorkSlopDesktop-macOS-*.zip
           if-no-files-found: error
           archive: false
 
@@ -145,8 +145,8 @@ jobs:
       - name: Upload macOS ARM
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_macOS_arm
-          path: dist/Nugget-macOS-*.zip
+          name: WorkSlopDesktop_macOS_arm
+          path: dist/WorkSlopDesktop-macOS-*.zip
           if-no-files-found: error
           archive: false
 
@@ -175,8 +175,8 @@ jobs:
       - name: Upload Windows
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_Windows
-          path: dist/Nugget
+          name: WorkSlopDesktop_Windows
+          path: dist/WorkSlopDesktop
           if-no-files-found: error
 
   build-linux:
@@ -222,8 +222,8 @@ jobs:
       - name: Upload Linux
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_Linux
-          path: dist/Nugget
+          name: WorkSlopDesktop_Linux
+          path: dist/WorkSlopDesktop
           if-no-files-found: error
 
   build-linux-arm:
@@ -269,6 +269,6 @@ jobs:
       - name: Upload Linux ARM
         uses: actions/upload-artifact@v6
         with:
-          name: Nugget_Linux_aarch64
-          path: dist/Nugget
+          name: WorkSlopDesktop_Linux_aarch64
+          path: dist/WorkSlopDesktop
           if-no-files-found: error

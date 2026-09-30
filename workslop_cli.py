@@ -1,7 +1,7 @@
-"""GoldenNugget CLI entry shim.
+"""WorkSlop Desktop CLI entry shim.
 
 The unified CLI logic lives in :mod:`src.cli`; this top-level script is only
-a thin executable shim so PyInstaller and ``python nugget_cli.py ...`` keep
+a thin executable shim so PyInstaller and ``python workslop_cli.py ...`` keep
 working unchanged. See ``src/cli/main.py`` for the dispatcher.
 """
 

@@ -12,12 +12,12 @@ if target_arch:
 
 
 def _package_macos_app(dist_path):
-    """Zip the built .app bundle so the top-level archive entry is Nugget.app.
+    """Zip the built .app bundle so the top-level archive entry is WorkSlopDesktop.app.
 
-    PyInstaller --onedir --windowed produces BOTH dist/Nugget.app and a loose
-    dist/Nugget/ folder. Zipping the wrong one makes users extract a bare
+    PyInstaller --onedir --windowed produces BOTH dist/WorkSlopDesktop.app and a loose
+    dist/WorkSlopDesktop/ folder. Zipping the wrong one makes users extract a bare
     'Contents' folder that Finder does not treat as an app (issue #29).
-    ditto --keepParent pins Nugget.app as the archive root and preserves
+    ditto --keepParent pins WorkSlopDesktop.app as the archive root and preserves
     symlinks/resource forks, so extraction yields a proper .app bundle.
     """
     arch = None
@@ -29,23 +29,23 @@ def _package_macos_app(dist_path):
     arch_map = {"arm64": "Apple-Silicon", "x86_64": "Intel", "universal2": "Universal"}
     arch_label = arch_map.get(arch_label, arch_label)
 
-    app_path = os.path.join(dist_path, "Nugget.app")
+    app_path = os.path.join(dist_path, "WorkSlopDesktop.app")
     if not os.path.isdir(app_path):
         print(f"[!] macOS packaging skipped: {app_path} not found")
         return
 
-    zip_path = os.path.join(dist_path, f"Nugget-macOS-{arch_label}.zip")
+    zip_path = os.path.join(dist_path, f"WorkSlopDesktop-macOS-{arch_label}.zip")
     subprocess.run(
         ["ditto", "-c", "-k", "--keepParent", app_path, zip_path],
         check=True,
     )
-    print(f"[+] macOS app packaged: {zip_path} (extracts to Nugget.app)")
+    print(f"[+] macOS app packaged: {zip_path} (extracts to WorkSlopDesktop.app)")
 
 # Base PyInstaller args
 args = [
-'nugget_cli.py',
-    '--name=Nugget',
-    '--icon=nugget.ico',
+'workslop_cli.py',
+    '--name=WorkSlopDesktop',
+    '--icon=workslop.ico',
     '--onedir',
     '--noconfirm',
     '--collect-all=pymobiledevice3',
@@ -88,7 +88,7 @@ if platform == "darwin":
     # -------------------------
 
     args.append('--windowed')
-    args.append('--osx-bundle-identifier=com.leemin.Nugget')
+    args.append('--osx-bundle-identifier=com.adnan120hz.WorkSlopDesktop')
 
     try:
         import secrets_nugget.compile_config as compile_config
@@ -99,7 +99,7 @@ if platform == "darwin":
 
 elif os.name == 'nt':
     args.append('--version-file=version.txt')
-    args.append('--add-data=nugget.ico;.')
+    args.append('--add-data=workslop.ico;.')
     
     try:
         import pytun_pmd3

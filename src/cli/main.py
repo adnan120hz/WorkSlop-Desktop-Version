@@ -1,7 +1,7 @@
 """WorkSlop Desktop unified CLI dispatch logic.
 
 Houses the subcommand routing and usage text for the bundled ``Nugget``
-binary. The executable entry point (root ``nugget_cli.py``) is only a thin
+binary. The executable entry point (root ``workslop_cli.py``) is only a thin
 shim that calls :func:`main` here; keeping the logic inside ``src/cli``
 keeps the top-level script trivial and the dispatch logic unit-testable.
 """

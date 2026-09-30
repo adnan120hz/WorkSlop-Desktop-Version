@@ -26,7 +26,7 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 MIN_VERSION = (3, 10)
-ENTRY_POINTS = ("main_app.py", "compile.py", "nugget_cli.py", "restore.py",
+ENTRY_POINTS = ("main_app.py", "compile.py", "workslop_cli.py", "restore.py",
                 "restore_cache.py", "skip_setup.py", "apply_wallpaper.py")
 
 # Present in 3.11+, absent in 3.10. Matched against `import` targets and

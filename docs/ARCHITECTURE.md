@@ -21,10 +21,10 @@ main_app.py ──► src/gui/main_window.py ──► pages/ (classic UI)  +  i
 
 ---
 
-## Entry point — `src/cli` / `nugget_cli.py` / `main_app.py`
+## Entry point — `src/cli` / `workslop_cli.py` / `main_app.py`
 
 The unified CLI dispatcher lives in `src/cli/main.py` (routing + usage text,
-exposed via `src.cli`). The top-level `nugget_cli.py` is a thin shim that
+exposed via `src.cli`). The top-level `workslop_cli.py` is a thin shim that
 delegates to `src.cli.main`, keeping the PyInstaller entry script unchanged.
 It dispatches subcommands then falls through to the GUI:
 
