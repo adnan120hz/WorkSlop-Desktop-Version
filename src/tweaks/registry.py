@@ -58,6 +58,9 @@ class TweakSpec:
     factory: Optional[Callable[[], object]] = None  # overrides BasicPlistTweak
     description: Optional[str] = None  # detailed "what it does" tooltip
     disabled: bool = False  # True = tweak is cut off: never loaded, never applied, never rendered
+    excludes: tuple = ()  # TweakIDs that must be turned off when this one is
+                          # turned on (mutually-exclusive pairs, e.g. RTL/LTR).
+                          # Enforced by set_tweak_enabled() in tweaks.py.
 
 
 def _t(id_: TweakID, section: Section, title: str, location: FileLocation,
@@ -253,16 +256,10 @@ SPECS: tuple[TweakSpec, ...] = (
        "com.apple.SwiftUI.GlassContainerLogging",
        description=QT_TRANSLATE_NOOP("Nugget", "Enables glass container debug logging (com.apple.SwiftUI UserDefaults key)."),
        min_version="27.0"),
-    _t(TweakID.FlexiGlassMacOS, Section.LIQUID_GLASS,
-       "Flexi Glass (macOS path)", GP,
-       "com.apple.SwiftUI.FlexiGlassMacOS",
-       description=QT_TRANSLATE_NOOP("Nugget", "Enables FlexiGlass on the macOS-side rendering path (com.apple.SwiftUI UserDefaults key)."),
-       min_version="27.0"),
-    _t(TweakID.FlexiGlassMacOSPointer, Section.LIQUID_GLASS,
-       "Flexi Glass (macOS Pointer)", GP,
-       "com.apple.SwiftUI.FlexiGlassMacOSPointer",
-       description=QT_TRANSLATE_NOOP("Nugget", "Enables the pointer variant of FlexiGlass on the macOS-side path (com.apple.SwiftUI UserDefaults key)."),
-       min_version="27.0"),
+    # NOTE (audit B27): the com.apple.SwiftUI FlexiGlass keys are macOS-side
+    # UserDefaults paths with no effect on iOS. They used to live here on the
+    # iOS tweaks page as near-certain no-ops, so they were removed instead of
+    # being left as dead switches.
     _t(TweakID.InvisibilitySuppressesGlass, Section.LIQUID_GLASS,
        "Invisible View Suppresses Glass", GP,
        "com.apple.UIKit.InvisibilitySuppressesGlass",
@@ -292,12 +289,12 @@ SPECS: tuple[TweakSpec, ...] = (
        "Enable Solarium Compact Chrome", GP,
        "EnableSolariumCompactChrome",
        description=QT_TRANSLATE_NOOP("Nugget", "Enables compact chrome in the Solarium renderer (UIKit debug cluster, bare UserDefaults key)."),
-       min_version="27.0"),
+       min_version="27.0", excludes=(TweakID.DisableSolariumCompactChrome,)),
     _t(TweakID.DisableSolariumCompactChrome, Section.LIQUID_GLASS,
        "Disable Solarium Compact Chrome", GP,
        "DisableSolariumCompactChrome",
        description=QT_TRANSLATE_NOOP("Nugget", "Disables compact chrome in the Solarium renderer (UIKit debug cluster, bare UserDefaults key)."),
-       min_version="27.0"),
+       min_version="27.0", excludes=(TweakID.EnableSolariumCompactChrome,)),
 
     # --- Tier 4: DesignLibrary glass recipes (GP) ---
     _t(TweakID.SolariumIncreasedDiffusion, Section.LIQUID_GLASS,
@@ -576,7 +573,7 @@ SPECS: tuple[TweakSpec, ...] = (
        FileLocation.footnote, "LockScreenFootnote", value="", kind=Kind.TEXT,
        description=QT_TRANSLATE_NOOP("Nugget", "Sets custom text shown at the bottom of the Lock Screen below the time. Long text is cut off — keep it short. Leave empty to remove.")),
     _t(TweakID.WatchOSCompatibility, Section.SPRINGBOARD, "Allow pairing with any watchOS version",
-       FileLocation.nanoregistry, "", factory=_watchos_compatibility, ipad_only=True,
+       FileLocation.nanoregistry, "", factory=_watchos_compatibility,
        description=QT_TRANSLATE_NOOP("Nugget", "Removes the minimum watchOS pairing check in NanoRegistry so you can pair an Apple Watch running any watchOS version with your iPhone.")),
     _t(TweakID.AirDropDisableTimeLimit, Section.SPRINGBOARD, "Disable AirDrop Time Limit for Everyone Option",
        FileLocation.airdrop, "OverrideTimeLimitEveryoneMode",
@@ -629,9 +626,11 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SBBuildNumber, Section.INTERNAL, "Show Build Version in Status Bar", GP, "UIStatusBarShowBuildVersion",
        description=QT_TRANSLATE_NOOP("Nugget", "Displays the iOS build number (e.g. 21A5284a) in the status bar next to the iOS version.")),
     _t(TweakID.RTL, Section.INTERNAL, "Force Right-to-Left Layout", GP, "NSForceRightToLeftWritingDirection",
-       description=QT_TRANSLATE_NOOP("Nugget", "Forces a right-to-left layout for the entire system, mirroring the UI as if your primary language were RTL.")),
+       description=QT_TRANSLATE_NOOP("Nugget", "Forces a right-to-left layout for the entire system, mirroring the UI as if your primary language were RTL."),
+       excludes=(TweakID.LTR,)),
     _t(TweakID.LTR, Section.INTERNAL, "Force Left-to-Right Layout", GP, "NSForceLeftToRightWritingDirection",
-       description=QT_TRANSLATE_NOOP("Nugget", "Forces a left-to-right layout across the whole system regardless of the RTL language setting.")),
+       description=QT_TRANSLATE_NOOP("Nugget", "Forces a left-to-right layout across the whole system regardless of the RTL language setting."),
+       excludes=(TweakID.RTL,)),
     _t(TweakID.SBIconVisibility, Section.INTERNAL, "Show Hidden Icons on Home Screen", GP, "SBIconVisibility",
        description=QT_TRANSLATE_NOOP("Nugget", "Reveals hidden or disabled Home Screen icons, including internal placeholder icons that are normally not drawn.")),
     _t(TweakID.iMessageDiagnosticsEnabled, Section.INTERNAL, "iMessage Debugging", GP, "iMessageDiagnosticsEnabled",

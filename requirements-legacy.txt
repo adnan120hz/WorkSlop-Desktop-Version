@@ -12,6 +12,8 @@
 #     (6.9.2 declares requires_python >=3.9,<3.14) -- including our 3.10 floor.
 # Everything else matches requirements.txt (all already support Python 3.10).
 pymobiledevice3==10.7.1
+# Explicit: imported directly (packaging.version.Version) — see requirements.txt.
+packaging>=23.2
 PySide6-Essentials==6.9.2; sys_platform != 'linux'
 PySide6==6.9.2; sys_platform == 'linux'
 PyInstaller==6.22.1

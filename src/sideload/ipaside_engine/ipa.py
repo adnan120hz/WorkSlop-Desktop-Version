@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import EngineError
+from src.utils.zip_safe import safe_extractall as _safe_extractall
 
 
 class IpaError(EngineError):
@@ -498,7 +499,7 @@ def prepare(
     work = Path(tempfile.mkdtemp(prefix="ipaside_prep_"))
     try:
         with zipfile.ZipFile(ipa_path) as zf:
-            zf.extractall(work)
+            _safe_extractall(zf, work)
 
         payload = work / "Payload"
         app = next(payload.glob("*.app"))

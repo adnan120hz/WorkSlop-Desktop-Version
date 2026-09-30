@@ -1247,6 +1247,63 @@ def extract_posterboard_db(backup_root: str, udid: str, dest_path: str) -> Optio
     return str(dest), structure_version
 
 
+# The device's live .GlobalPreferences.plist, used as the merge base for the
+# iOS 27 HomeDomain write (HIGH bug B1). The protective backup's restore copy
+# deliberately PRUNES this file (see _SKIP_FILES) so Phase 3 never clobbers
+# the tweak version — but the master backup still carries the original, and
+# that is what we extract here. Call BEFORE clean_backup_for_restore prunes
+# the restore copy (same placement as extract_posterboard_db).
+GP_BASE_DOMAIN = "HomeDomain"
+GP_BASE_RELATIVE_PATH = "Library/Preferences/.GlobalPreferences.plist"
+
+
+def extract_gp_base_plist(backup_root: "str | Path", udid: str, dest_path: "str | Path") -> "Optional[str]":
+    """Pull the live .GlobalPreferences.plist out of a protective backup.
+
+    Returns the destination path, or None when the backup does not carry the
+    file (encrypted manifest, incomplete backup, ...). Callers must treat
+    None as "no merge base" and NEVER write a tweak-only dict over the live
+    user file (that was HIGH bug B1: it wiped language/region/keyboard).
+    """
+    device_dir = Path(backup_root) / udid
+    if not device_dir.is_dir():
+        if (Path(backup_root) / "Manifest.db").is_file():
+            device_dir = Path(backup_root)
+        else:
+            log_debug(f"extract_gp_base_plist: no device dir and no Manifest.db under {backup_root}")
+            return None
+    manifest_db = device_dir / "Manifest.db"
+    if not _validate_sqlite_db(manifest_db):
+        log_warn("extract_gp_base_plist: Manifest.db missing/encrypted/invalid "
+                 "(backup may be incomplete or encrypted)")
+        return None
+    conn = sqlite3.connect(str(manifest_db))
+    try:
+        row = conn.execute(
+            "SELECT fileID FROM Files WHERE domain = ? AND relativePath = ?",
+            (GP_BASE_DOMAIN, GP_BASE_RELATIVE_PATH),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        log_warn("extract_gp_base_plist: no HomeDomain .GlobalPreferences.plist row "
+                 "in the backup manifest")
+        return None
+    file_id = row[0]
+    payload = device_dir / file_id[:2] / file_id
+    if not payload.is_file():
+        # legacy flat layout fallback
+        payload = device_dir / file_id
+        if not payload.is_file():
+            log_warn(f"extract_gp_base_plist: manifest row exists but payload "
+                     f"{file_id} is missing from the backup")
+            return None
+    dest = Path(dest_path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(payload, dest)
+    return str(dest)
+
+
 def _iter_payload_files(device_dir: Path):
     """Yield every payload file in the backup, flat or in hash subdirectories."""
     for entry in sorted(device_dir.iterdir()):

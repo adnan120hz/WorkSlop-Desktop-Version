@@ -1,12 +1,12 @@
 from . import TemplateOption
 
 import os
-import glob
 from shutil import rmtree
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QCheckBox
 
 from src.controllers.xml_handler import delete_xml_value
+from src.utils.zip_safe import safe_glob
 
 class RemoveOption(TemplateOption):
     inverted: bool = False # if set to true, the files will only be deleted if the checkbox is unchecked
@@ -45,9 +45,10 @@ class RemoveOption(TemplateOption):
     def apply(self, container_path: str):
         if (self.inverted and not self.value) or (not self.inverted and self.value):
             for file in self.files:
-                path = os.path.join(container_path, *file.split('/'))
-                # wildcard support
-                for full_path in glob.glob(path, recursive=True):
+                # wildcard support; safe_glob refuses patterns escaping
+                # container_path and drops matches resolving outside it,
+                # so a "../" in config.json can never delete host files
+                for full_path in safe_glob(container_path, *file.split('/')):
                     if self.identifier != None:
                         # delete properties in xml
                         # TODO: make sure it isn't a directory

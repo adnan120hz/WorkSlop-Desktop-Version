@@ -150,10 +150,17 @@ class IOSBackupPage(QWidget):
         lay.addWidget(title_lbl)
         desc_lbl = QLabel(tr(
             "Apply the tweaks you enabled on the other pages.\n\n"
+            # HONESTY-AUDIT FIX (#7): the old text described the classic
+            # wipe flow as if it always runs. The default merged flow
+            # (merge_phases=True) applies tweaks and restores the
+            # protective backup in one session WITHOUT wiping. The wipe
+            # only happens with GOLDENNUGGET_NO_MERGE_PHASES=1 or when a
+            # tweak forces iOS into security-recovery (automatic fallback).
             "On iOS 27 the protective backup runs automatically first, then "
-            "the tweaks are applied, the iPhone reboots, is wiped to a safe "
-            "state, and your photos / messages / contacts / settings are "
-            "put back.\n\n"
+            "the tweaks are applied and your photos / messages / contacts / "
+            "settings are put back — normally without wiping the iPhone. "
+            "A full wipe-and-restore only runs if a tweak forces iOS into "
+            "security recovery.\n\n"
             "On iOS 26 the tweaks apply directly, without a wipe."))
         desc_lbl.setWordWrap(True)
         desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")

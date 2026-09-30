@@ -24,6 +24,7 @@ Use :func:`install_crash_handler` once at startup and
 """
 
 import sys
+import time
 import traceback
 import logging
 import os
@@ -39,7 +40,7 @@ from src.exceptions.device_errors import is_connection_error, is_device_locked_e
 
 logger = logging.getLogger("GoldenNugget.crash")
 
-ISSUES_URL = "https://github.com/awesomenull-dev/GoldenNugget/issues/new"
+ISSUES_URL = "https://github.com/adnan120hz/desk/issues/new"
 
 
 def _app_name() -> str:
@@ -198,6 +199,9 @@ class CrashDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(f"{_app_name()} - Detected an Error")
         self.setModal(True)
+        # True unless the user explicitly picks "Continue" (dismiss without
+        # relaunch). Read by _show_crash_dialog after exec() returns.
+        self._restart_requested = True
         self.resize(640, 480)
 
         self._traceback_text = traceback_text
@@ -279,7 +283,24 @@ class CrashDialog(QDialog):
         continue_btn.clicked.connect(self.accept)
         buttons.addWidget(continue_btn)
 
+        # HONESTY-AUDIT FIX (#4): AGENTS.md documented a "Continue" button
+        # that dismisses the dialog and lets the session keep running — but
+        # the dialog only had "Restart App" and _handle_crash restarted
+        # unconditionally. The button now really exists; choosing it skips
+        # the relaunch. Default stays Restart because an uncaught exception
+        # may have left UI state inconsistent.
+        dismiss_btn = QPushButton("Continue")
+        dismiss_btn.setToolTip(
+            "Dismiss this report and keep the current session running "
+            "without restarting.")
+        dismiss_btn.clicked.connect(self._continue_without_restart)
+        buttons.addWidget(dismiss_btn)
+
         layout.addLayout(buttons)
+
+    def _continue_without_restart(self):
+        self._restart_requested = False
+        self.accept()
 
     def _copy(self):
         QApplication.clipboard().setText(_full_report(self._info, self._searchable.toPlainText(),
@@ -323,15 +344,53 @@ def show_error_dialog(summary: str, traceback_text: str, info: Optional[dict] = 
 
 
 def _show_crash_dialog(summary: str, traceback_text: str, exc_type=None, exc_value=None):
-    """Show the crash dialog on the main thread, if a QApplication exists."""
+    """Show the crash dialog on the main thread, if a QApplication exists.
+
+    Returns True when the app should relaunch afterwards (user picked
+    "Restart App"), False when the user picked "Continue".
+    """
     app = QApplication.instance()
     info = _classify(exc_type, exc_value) if exc_type is not None else None
     if app is None:
         # No application yet — fall back to printing so nothing is lost.
         print(f"CRASH: {summary}\n{traceback_text}", file=sys.stderr)
-        return
+        return False
     dialog = CrashDialog(summary=summary, traceback_text=traceback_text, info=info)
     dialog.exec()
+    return dialog._restart_requested
+
+
+def _crash_loop_active() -> bool:
+    """True when the app has relaunched from crashes too often, too fast.
+
+    Guards against a restart -> crash -> restart loop (e.g. a crash during
+    startup): 3 crash-relaunches within 120 seconds disables auto-restart so
+    the user can read the report instead of watching the app flicker.
+    """
+    try:
+        from src.restore.lastapply import _store_dir as _app_store_dir
+    except Exception:
+        return False
+    try:
+        marker = os.path.join(_app_store_dir(), ".crash_restarts")
+        now = time.time()
+        stamps: list[float] = []
+        if os.path.exists(marker):
+            with open(marker, "r") as f:
+                for line in f:
+                    try:
+                        ts = float(line.strip())
+                    except ValueError:
+                        continue
+                    if now - ts < 120:
+                        stamps.append(ts)
+        stamps.append(now)
+        with open(marker, "w") as f:
+            for ts in stamps[-10:]:
+                f.write(f"{ts}\n")
+        return len(stamps) >= 3
+    except OSError:
+        return False
 
 
 def _restart_app():
@@ -357,13 +416,19 @@ def _handle_crash(exc_type, exc_value, exc_tb):
     if exc_type is not KeyboardInterrupt:
         logger.error("Uncaught exception: %s\n%s", summary, tb)
     try:
-        _show_crash_dialog(summary, tb, exc_type, exc_value)
+        restart_requested = _show_crash_dialog(summary, tb, exc_type, exc_value)
     except Exception:
         # Never let the crash handler itself crash the app.
         print(f"CRASH: {summary}\n{tb}", file=sys.stderr)
         _restart_app()
         return
-    _restart_app()
+    # HONESTY-AUDIT FIX (#4): the old code relaunched unconditionally after
+    # the dialog closed — the documented "Continue" path did not exist.
+    # Now "Continue" really skips the relaunch, and a crash loop (3+
+    # crash-relaunches in 2 minutes) disables auto-restart so the app can't
+    # flicker forever on a startup crash.
+    if restart_requested and not _crash_loop_active():
+        _restart_app()
 
 
 def _excepthook(exc_type, exc_value, exc_tb):

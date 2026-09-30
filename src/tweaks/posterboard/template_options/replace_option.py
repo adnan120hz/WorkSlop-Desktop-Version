@@ -3,9 +3,10 @@ from . import TemplateOption
 from src.exceptions.nugget_exception import NuggetException
 
 import os
-import glob
 from typing import Optional
 from PySide6 import QtWidgets, QtGui, QtCore
+
+from src.utils.zip_safe import safe_glob
 
 class ReplaceOption(TemplateOption):
     allowed_files: str # Qt format - ex. "Image Files (*.png)"
@@ -103,9 +104,9 @@ class ReplaceOption(TemplateOption):
         with open(in_path, "rb") as in_file:
             contents = in_file.read()
         for file in self.files:
-            out_path = os.path.join(container_path, *file.split('/'))
-            # wildcard support
-            for full_path in glob.glob(out_path, recursive=True):
+            # wildcard support; safe_glob refuses patterns escaping
+            # container_path and drops matches resolving outside it
+            for full_path in safe_glob(container_path, *file.split('/')):
                 with open(full_path, "wb") as out_file:
                     out_file.write(contents)
         del contents

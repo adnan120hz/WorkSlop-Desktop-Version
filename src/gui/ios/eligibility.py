@@ -127,22 +127,23 @@ class EligibilitySection(QWidget):
             return
         self._built = True
 
-        # EU Enabler (Nugget: euEnablerEnabledChk / methodChoiceDrp / regionCodeTxt)
+        # EU Enabler (Nugget: euEnablerEnabledChk / regionCodeTxt).
+        # B17 honesty fix: Nugget's "Method 1 / Method 2" dropdown only chose
+        # which /var/MobileAsset/... path the Config.plist was generated for,
+        # but that file is never delivered by this fork (BookRestore does not
+        # exist here — device_manager skips it with a warning). The dropdown
+        # was a gimmick and is removed; the tweak writes eligibility.plist
+        # with the region code swapped, nothing else.
         self._layout.addWidget(IOSSectionHeader(tr("EU Enabler")))
         self._add_switch("Enable EU Enabler", TweakID.EUEnabler)
 
-        method_card, method_lay = self._row_card()
-        method_lbl = QLabel(tr("Method"))
-        method_lbl.setStyleSheet("font-size: 15px; background-color: transparent;")
-        method_lay.addWidget(method_lbl, 1)
-        self._method_combo = QComboBox()
-        # Nugget: EligibilityTweak value == ["Method 1", "Method 2"]
-        self._method_combo.addItems([tr("Method 1"), tr("Method 2")])
-        self._method_combo.setStyleSheet(t("combo_dropdown"))
-        self._method_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self._method_combo.activated.connect(self._on_method_activated)
-        method_lay.addWidget(self._method_combo, 2)
-        self._layout.addWidget(method_card)
+        eu_note = QLabel(tr(
+            "Writes eligibility.plist with your region code to "
+            "/var/db/os_eligibility. The MobileAsset Config.plist step needs "
+            "BookRestore and is not applied by this app."))
+        eu_note.setWordWrap(True)
+        eu_note.setStyleSheet(t("value_label"))
+        self._layout.addWidget(eu_note)
 
         region_card, region_lay = self._row_card()
         region_lbl = QLabel(tr("Region Code"))
@@ -241,12 +242,6 @@ class EligibilitySection(QWidget):
                     sw.blockSignals(False)
         self._sync_controls()
 
-    def _on_method_activated(self, index: int):
-        # Nugget: set_selected_option also enables the EU enabler.
-        if TweakID.EUEnabler in tweaks:
-            tweaks[TweakID.EUEnabler].set_selected_option(index)
-        self._sync_controls()
-
     def _on_region_edited(self, text: str):
         if TweakID.EUEnabler in tweaks:
             tweaks[TweakID.EUEnabler].set_region_code(text)
@@ -296,9 +291,6 @@ class EligibilitySection(QWidget):
                 except Exception:
                     pass
                 sw.blockSignals(False)
-        if hasattr(self, "_method_combo") and TweakID.EUEnabler in tweaks:
-            self._method_combo.setCurrentIndex(
-                tweaks[TweakID.EUEnabler].get_selected_option())
         if hasattr(self, "_region_edit") and TweakID.EUEnabler in tweaks:
             code = tweaks[TweakID.EUEnabler].code
             if self._region_edit.text() != code:

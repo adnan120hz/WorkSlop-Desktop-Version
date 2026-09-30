@@ -124,3 +124,46 @@ def clear_lastapply(udid) -> None:
             os.remove(path)
     except OSError as e:
         log.warning("Could not clear lastapply record: %s", e)
+
+
+# --- Pristine .GlobalPreferences.plist base (B1/B10) -------------------------
+# On iOS 27 the apply pass writes a MERGED .GlobalPreferences.plist
+# (user's live base + tweak keys) to the HomeDomain copy. Reset must put the
+# pristine base back — nulling the file would wipe the user's language,
+# region and keyboard settings. The base is captured from the Phase 0
+# protective backup at apply time and stored here, keyed by device.
+GP_BASE_SUFFIX = ".gpbase.plist"
+
+
+def _gp_base_path(udid) -> str:
+    return os.path.join(_store_dir(), f"{_safe_udid(udid)}{GP_BASE_SUFFIX}")
+
+
+def write_gp_base(udid, base: dict) -> None:
+    """Persist the pristine HomeDomain .GlobalPreferences.plist for *udid*."""
+    import plistlib
+    try:
+        with open(_gp_base_path(udid), "wb") as f:
+            plistlib.dump(dict(base), f)
+    except OSError as e:
+        log.warning("Could not write GP base record: %s", e)
+
+
+def load_gp_base(udid):
+    """Return the pristine GP base dict, or None when never captured."""
+    import plistlib
+    try:
+        with open(_gp_base_path(udid), "rb") as f:
+            data = plistlib.load(f)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def clear_gp_base(udid) -> None:
+    path = _gp_base_path(udid)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        log.warning("Could not clear GP base record: %s", e)

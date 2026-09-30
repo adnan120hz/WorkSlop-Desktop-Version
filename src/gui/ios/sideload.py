@@ -408,9 +408,13 @@ class IOSSideloadPage(QWidget):
 
     # -- sideload -------------------------------------------------------
     def _device_udid(self):
+        # HONESTY-AUDIT FIX: this used to read `self.window.dev`, an
+        # attribute that does not exist on the main window — so every
+        # sideload / installed-apps / uninstall call silently got None and
+        # reported "No iPhone connected". The canonical accessor used by
+        # every other page is device_manager.get_current_device_udid().
         try:
-            dev = self.window.dev
-            return getattr(dev, "udid", None)
+            return self.window.device_manager.get_current_device_udid()
         except Exception:
             return None
 

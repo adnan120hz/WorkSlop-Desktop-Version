@@ -481,34 +481,52 @@ class DeviceManager:
         if not udid:
             raise NuggetException(QCoreApplication.tr("No device selected."))
 
-        gestalt_plist = self._load_gestalt_plist(update_label)
-
-        update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
+        # B20 FIX: figure out WHAT is enabled before touching the MGA base
+        # file. The RDAR fix writes a standalone resolution plist — it does
+        # not need the MobileGestalt base at all. The old code loaded the MGA
+        # file unconditionally, so an RDAR-only apply failed with "No
+        # mobilegestalt file provided!" and needlessly rewrote the MGA plist.
         gestalt_tweak_types = (
             MobileGestaltTweak, MobileGestaltPickerTweak,
             MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
         )
-        applied_any = False
-        for tweak_name in tweaks:
-            tweak = tweaks[tweak_name]
-            if isinstance(tweak, gestalt_tweak_types):
-                gestalt_plist = tweak.apply_tweak(gestalt_plist)
-                if tweak.enabled:
-                    applied_any = True
-        gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
-        if len(CustomGestaltTweaks.custom_tweaks) > 0:
-            applied_any = True
-        if not applied_any:
+        has_gestalt = any(
+            isinstance(tw, gestalt_tweak_types) and tw.enabled
+            for tw in tweaks.values()
+        ) or len(CustomGestaltTweaks.custom_tweaks) > 0
+        # B20 FIX (continued): the RDAR fix switch lives on the MobileGestalt
+        # page but this button ignored it. Honor it here too.
+        rdar_tweak = tweaks.get(TweakID.RdarFix)
+        rdar_on = rdar_tweak is not None and rdar_tweak.enabled
+        if not has_gestalt and not rdar_on:
             raise NuggetException(QCoreApplication.tr(
                 "No MobileGestalt tweaks are enabled."))
 
+        update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
         files_to_restore: list[FileToRestore] = []
-        self.concat_file(
-            contents=plistlib.dumps(gestalt_plist),
-            path=FileLocation.mga.value,
-            files_to_restore=files_to_restore,
-            owner=501, group=501,
-        )
+        if has_gestalt:
+            gestalt_plist = self._load_gestalt_plist(update_label)
+            for tweak_name in tweaks:
+                tweak = tweaks[tweak_name]
+                if isinstance(tweak, gestalt_tweak_types):
+                    gestalt_plist = tweak.apply_tweak(gestalt_plist)
+            gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
+            self.concat_file(
+                contents=plistlib.dumps(gestalt_plist),
+                path=FileLocation.mga.value,
+                files_to_restore=files_to_restore,
+                owner=501, group=501,
+            )
+        if rdar_on:
+            rdar_plist = rdar_tweak.apply_tweak({})
+            rdar_payload = rdar_plist.get(rdar_tweak.file_location)
+            if rdar_payload is not None:
+                self.concat_file(
+                    contents=plistlib.dumps(rdar_payload),
+                    path=rdar_tweak.file_location.value,
+                    files_to_restore=files_to_restore,
+                    owner=501, group=501,
+                )
 
         self.update_label = update_label
         self.do_not_unplug = ""
@@ -610,13 +628,36 @@ class DeviceManager:
             update_label(QCoreApplication.tr("Applying changes to files..."))
             self._protective_backup_skipped = False
             self._known_backup_encryption = None  # re-established by Phase 0
+            # B1: merge base for the iOS 27 HomeDomain .GlobalPreferences.plist
+            # write. Filled by _register_gp_base during Phase 0; None means
+            # "no base" -> the HomeDomain copy must NOT be written (writing a
+            # tweak-only dict would wipe the user's language/region/keyboard).
+            self._gp_base_plist = None
 
             # iOS 26.2+ (iOS 27 era) uses the heavy three-phase protective restore
+            # B23 FIX: never silently drop tendies. Truncating without telling
+            # the user meant wallpapers vanished with no explanation. The
+            # message is kept in tendie_warn so it can be appended to the
+            # final user-facing alert below (log_warn alone is invisible).
+            tendie_warn = None
+            if len(original_tendies) > MAX_TENDIES_PER_RESTORE:
+                tendie_warn = (
+                    f"Only {MAX_TENDIES_PER_RESTORE} PosterBoard wallpapers can be applied "
+                    f"per restore — {len(original_tendies) - MAX_TENDIES_PER_RESTORE} were skipped "
+                    f"(remove some and apply again to include them).")
+                log_warn(tendie_warn)
             pb.tendies = original_tendies[:MAX_TENDIES_PER_RESTORE]
 
+            # B24 FIX: only PosterBoard-targeting templates need the PosterBoard
+            # database machinery. Any template used to trigger it, churning
+            # the PB sqlite (fetch + modify + restore) for templates that
+            # never touch PosterBoard.
+            _templates_tweak = tweaks[TweakID.Templates]
+            _pb_templates = [t for t in _templates_tweak.templates
+                             if getattr(t, "domain", "") == "AppDomain-com.apple.PosterBoard"]
             needs_posterboard = not (
                 len(pb.tendies) == 0 and pb.videoFile is None
-                and len(tweaks[TweakID.Templates].templates) == 0)
+                and len(_pb_templates) == 0)
             log_info(f'needs_posterboard={needs_posterboard}, tendies={len(pb.tendies)}, videoFile={pb.videoFile is not None}')
 
             # Phase 0: protective backup.
@@ -710,6 +751,10 @@ class DeviceManager:
             if udid:
                 write_lastapply(udid, sparse_signature(files_to_restore))
             update_label(QCoreApplication.tr("Success!"))
+            # B23: surface the tendie truncation in the user-facing result
+            # alert — a log line alone never reaches the user.
+            if tendie_warn and final_alert is not None:
+                final_alert.txt = f"{final_alert.txt}\n\n{tendie_warn}"
         except Exception as e:
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
         finally:
@@ -741,6 +786,11 @@ class DeviceManager:
             # through, then toggle them on.
             daemons_tweak.allowed_keys.update(forced)
             daemons_tweak.set_multiple_values(sorted(forced), value=True)
+            # B12 FIX: the forced keys were silently dead — AdvancedPlistTweak.
+            # apply_tweak early-returns when the tweak is not enabled, so the
+            # keys set above never reached the device. Enabling the tweak
+            # makes the forcing real.
+            daemons_tweak.set_enabled(True)
             log_info(f"[HotLoad] daemons force-disabled by safety rules: "
                      f"{', '.join(sorted(forced))}")
         except Exception as e:
@@ -817,7 +867,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             return None, False
     
         from src.restore.protective import (
-            PreparedBackup, extract_posterboard_db, is_backup_encrypted,
+            PreparedBackup, extract_gp_base_plist, extract_posterboard_db, is_backup_encrypted,
             new_protective_backup_dir, perform_protective_backup,
             prune_protective_backups)
     
@@ -849,6 +899,49 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     log_warn(f"PosterBoard DB unusable ({e}) — falling back to a separate backup")
                     return False
             return True
+
+        def _register_gp_base(backup_root: str) -> None:
+            """B1: extract the live .GlobalPreferences.plist from the Phase 0
+            master backup as the merge base for the iOS 27 HomeDomain write.
+            Must run here — clean_backup_for_restore prunes this file from the
+            restore copy later. Leaves self._gp_base_plist as None when the
+            base cannot be obtained; the apply pass then skips the HomeDomain
+            write instead of wiping the user's settings with a tweak-only
+            dict.
+            """
+            self._gp_base_plist = None
+            gp_base_recorded = False
+            try:
+                import tempfile as _tf
+                with _tf.TemporaryDirectory(prefix="nugget_gpbase_") as tmp_dir:
+                    dest = os.path.join(tmp_dir, "GlobalPreferences.plist")
+                    extracted = extract_gp_base_plist(backup_root, udid, dest)
+                    if extracted is None:
+                        return
+                    with open(extracted, "rb") as f:
+                        base = plistlib.load(f)
+                    if not isinstance(base, dict):
+                        log_warn("GP base plist is not a dict — ignoring it")
+                        return
+                    self._gp_base_plist = base
+                    # Persist the pristine base for the reset flow: reset runs
+                    # in a later session and must restore this file instead of
+                    # nulling it (nulling would wipe the user's language /
+                    # region / keyboard on iOS 27).
+                    from src.restore.lastapply import write_gp_base
+                    write_gp_base(udid, base)
+                    gp_base_recorded = True
+                    log_info(f"GP merge base loaded ({len(base)} keys) for the iOS 27 HomeDomain write")
+            except Exception as e:
+                log_warn(f"Could not load .GlobalPreferences.plist merge base: {e}")
+                self._gp_base_plist = None
+                # Don't leave a half-written record behind.
+                if not gp_base_recorded:
+                    try:
+                        from src.restore.lastapply import clear_gp_base
+                        clear_gp_base(udid)
+                    except Exception:
+                        pass
     
         async def _live_backup(lc) -> tuple:
             """Fresh protective backup (no cache) with the PosterBoard container
@@ -898,6 +991,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             self.last_protective_backup_root = backup_root
             if on_backup_complete is not None:
                 on_backup_complete(backup_root)
+            # Register the GP merge base BEFORE any early return: an encrypted
+            # backup simply yields no base (extract returns None gracefully),
+            # but skipping registration here used to leave _gp_base_plist
+            # unset on the needs_posterboard+encrypted path.
+            _register_gp_base(backup_root)
             if needs_posterboard and is_encrypted:
                 log_warn("Encrypted backup cannot yield a readable PosterBoard DB — "
                          "falling back to a separate backup")
@@ -964,6 +1062,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 log_warn("Encrypted cache cannot yield a readable PosterBoard DB — "
                          "falling back to a separate backup")
                 return prepared, False
+            _register_gp_base(master_root)
             return prepared, _register_pb_db(master_root)
 
     async def refresh_backup_cache(self, update_label=lambda x: None) -> str:
@@ -1095,7 +1194,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 # HotLoad: never apply tweaks flagged as dangerous/broken for
                 # this device / iOS version (kill switch off -> no rules match),
                 # and never apply tweaks of a hidden feature.
-                if (tweak_name in hotload_hidden_names
+                # B13 FIX: hotload_hidden_names holds TweakID *names* (strings),
+                # while tweak_name here is a TweakID enum member — comparing
+                # them directly was always False, so hidden features were
+                # never skipped. Compare .name instead. (rule_for() already
+                # did this correctly via getattr(tweak_id, "name", ...).)
+                if (tweak_name.name in hotload_hidden_names
                         or hotload.rule_for(tweak_name,
                                             device_version=hotload_version,
                                             device_model=hotload_model) is not None):
@@ -1219,19 +1323,26 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             if gestalt_tweaks or len(CustomGestaltTweaks.custom_tweaks) > 0:
                 if not is_gestalt_supported(self.get_current_device_build(),
                                             self.get_current_device_version()):
-                    raise NuggetException(QCoreApplication.tr(
-                        "MobileGestalt tweaks are not supported on this iOS version.\n\n"
-                        "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
-                gestalt_plist = self._load_gestalt_plist(update_label)
-                for gtweak in gestalt_tweaks:
-                    gestalt_plist = gtweak.apply_tweak(gestalt_plist)
-                gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
-                self.concat_file(
-                    contents=plistlib.dumps(gestalt_plist),
-                    path=FileLocation.mga.value,
-                    files_to_restore=files_to_restore,
-                    owner=501, group=501,
-                )
+                    # B14 FIX: never poison the whole apply. Locked gestalt
+                    # builds used to raise here, failing EVERYTHING (including
+                    # unrelated tweaks). Skip the gestalt tweaks with a clear
+                    # warning and apply the rest.
+                    log_warn("MobileGestalt tweaks are not supported on this iOS version "
+                             "(open on iOS 16.0 through iOS 26.2 beta 1 only) — "
+                             "skipping them, applying everything else.")
+                    update_label(QCoreApplication.tr(
+                        "Note: MobileGestalt tweaks were skipped (not supported on this iOS version)."))
+                else:
+                    gestalt_plist = self._load_gestalt_plist(update_label)
+                    for gtweak in gestalt_tweaks:
+                        gestalt_plist = gtweak.apply_tweak(gestalt_plist)
+                    gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
+                    self.concat_file(
+                        contents=plistlib.dumps(gestalt_plist),
+                        path=FileLocation.mga.value,
+                        files_to_restore=files_to_restore,
+                        owner=501, group=501,
+                    )
 
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
@@ -1261,21 +1372,35 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # (Phase 0 skips this file in the protective backup so Phase 3
             # cannot overwrite the tweak copy with a stale original.)
             #
-            # SAFETY (K2): this write REPLACES the live file on the device.
-            # It must only happen when (a) the user actually enabled a GP
-            # tweak and (b) iOS 27+ needs the HomeDomain copy. Writing an
-            # empty or tweak-only dict on every Apply would wipe the user's
-            # keyboard/locale/region settings. iOS 26 keeps the upstream
-            # Nugget behavior: Managed Preferences overlay only.
+            # SAFETY (B1, was K2): this write REPLACES the live file on the
+            # device, so it must be a MERGE of the user's live settings with
+            # the tweak keys — never a tweak-only dict (that wiped the user's
+            # keyboard/locale/region). The merge base is the live plist
+            # extracted from the Phase 0 master backup (_register_gp_base).
+            # Without a base (raw sparse / skipped backup / encrypted
+            # manifest) the HomeDomain copy is SKIPPED with a warning: the
+            # Managed Preferences overlay (primary location) still applies.
+            # iOS 26 keeps the upstream Nugget behavior: overlay only.
             gp_tweaks = basic_plists.get(FileLocation.globalPreferences)
             if (gp_tweaks
                     and Version(self.get_current_device_version()) >= Version("27.0")):
-                self.concat_file(
-                    contents=plistlib.dumps(gp_tweaks),
-                    path=FileLocation.globalPreferencesHomeDomain.value,
-                    files_to_restore=files_to_restore,
-                    owner=501, group=501
-                )
+                gp_base = getattr(self, "_gp_base_plist", None)
+                if isinstance(gp_base, dict):
+                    merged_gp = dict(gp_base)
+                    merged_gp.update(gp_tweaks)
+                    self.concat_file(
+                        contents=plistlib.dumps(merged_gp),
+                        path=FileLocation.globalPreferencesHomeDomain.value,
+                        files_to_restore=files_to_restore,
+                        owner=501, group=501
+                    )
+                    log_info(f"HomeDomain .GlobalPreferences.plist: merged {len(gp_tweaks)} "
+                             f"tweak keys over {len(gp_base)} live keys")
+                else:
+                    log_warn("Skipping the iOS 27 HomeDomain .GlobalPreferences.plist write: "
+                             "no live-settings merge base (protective backup did not capture it). "
+                             "Your language/region/keyboard settings are left untouched; "
+                             "GP tweaks still apply via the Managed Preferences overlay.")
 
             for location, data in files_data.items():
                 self.concat_file(
@@ -1420,6 +1545,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     ## SPRINGBOARD
                     files_to_null.append(FileLocation.springboard.value)
                     files_to_null.append(FileLocation.uikit.value)
+                    # B21 FIX: reset used to skip these three SpringBoard-
+                    # family files, leaving their tweaks (footnote text,
+                    # AirDrop override, watchOS compat) permanently applied.
+                    files_to_null.append(FileLocation.footnote.value)
+                    files_to_null.append(FileLocation.airdrop.value)
+                    files_to_null.append(FileLocation.nanoregistry.value)
                 elif page == Page.Daemons:
                     ## DAEMONS
                     default_daemons = {
@@ -1440,12 +1571,99 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 elif page == Page.InternalOptions:
                     ## INTERNAL OPTIONS
                     files_to_null.append(FileLocation.globalPreferences.value)
-                    files_to_null.append(FileLocation.globalPreferencesHomeDomain.value)
+                    # B16 FIX: the HomeDomain copy is only ever written on
+                    # iOS 27+ (see the B1 merge in _apply_tweak_pass). Nulling
+                    # it on iOS 26 made reset MORE destructive than apply —
+                    # wiping a live user file the apply never touched.
+                    dev_version = self.get_current_device_version()
+                    if dev_version and Version(dev_version) >= Version("27.0"):
+                        # B10 FIX: on iOS 27 the HomeDomain copy holds the
+                        # MERGED plist (user base + tweak keys). Nulling it
+                        # would wipe the user's language/region/keyboard, so
+                        # reset restores the pristine base captured at apply
+                        # time instead. No base on record -> skip the file
+                        # entirely rather than destroy user data.
+                        from src.restore.lastapply import load_gp_base
+                        _gp_base = load_gp_base(udid)
+                        if _gp_base is not None:
+                            self.concat_file(
+                                contents=plistlib.dumps(_gp_base),
+                                path=FileLocation.globalPreferencesHomeDomain.value,
+                                files_to_restore=files_to_restore
+                            )
+                            uses_domains = True
+                        else:
+                            log_warn("iOS 27 HomeDomain .GlobalPreferences.plist reset skipped: "
+                                     "no pristine base on record — leaving the file untouched "
+                                     "rather than wiping user preferences.")
                     files_to_null.append(FileLocation.appStore.value)
                     files_to_null.append(FileLocation.backboardd.value)
                     files_to_null.append(FileLocation.coreMotion.value)
                     files_to_null.append(FileLocation.pasteboard.value)
                     files_to_null.append(FileLocation.notes.value)
+                elif page == Page.Tweaks:
+                    ## FEATURE FLAGS (B10 FIX) — the only Tweaks-page family
+                    ## without its own reset page. Stock = no overrides, i.e.
+                    ## an empty Global.plist (nulling the file entirely is
+                    ## riskier: the OS expects the plist to exist).
+                    self.concat_file(
+                        contents=plistlib.dumps({}),
+                        path=FileLocation.featureflags.value,
+                        files_to_restore=files_to_restore,
+                        owner=501, group=501
+                    )
+                    uses_domains = True
+                elif page == Page.LiquidGlass:
+                    ## LIQUID GLASS (B10 FIX) — the 98 Solarium keys all target
+                    ## .GlobalPreferences.plist, so resetting them = nulling
+                    ## the GP files (same files the Internal Options reset
+                    ## covers, but scoped to this page's checkbox).
+                    files_to_null.append(FileLocation.globalPreferences.value)
+                    dev_version = self.get_current_device_version()
+                    if dev_version and Version(dev_version) >= Version("27.0"):
+                        # Same B10 rule as InternalOptions above: the iOS 27
+                        # HomeDomain copy is a merged user+tweak plist — restore
+                        # the pristine base, never null it.
+                        from src.restore.lastapply import load_gp_base
+                        _gp_base_lg = load_gp_base(udid)
+                        if _gp_base_lg is not None:
+                            self.concat_file(
+                                contents=plistlib.dumps(_gp_base_lg),
+                                path=FileLocation.globalPreferencesHomeDomain.value,
+                                files_to_restore=files_to_restore
+                            )
+                            uses_domains = True
+                        else:
+                            log_warn("iOS 27 HomeDomain .GlobalPreferences.plist reset skipped: "
+                                     "no pristine base on record — leaving the file untouched.")
+                elif page == Page.RiskyTweaks:
+                    ## RISKY (B10 FIX) — DisableOTA + CustomResolution. Both
+                    ## are full-file writes, so nulling returns them to stock.
+                    files_to_null.append(FileLocation.ota.value)
+                    files_to_null.append(FileLocation.resolution.value)
+                elif page == Page.EUEnabler:
+                    ## ELIGIBILITY (B10 FIX) — null the files EUEnabler /
+                    ## Apple Intelligence eligibility actually deliver.
+                    ## (/var/MobileAsset/... was never deliverable and is not
+                    ## written, so there is nothing to reset for it.)
+                    files_to_null.append("/var/db/os_eligibility/eligibility.plist")
+                    files_to_null.append("/var/db/eligibilityd/eligibility.plist")
+                elif page == Page.Gestalt:
+                    ## MOBILE GESTALT (B10 FIX) — reset = write back the
+                    ## PRISTINE device plist (the user-provided base file),
+                    ## never null it: a missing MobileGestalt plist would
+                    ## break the device.
+                    try:
+                        pristine = self._load_gestalt_plist(update_label)
+                        self.concat_file(
+                            contents=plistlib.dumps(pristine),
+                            path=FileLocation.mga.value,
+                            files_to_restore=files_to_restore,
+                            owner=501, group=501,
+                        )
+                        uses_domains = True
+                    except NuggetException as e:
+                        log_warn(f"MobileGestalt reset skipped: {e}")
 
             # add the files to null from the list
             for file_path in files_to_null:
@@ -1473,11 +1691,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             final_alert = await self.start_restore(files_to_restore, update_label,
                                                    prompt_choice=prompt_choice)
             # the device is back to stock — drop the apply record so a future
-            # apply never skips Phase 2 against a reset device
-            from src.restore.lastapply import clear_lastapply
+            # apply never skips Phase 2 against a reset device. The pristine
+            # GP base goes too: it described the pre-tweak device, which the
+            # next apply will re-capture fresh from its own Phase 0 backup.
+            from src.restore.lastapply import clear_lastapply, clear_gp_base
             udid = self.get_current_device_udid()
             if udid:
                 clear_lastapply(udid)
+                clear_gp_base(udid)
             update_label(QCoreApplication.tr("Success!"))
         except Exception as e:
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)

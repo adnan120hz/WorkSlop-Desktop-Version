@@ -1,7 +1,5 @@
 from . import TemplateOption
 
-import os
-import glob
 from typing import Optional
 from enum import Enum
 from PySide6.QtGui import QColor
@@ -9,6 +7,7 @@ from PySide6 import QtWidgets, QtCore
 
 from src.controllers.xml_handler import set_xml_value, set_xml_values
 from src.controllers.plist_handler import write_plist_value
+from src.utils.zip_safe import safe_glob
 
 class SetterType(Enum):
     textbox = "textbox"
@@ -327,10 +326,10 @@ class SetOption(TemplateOption):
                 apply_val = self.toggle_on_value
             elif not apply_val and self.toggle_off_value != None:
                 apply_val = self.toggle_off_value
-        # wildcard support
+        # wildcard support; safe_glob refuses patterns escaping
+        # container_path and drops matches resolving outside it
         for file in self.files:
-            path = os.path.join(container_path, *file.split('/'))
-            for full_path in glob.glob(path, recursive=True):
+            for full_path in safe_glob(container_path, *file.split('/')):
                 # handle for file types
                 if full_path.endswith(".caml") or full_path.endswith(".xml"):
                     # set opacity if it has that

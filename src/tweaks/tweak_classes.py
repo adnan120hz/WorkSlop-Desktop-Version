@@ -200,23 +200,31 @@ class RdarFixTweak(BasicPlistTweak):
     def apply_tweak(self, other_tweaks: dict, risky_allowed: bool = False) -> dict:
         if not self.enabled:
             return other_tweaks
+        # B5 FIX: merge into the existing payload for this file instead of
+        # replacing it. FileLocation.resolution is shared with CustomResolution
+        # (Risky) — a blind replace meant last-write-wins with the loser's
+        # keys silently dropped. Revert no longer writes the old verbatim
+        # {"nugget": 0} junk dict (it destroyed the whole plist); it now
+        # removes only the canvas keys this tweak owns, keeping anything else
+        # in the file. NOTE: this intentionally deviates from the verbatim
+        # Nugget port — Nugget's revert destroyed the file (HIGH bug B5).
+        # Known shared-key conflict: a CustomResolution applied in the same
+        # pass uses the same canvas keys, so "Revert RDAR fix" will also drop
+        # those. Don't enable both at once.
+        existing = other_tweaks.get(self.file_location)
+        plist = dict(existing) if isinstance(existing, dict) else {}
         if self.di_type == -1:
-            # revert the fix
-            other_tweaks[self.file_location] = {"nugget": 0} # data needed for revert to actually work
+            # revert the fix: drop our keys, keep the rest of the file
+            plist.pop("canvas_height", None)
+            plist.pop("canvas_width", None)
         elif self.mode == 1:
             # iPhone XR, XS, and 11
-            plist = {
-                "canvas_height": 1791,
-                "canvas_width": 828
-            }
-            other_tweaks[self.file_location] = plist
+            plist["canvas_height"] = 1791
+            plist["canvas_width"] = 828
         elif self.mode == 3:
             # iPhone SEs
-            plist = {
-                "canvas_height": 1779,
-                "canvas_width": 1000
-            }
-            other_tweaks[self.file_location] = plist
+            plist["canvas_height"] = 1779
+            plist["canvas_width"] = 1000
         elif self.mode == 2:
             # Status bar fix (iPhone 12+)
             width = 2868
@@ -236,11 +244,9 @@ class RdarFixTweak(BasicPlistTweak):
             elif self.di_type == 2736:
                 width = 1260
                 height = 2736
-            plist = {
-                "canvas_height": height,
-                "canvas_width": width
-            }
-            other_tweaks[self.file_location] = plist
+            plist["canvas_height"] = height
+            plist["canvas_width"] = width
+        other_tweaks[self.file_location] = plist
         return other_tweaks
 
 
@@ -396,18 +402,23 @@ class FeatureFlagTweak(Tweak):
         self.is_list = is_list
         self.inverted = inverted
 
-    def apply_tweak(self, plist: dict):
+    def apply_tweak(self, other_tweaks: dict) -> dict:
+        # B6 FIX: never write flags for a disabled tweak. Without this guard
+        # every Apply rewrote Global.plist even when the user turned the
+        # switch off (the old code had no enabled check at all).
+        if not self.enabled:
+            return other_tweaks
         to_enable = self.enabled
         if self.inverted:
             to_enable = not self.enabled
         # create the category list if it doesn't exist
-        if not self.flag_category in plist:
-            plist[self.flag_category] = {}
+        if not self.flag_category in other_tweaks:
+            other_tweaks[self.flag_category] = {}
         for flag in self.flag_names:
             if self.is_list:
-                plist[self.flag_category][flag] = {
+                other_tweaks[self.flag_category][flag] = {
                     'Enabled': to_enable
                 }
             else:
-                plist[self.flag_category][flag] = to_enable
-        return plist
+                other_tweaks[self.flag_category][flag] = to_enable
+        return other_tweaks

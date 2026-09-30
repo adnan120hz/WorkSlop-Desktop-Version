@@ -21,8 +21,8 @@ from PySide6.QtCore import QStandardPaths
 from src.version import App_Version as _APP_VERSION
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES
 
-RULES_URL = ("https://raw.githubusercontent.com/awesomenull-dev/"
-             "GoldenNugget/main/hotload_rules.json")
+RULES_URL = ("https://raw.githubusercontent.com/adnan120hz/"
+             "desk/main/hotload_rules.json")
 RULES_FILENAME = "hotload_rules.json"
 KILL_SWITCH_KEY = "hotload_enabled"
 
@@ -56,8 +56,10 @@ FEATURE_TWEAKS = {
     for specs in [SPECS_BY_SECTION[section]]
 }
 FEATURE_TWEAKS.update({
-    "Liquid Glass": FEATURE_TWEAKS["Liquid Glass"] + ["DisableSolarium"],
-    "Internal": FEATURE_TWEAKS["Internal"] + ["MetalForceHudEnabled"],
+    # NOTE: "DisableSolarium" and "MetalForceHudEnabled" were listed here as
+    # pre-registry members, but no TweakSpec exists for either ID (audit B28)
+    # — a hide_feature rule naming them could never match a real tweak.
+    # Registry-backed features already cover every real spec via SPECS_BY_SECTION.
     "PosterBoard": ["PosterBoard"],
     "Daemons": ["Daemons", "ClearScreenTimeAgentPlist"],
     "Status Bar": ["StatusBar"],

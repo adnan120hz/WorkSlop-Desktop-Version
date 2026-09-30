@@ -183,7 +183,18 @@ class IOSIconThemesPage(QWidget):
             f"background-color: {c.bg_secondary}; border-radius: 12px;")
         pixmap = None
         data = theme.get_icon_data()
-        if data is None and theme.icon_path and os.path.isfile(theme.icon_path):
+        # B18: get_icon_data() returns the actual icon PNG bytes (loading them
+        # from disk if needed). The old condition only built a pixmap when
+        # `data is None`, so a theme WITH icon data never got a thumbnail and
+        # always showed "?". Load from the bytes first, fall back to the path.
+        if data:
+            try:
+                candidate = QPixmap()
+                if candidate.loadFromData(data):
+                    pixmap = candidate
+            except Exception:
+                pixmap = None
+        if (pixmap is None or pixmap.isNull()) and theme.icon_path and os.path.isfile(theme.icon_path):
             try:
                 pixmap = QPixmap(theme.icon_path)
             except Exception:

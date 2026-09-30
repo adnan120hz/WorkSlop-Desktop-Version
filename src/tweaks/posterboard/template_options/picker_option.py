@@ -6,6 +6,7 @@ from shutil import rmtree, move
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QComboBox
 
 from src.qt.custom_elements.multicombobox import MultiComboBox
+from src.utils.zip_safe import safe_join
 
 class PickerElement:
     label: str # label to show for the picker
@@ -110,8 +111,9 @@ class PickerOption(TemplateOption):
         for opt in self.options:
             if not opt in sel_options:
                 for file in opt.files:
-                    # delete files or directories
-                    path = os.path.join(container_path, *file.split('/'))
+                    # delete files or directories; safe_join refuses
+                    # "../" escapes from config.json
+                    path = safe_join(container_path, *file.split('/'))
                     if os.path.isdir(path):
                         rmtree(path=path, ignore_errors=True)
                     else:
@@ -119,9 +121,10 @@ class PickerOption(TemplateOption):
         # rename the files if needed
         if self.rename:
             for i in range(len(self.options[self.selection].files)):
-                # rename files or directories
-                old_path = os.path.join(container_path, self.options[self.selection].files[i])
-                new_path = os.path.join(container_path, self.names[i])
+                # rename files or directories; both sides are
+                # template-controlled, both get the containment check
+                old_path = safe_join(container_path, self.options[self.selection].files[i])
+                new_path = safe_join(container_path, self.names[i])
                 if os.path.isdir(old_path):
                     # rename whole directory
                     move(old_path, new_path)

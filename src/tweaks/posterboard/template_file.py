@@ -13,6 +13,7 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from .tendie_file import TendieFile
 from .template_options import OptionType, TemplateOption, ReplaceOption, RemoveOption, SetOption, PickerOption
 from src.exceptions.posterboard_exceptions import PBTemplateException
+from src.utils.zip_safe import safe_extractall, safe_join
 from src.qt.custom_elements.resizable_image_label import ResizableImageLabel
 from src.devicemanagement.constants import Version
 
@@ -50,6 +51,10 @@ class TemplateFile(TendieFile):
         with zipfile.ZipFile(path, mode="r") as archive:
             for option in archive.namelist():
                 if "config.json" in option.lower() and not "descriptor" in option.lower() and not "container" in option.lower():
+                    # the config path itself is template-controlled: reject
+                    # absolute paths and ".." escapes before trusting it
+                    if os.path.isabs(option) or ".." in option.replace("\\", "/").split("/"):
+                        raise PBTemplateException(path, QtCore.QCoreApplication.tr("Invalid config.json path in template."))
                     self.json_path = option
                     break
             if self.json_path != None:
@@ -108,7 +113,9 @@ class TemplateFile(TendieFile):
                                 # write it to a temp file
                                 if self.tmp_dir == None:
                                     self.tmp_dir = TemporaryDirectory()
-                                rc_full_path = os.path.join(self.tmp_dir.name, rc_path)
+                                # traversal guard: resource paths come from the
+                                # template's config.json, never let them escape
+                                rc_full_path = safe_join(self.tmp_dir.name, rc_path)
                                 os.makedirs(os.path.dirname(rc_full_path), exist_ok=True)
                                 with open(rc_full_path, "wb") as rc_fp:
                                     rc_fp.write(rc_data)
@@ -149,10 +156,12 @@ class TemplateFile(TendieFile):
         zip_output = os.path.join(output_dir, str(uuid.uuid4()))
         os.makedirs(zip_output)
         with zipfile.ZipFile(self.path, 'r') as zip_ref:
-            zip_ref.extractall(zip_output)
+            # zip-slip guard: entries escaping zip_output are skipped
+            safe_extractall(zip_ref, zip_output)
 
         # apply the options
-        parent_path = os.path.join(zip_output, os.path.dirname(self.json_path))
+        # traversal guard: json_path is validated at load, but never trust it
+        parent_path = safe_join(zip_output, os.path.dirname(self.json_path))
         for option in self.options:
             option.apply(container_path=parent_path)
 

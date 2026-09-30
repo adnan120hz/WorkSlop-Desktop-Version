@@ -49,7 +49,17 @@ class Page(Enum):
 
 def get_resettable_pages(device_manager) -> list[Page]:
     device_ver = Version(device_manager.get_current_device_version())
-    page_list: list[Page] = [Page.Springboard, Page.InternalOptions, Page.Daemons]
+    # B10 FIX: every tweak family now has a reset — previously Liquid Glass,
+    # Feature Flags (on the Tweaks page), Risky, Eligibility and MobileGestalt
+    # could never be reset from Settings.
+    page_list: list[Page] = [
+        Page.Springboard, Page.InternalOptions, Page.Daemons,
+        Page.Tweaks,          # Feature Flags live on the Tweaks page
+        Page.LiquidGlass,
+        Page.RiskyTweaks,
+        Page.EUEnabler,       # Eligibility
+        Page.Gestalt,         # MobileGestalt (restores the pristine plist)
+    ]
 
     # Status Bar is broken on iOS 27 (no write permissions for Speakeasy flags)
     # so the feature is hidden on iOS 27+

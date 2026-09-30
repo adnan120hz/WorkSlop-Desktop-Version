@@ -62,30 +62,35 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Status Bar Time Text*"),
             self.status_manager.is_time_overridden(),
             self.status_manager.get_time_override(),
+            self.status_manager.get_time_override,
             self.status_manager.set_time, self.status_manager.unset_time,
         )
         self.date_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Change Status Bar Date Text"),
             self.status_manager.is_date_overridden(),
             self.status_manager.get_date_override(),
+            self.status_manager.get_date_override,
             self.status_manager.set_date, self.status_manager.unset_date,
         )
         self.breadcrumb_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Change Breadcrumb Text"),
             self.status_manager.is_crumb_overridden(),
             self.status_manager.get_crumb_override(),
+            self.status_manager.get_crumb_override,
             self.status_manager.set_crumb, self.status_manager.unset_crumb,
         )
         self.battery_detail_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Change Battery Detail Text"),
             self.status_manager.is_battery_detail_overridden(),
             self.status_manager.get_battery_detail_override(),
+            self.status_manager.get_battery_detail_override,
             self.status_manager.set_battery_detail, self.status_manager.unset_battery_detail,
         )
         self.carrier_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Change Carrier Text"),
             self.status_manager.is_carrier_overridden(),
             self.status_manager.get_carrier_override(),
+            self.status_manager.get_carrier_override,
             self.status_manager.set_carrier_override, self.status_manager.unset_carrier_override,
             survives_ios27=True,
         )
@@ -93,12 +98,14 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Service Badge Text"),
             self.status_manager.is_primary_service_badge_overridden(),
             self.status_manager.get_primary_service_badge_override(),
+            self.status_manager.get_primary_service_badge_override,
             self.status_manager.set_primary_service_badge, self.status_manager.unset_primary_service_badge,
         )
         self.secondary_carrier_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Secondary Carrier Name"),
             self.status_manager.is_secondary_carrier_overridden(),
             self.status_manager.get_secondary_carrier_override(),
+            self.status_manager.get_secondary_carrier_override,
             self.status_manager.set_secondary_carrier_override, self.status_manager.unset_secondary_carrier_override,
             survives_ios27=True,
         )
@@ -106,6 +113,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Secondary Service Badge"),
             self.status_manager.is_secondary_service_badge_overridden(),
             self.status_manager.get_secondary_service_badge_override(),
+            self.status_manager.get_secondary_service_badge_override,
             self.status_manager.set_secondary_service_badge, self.status_manager.unset_secondary_service_badge,
         )
 
@@ -115,6 +123,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Signal Strength"),
             self.status_manager.is_gsm_signal_strength_bars_overridden(),
             self.status_manager.get_gsm_signal_strength_bars_override(),
+            self.status_manager.get_gsm_signal_strength_bars_override,
             self.status_manager.set_gsm_signal_strength_bars, self.status_manager.unset_gsm_signal_strength_bars,
             0, 5,
         )
@@ -122,6 +131,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Secondary Cellular Signal Bars"),
             self.status_manager.is_secondary_gsm_signal_strength_bars_overridden(),
             self.status_manager.get_secondary_gsm_signal_strength_bars_override(),
+            self.status_manager.get_secondary_gsm_signal_strength_bars_override,
             self.status_manager.set_secondary_gsm_signal_strength_bars, self.status_manager.unset_secondary_gsm_signal_strength_bars,
             0, 5,
         )
@@ -129,6 +139,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Wi-Fi Signal Strength"),
             self.status_manager.is_wifi_signal_strength_bars_overridden(),
             self.status_manager.get_wifi_signal_strength_bars_override(),
+            self.status_manager.get_wifi_signal_strength_bars_override,
             self.status_manager.set_wifi_signal_strength_bars, self.status_manager.unset_wifi_signal_strength_bars,
             0, 5,
         )
@@ -136,6 +147,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Battery Icon Capacity"),
             self.status_manager.is_battery_capacity_overridden(),
             self.status_manager.get_battery_capacity_override(),
+            self.status_manager.get_battery_capacity_override,
             self.status_manager.set_battery_capacity, self.status_manager.unset_battery_capacity,
             0, 100,
         )
@@ -143,6 +155,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Change Data Network Type"),
             self.status_manager.is_data_network_type_overridden(),
             self.status_manager.get_data_network_type_override(),
+            self.status_manager.get_data_network_type_override,
             self.status_manager.set_data_network_type, self.status_manager.unset_data_network_type,
             0, 30,
         )
@@ -150,6 +163,7 @@ class IOSStatusBarPage(QWidget):
             QCoreApplication.translate("Nugget", "Secondary Data Network Type"),
             self.status_manager.is_secondary_data_network_type_overridden(),
             self.status_manager.get_secondary_data_network_type_override(),
+            self.status_manager.get_secondary_data_network_type_override,
             self.status_manager.set_secondary_data_network_type, self.status_manager.unset_secondary_data_network_type,
             0, 30,
         )
@@ -313,7 +327,7 @@ class IOSStatusBarPage(QWidget):
         self.content_layout.addWidget(card)
         self._rows.append((card, survives_ios27))
         return switch
-    def _make_text_row(self, title: str, overridden: bool, current: str, setter, unsetter, survives_ios27: bool = False):
+    def _make_text_row(self, title: str, overridden: bool, current: str, getter, setter, unsetter, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
         card = QWidget()
         row = QHBoxLayout(card)
@@ -329,7 +343,7 @@ class IOSStatusBarPage(QWidget):
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
-        switch.toggled.connect(lambda checked: self._on_text_row_toggled(checked, setter, unsetter, label, value_lbl, current))
+        switch.toggled.connect(lambda checked: self._on_text_row_toggled(checked, getter, setter, unsetter, label, value_lbl))
         row.addWidget(switch)
 
         edit_btn = IOSSettingsRow("")
@@ -343,20 +357,25 @@ class IOSStatusBarPage(QWidget):
                 font-size: 17px;
             }}
         """)
-        edit_btn.clicked.connect(lambda: self._on_text_row_edit(title, current, setter, label, value_lbl))
+        edit_btn.clicked.connect(lambda: self._on_text_row_edit(title, getter, setter, label, value_lbl))
         row.addWidget(edit_btn)
 
         self.content_layout.addWidget(card)
         self._rows.append((card, survives_ios27))
         return switch
-    def _on_text_row_toggled(self, checked: bool, setter, unsetter, label, value_lbl, current: str):
+    def _on_text_row_toggled(self, checked: bool, getter, setter, unsetter, label, value_lbl):
+        # B9: read the value fresh from the tweak instead of the stale
+        # closure captured when the row was built — otherwise a user edit
+        # made while the switch is OFF is lost on the next OFF→ON toggle.
+        current = getter()
         if checked:
             setter(current)
         else:
             unsetter()
         value_lbl.setText(current if checked else QCoreApplication.translate("Nugget", "Default"))
 
-    def _on_text_row_edit(self, title: str, current: str, setter, label, value_lbl):
+    def _on_text_row_edit(self, title: str, getter, setter, label, value_lbl):
+        current = getter()
         dialog = TextInputDialog(title, current, self)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
@@ -364,7 +383,7 @@ class IOSStatusBarPage(QWidget):
             value_lbl.setText(value if value else QCoreApplication.translate("Nugget", "Default"))
             label.setText(title)
 
-    def _make_number_row(self, title: str, overridden: bool, current: int, setter, unsetter, min_val: int, max_val: int, survives_ios27: bool = False):
+    def _make_number_row(self, title: str, overridden: bool, current: int, getter, setter, unsetter, min_val: int, max_val: int, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
         card = QWidget()
         row = QHBoxLayout(card)
@@ -380,26 +399,30 @@ class IOSStatusBarPage(QWidget):
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
-        switch.toggled.connect(lambda checked: self._on_number_row_toggled(checked, setter, unsetter, value_lbl, current))
+        switch.toggled.connect(lambda checked: self._on_number_row_toggled(checked, getter, setter, unsetter, value_lbl))
         row.addWidget(switch)
 
         edit_btn = QLabel("✎")
         edit_btn.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
         edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.mousePressEvent = lambda e: self._on_number_row_edit(title, current, setter, value_lbl, min_val, max_val)
+        edit_btn.mousePressEvent = lambda e: self._on_number_row_edit(title, getter, setter, value_lbl, min_val, max_val)
         row.addWidget(edit_btn)
 
         self.content_layout.addWidget(card)
         self._rows.append((card, survives_ios27))
         return switch
-    def _on_number_row_toggled(self, checked: bool, setter, unsetter, value_lbl, current: int):
+    def _on_number_row_toggled(self, checked: bool, getter, setter, unsetter, value_lbl):
+        # B9: same stale-closure fix as the text rows — read the current
+        # value from the tweak at toggle time.
+        current = getter()
         if checked:
             setter(current)
         else:
             unsetter()
         value_lbl.setText(str(current) if checked else QCoreApplication.translate("Nugget", "Default"))
 
-    def _on_number_row_edit(self, title: str, current: int, setter, value_lbl, min_val: int, max_val: int):
+    def _on_number_row_edit(self, title: str, getter, setter, value_lbl, min_val: int, max_val: int):
+        current = getter()
         dialog = NumberInputDialog(title, current, min_val, max_val, self)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()

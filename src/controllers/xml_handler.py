@@ -1,6 +1,47 @@
+import ast
+import operator as _op
 import xml.etree.ElementTree as tree
 
 tree.register_namespace('', "http://www.apple.com/CoreAnimation/1.0")
+
+# B8-family fix: the old parse_equation ran eval() on the template's
+# "nuggetOffset" attribute with __builtins__ stripped. That does NOT make
+# eval safe — attribute access needs no builtins, so a malicious template
+# could escape the sandbox (e.g. ().__class__.__base__.__subclasses__()).
+# Templates only need plain arithmetic over x/y/z/a, so evaluate with a
+# tiny AST walker that permits nothing else.
+_ALLOWED_BINOPS = {
+    ast.Add: _op.add, ast.Sub: _op.sub, ast.Mult: _op.mul,
+    ast.Div: _op.truediv, ast.FloorDiv: _op.floordiv,
+    ast.Mod: _op.mod, ast.Pow: _op.pow,
+}
+_ALLOWED_UNARYOPS = {ast.UAdd: _op.pos, ast.USub: _op.neg}
+
+
+def _safe_eval_arith(expr: str, names: dict) -> float:
+    def _walk(node):
+        if isinstance(node, ast.Expression):
+            return _walk(node.body)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+                return float(node.value)
+            raise ValueError(f"bad constant {node.value!r}")
+        if isinstance(node, ast.Name):
+            if node.id in names:
+                return names[node.id]
+            raise ValueError(f"unknown name {node.id!r}")
+        if isinstance(node, ast.BinOp) and type(node.op) in _ALLOWED_BINOPS:
+            return _ALLOWED_BINOPS[type(node.op)](_walk(node.left), _walk(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _ALLOWED_UNARYOPS:
+            return _ALLOWED_UNARYOPS[type(node.op)](_walk(node.operand))
+        raise ValueError(f"forbidden expression {ast.dump(node)!r}")
+
+    try:
+        parsed = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        raise ValueError(f"bad equation {expr!r}: {e}")
+    return _walk(parsed)
+
 
 def parse_equation(eq: str, val: str):
     eqns = eq.split(',')
@@ -14,7 +55,7 @@ def parse_equation(eq: str, val: str):
     results = []
     mapped = dict(zip(keys, value))
     for eqn in eqns:
-        results.append(str(eval(eqn, {"__builtins__": {}}, mapped)))
+        results.append(str(_safe_eval_arith(eqn.strip(), mapped)))
     # map back to string
     return ' '.join(results)
 

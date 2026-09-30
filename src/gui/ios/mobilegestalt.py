@@ -16,10 +16,10 @@ from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSSwitch, IOSPrimaryButton, IOSDangerButton,
 )
 from src.gui.theme import ColorThemeManager, t
-from src.tweaks.tweaks import tweaks, TweakID
+from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
 from src.tweaks.tweak_loader import load_mobilegestalt, load_rdar_fix
 from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks, ValueTypeStrings
-from src.devicemanagement.constants import is_gestalt_supported_build
+from src.devicemanagement.constants import is_gestalt_supported
 
 
 def tr(s: str) -> str:
@@ -34,6 +34,10 @@ _DI_LABELS = [
     "2796 (iPhone 14 Pro Max Dynamic Island)",
     "2622 (iPhone 16 Pro Dynamic Island)",
     "2868 (iPhone 16 Pro Max Dynamic Island)",
+    # B15: the tweak's value list ends with 2736, so the dropdown needs a
+    # matching 7th entry or that option can never be selected. No device name
+    # is claimed here (unverified) — just the raw value.
+    "2736",
 ]
 
 
@@ -143,7 +147,12 @@ class _GestaltContent(QWidget):
         device = dm.data_singleton.current_device
         version = device.version if device is not None else ""
         build = device.build if device is not None else ""
-        gestalt_ok = is_gestalt_supported_build(build)
+        # B33 FIX: the page gate must match the apply gate
+        # (device_manager.get_current_device_is_gestalt_supported), which uses
+        # build-OR-version. Build-only here used to disable the controls on a
+        # device the apply pass would still accept (e.g. a valid iOS 26.0 build
+        # missing from the 106-build allowlist).
+        gestalt_ok = is_gestalt_supported(build, version)
         load_mobilegestalt(build)
         load_rdar_fix(device)
         self._build_tweaks_ui()
@@ -201,8 +210,11 @@ class _GestaltContent(QWidget):
         return sw
 
     def _on_switch(self, tweak_id, checked: bool, on_change):
+        # Mutual exclusion (B19): the "Enable LGLPM" / "Disable LGLPM" pair
+        # writes the same MobileGestalt key with value 1 vs 0, so turning one
+        # on turns the other off; _sync_switches() below redraws every switch.
         if tweak_id in tweaks:
-            tweaks[tweak_id].set_enabled(checked)
+            set_tweak_enabled(tweak_id, checked)
         if on_change:
             on_change(checked)
         self._sync_switches()
@@ -376,7 +388,8 @@ class _GestaltContent(QWidget):
 
     def _update_support_banner(self, version: str, build: str = ""):
         """Persistent banner stating the supported iOS range."""
-        ok = is_gestalt_supported_build(build) if build else False
+        # B33 FIX: same build-OR-version gate as the apply pass (see refresh).
+        ok = is_gestalt_supported(build, version) if build else False
         ver_txt = f"iOS {version}" if version else "no device"
         state = (tr("This device ({ver}) is supported.")
                  if ok else tr("This device ({ver}) is NOT supported — "

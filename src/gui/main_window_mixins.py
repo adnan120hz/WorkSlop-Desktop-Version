@@ -647,10 +647,19 @@ class ApplyMixin:
         Returns ``(lines, total)`` — ``lines`` feed the pre-apply summary
         dialog, ``total`` is the summed change count (0 = nothing to do).
         """
-        from src.tweaks.registry import SPECS_BY_SECTION, Section
-        from src.tweaks.tweak_loader import load_plist_tweaks, load_daemons
+        from src.tweaks.registry import SPECS_BY_SECTION, SPECS_BY_ID, Section
+        from src.tweaks.tweak_loader import (
+            load_plist_tweaks, load_daemons, load_mobilegestalt,
+            load_rdar_fix, load_eligibility, load_risky)
         load_plist_tweaks()
         load_daemons()
+        # B7: the loaders below register every tweak family the registry
+        # section loop above cannot see (all are idempotent, so calling them
+        # here is safe even if a page already ran them).
+        load_mobilegestalt()
+        load_rdar_fix()
+        load_eligibility()
+        load_risky()
 
         lines = []
         total = 0
@@ -691,6 +700,56 @@ class ApplyMixin:
         it = tweaks.get(TweakID.IconThemes)
         if it is not None:
             add(QCoreApplication.translate("Nugget", "Icon Themes"), len(it.themes))
+
+        # B7: tweak families the registry section loop misses. Registry SPECS
+        # only cover LIQUID_GLASS/SPRINGBOARD/FEATURE_FLAGS/INTERNAL; these
+        # are registered by the other loaders above.
+        from src.tweaks.tweak_classes import (
+            MobileGestaltTweak, MobileGestaltPickerTweak,
+            MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+            RdarFixTweak, FeatureFlagTweak)
+        from src.tweaks.eligibility_tweak import (
+            EligibilityTweak, AITweak, BookRestoreFileTweak)
+
+        _gestalt_types = (MobileGestaltTweak, MobileGestaltPickerTweak,
+                          MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+                          RdarFixTweak)
+        # Spoof model/hardware/CPU are MobileGestalt picker tweaks but live
+        # in the Eligibility UI section — count them there, not here.
+        _spoof_ids = {TweakID.SpoofModel, TweakID.SpoofHardware,
+                      TweakID.SpoofCPU}
+        gestalt_on = sum(
+            1 for tid, tw in tweaks.items()
+            if tid not in _spoof_ids
+            and isinstance(tw, _gestalt_types)
+            and getattr(tw, "enabled", False))
+        add(QCoreApplication.translate("Nugget", "MobileGestalt"), gestalt_on)
+
+        _elig_types = (EligibilityTweak, AITweak, BookRestoreFileTweak)
+        elig_on = sum(
+            1 for tw in tweaks.values()
+            if isinstance(tw, _elig_types)
+            and getattr(tw, "enabled", False))
+        elig_on += sum(
+            1 for tid in _spoof_ids
+            if getattr(tweaks.get(tid), "enabled", False))
+        # The Siri feature-flag pair (AIFeatureFlags / AIFeatureFlagsUI) is
+        # enabled from the Eligibility section but is not a registry spec.
+        ff_on = sum(
+            1 for tid, tw in tweaks.items()
+            if isinstance(tw, FeatureFlagTweak)
+            and tid not in SPECS_BY_ID
+            and getattr(tw, "enabled", False))
+        add(QCoreApplication.translate("Nugget", "Eligibility"),
+            elig_on + ff_on)
+
+        # Risky page tweaks (DisableOTAFile, CustomResolution) and the
+        # ScreenTime agent plist nullifier (loaded by load_daemons()).
+        risky_on = sum(
+            1 for tid in (TweakID.DisableOTAFile, TweakID.CustomResolution,
+                          TweakID.ClearScreenTimeAgentPlist)
+            if getattr(tweaks.get(tid), "enabled", False))
+        add(QCoreApplication.translate("Nugget", "Risky"), risky_on)
 
         return lines, total
 

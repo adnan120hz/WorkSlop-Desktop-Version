@@ -2,6 +2,8 @@ import os
 import uuid
 import zipfile
 
+from src.utils.zip_safe import safe_extractall
+
 class TendieFile:
     path: str
     name: str
@@ -52,4 +54,5 @@ class TendieFile:
         zip_output = os.path.join(output_dir, str(uuid.uuid4()))
         os.makedirs(zip_output)
         with zipfile.ZipFile(self.path, 'r') as zip_ref:
-            zip_ref.extractall(zip_output)
+            # zip-slip guard: entries escaping zip_output are skipped
+            safe_extractall(zip_ref, zip_output)

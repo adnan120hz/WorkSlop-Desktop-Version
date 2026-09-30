@@ -38,6 +38,7 @@ from typing import Any, Callable
 import requests
 
 from . import apps, ipa as ipa_module, lockdown, provision, signing
+from src.utils.zip_safe import safe_extractall as _safe_extractall
 from .errors import EngineError
 
 #: LiveContainer's own identifier; the team id is appended for a free account.
@@ -178,7 +179,7 @@ def seed_sidestore_certificate(ipa_path: str, bundle: dict[str, Any], dest_dir: 
     work = Path(tempfile.mkdtemp(prefix="ipaside_ss_", dir=dest_dir))
     try:
         with zipfile.ZipFile(ipa_path) as archive:
-            archive.extractall(work)
+            _safe_extractall(archive, work)
 
         app = next((work / "Payload").glob("*.app"))
         framework = app / "Frameworks" / SIDESTORE_FRAMEWORK

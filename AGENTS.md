@@ -397,9 +397,12 @@ backup in the persistent app-data store
 - iOS 27+: prompts for backup password if encryption is enabled (`use_encrypted_backup` pref)
 - Writes a `.GlobalPreferences.plist` copy to the HomeDomain path
   (`FileLocation.globalPreferencesHomeDomain`) so user
-  region/language/appearance survive the iOS 27 wipe. Note: this copy is **not
-  merged** with the device's current file — it is written verbatim from the
-  bundled base plist.
+  region/language/appearance survive the iOS 27 wipe. This copy is **merged**
+  with the device's own current file (the master protective backup's
+  HomeDomain copy): tweak keys are overlaid onto the user's live values,
+  so locale/keyboard settings are preserved. When no merge base is
+  available the HomeDomain write is skipped (the Managed Preferences
+  overlay still applies).
 - Calls `start_restore(prepared_backup_root=...)` internally
 
 ### `start_restore()`

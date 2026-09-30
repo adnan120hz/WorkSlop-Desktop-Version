@@ -166,7 +166,19 @@ class Daemon(Enum):
     Sociald = ["com.apple.sociald"]
 
 
-# Danger list fills in now that the class is defined.
+# Hard-protection list for the `never_enable` mechanism in AdvancedPlistTweak:
+# daemons in this set can never be marked disabled, even if they somehow
+# reach the tweak values.
+#
+# HONESTY-AUDIT NOTE (#9): this set is INTENTIONALLY empty, not "to be
+# filled". The Daemon enum only contains Nugget-blessed non-critical
+# daemons (nothing like backboardd/SpringBoard/launchd exists in it), and
+# the real enforcement is `allowed_keys` below: keys outside
+# INTERFACE_KEYS are stripped from presets and the apply pass, so a
+# non-UI daemon can never be written to disabled.plist in the first place.
+# `never_enable` remains as defense-in-depth plumbing; do not populate
+# this set with names that are not in the Daemon enum (they would never
+# match and the "protection" would be theater).
 DANGEROUS_DAEMONS: set["Daemon"] = set()
 DANGEROUS_KEYS = frozenset(k for d in DANGEROUS_DAEMONS for k in d.value)
 

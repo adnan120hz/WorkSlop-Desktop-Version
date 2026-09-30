@@ -9,6 +9,7 @@ from ...tweak_classes import Tweak
 from ..template_file import TemplateFile
 
 from src.utils.file_to_restore import FileToRestore
+from src.utils.zip_safe import assert_device_path_safe
 
 class TemplatesTweak(Tweak):
     def __init__(self):
@@ -69,6 +70,10 @@ class TemplatesTweak(Tweak):
                             full_path = f"{domain.removeprefix('Sparserestore-')}{full_path}"
                             restore_domain = None
                         full_path = self.parse_path_string(full_path, old_bundle, domain)
+                        # device-side traversal guard: a ".." segment here
+                        # (e.g. via a crafted bundle id) would escape the
+                        # target domain on the device
+                        assert_device_path_safe(full_path)
                         files_to_restore.append(FileToRestore(
                             contents=contents,
                             restore_path=full_path,

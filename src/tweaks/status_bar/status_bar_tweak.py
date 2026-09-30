@@ -33,6 +33,12 @@ class StatusBarTweak(Tweak):
             return
         primary = self.get_carrier_override() if self.is_carrier_overridden() else None
         secondary = self.get_secondary_carrier_override() if self.is_secondary_carrier_overridden() else None
+        # NOTE (audit B30): don't stage the archive when there is nothing to
+        # override — build_archive(None, None) is the *reset* record, and
+        # writing it on a master-ON/empty page would clobber carrier state
+        # for no reason.
+        if primary is None and secondary is None:
+            return
         files_to_restore.append(FileToRestore(
             contents=build_archive(primary, secondary),
             restore_path=ARCHIVE_PATH,
@@ -128,14 +134,11 @@ class StatusBarTweak(Tweak):
     def get_gsm_signal_strength_bars_override(self) -> int:
         return self._get_int("GSMSignalStrengthBars")
     def set_gsm_signal_strength_bars(self, id: int) -> None:
-        overrides = self._overrides()
-        idx = StatusBarItem.CellularSignalStrengthStatusBarItem.value
-        overrides.overrideItemIsEnabled[idx] = 1
-        overrides.values.itemIsEnabled[idx] = 1
+        # NOTE (audit B29): do NOT force the cellular signal icon visible here.
+        # Visibility is the user's own choice via the disable-icon toggles
+        # (set_item_override); stomping itemIsEnabled would override it.
         self._set_flag("overrideGSMSignalStrengthBars", "GSMSignalStrengthBars", id)
     def unset_gsm_signal_strength_bars(self) -> None:
-        overrides = self._overrides()
-        overrides.overrideItemIsEnabled[StatusBarItem.CellularSignalStrengthStatusBarItem.value] = 0
         self._unset_flag("overrideGSMSignalStrengthBars")
 
 
@@ -199,14 +202,9 @@ class StatusBarTweak(Tweak):
     def get_secondary_gsm_signal_strength_bars_override(self) -> int:
         return self._get_int("secondaryGSMSignalStrengthBars")
     def set_secondary_gsm_signal_strength_bars(self, id: int) -> None:
-        overrides = self._overrides()
-        idx = StatusBarItem.SecondaryCellularSignalStrengthStatusBarItem.value
-        overrides.overrideItemIsEnabled[idx] = 1
-        overrides.values.itemIsEnabled[idx] = 1
+        # NOTE (audit B29): same as primary — never force the icon visible.
         self._set_flag("overrideSecondaryGSMSignalStrengthBars", "secondaryGSMSignalStrengthBars", id)
     def unset_secondary_gsm_signal_strength_bars(self) -> None:
-        overrides = self._overrides()
-        overrides.overrideItemIsEnabled[StatusBarItem.SecondaryCellularSignalStrengthStatusBarItem.value] = 0
         self._unset_flag("overrideSecondaryGSMSignalStrengthBars")
 
 

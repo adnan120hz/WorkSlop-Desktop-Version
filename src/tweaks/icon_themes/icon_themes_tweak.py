@@ -180,18 +180,12 @@ class IconThemesTweak(Tweak):
         """extractall() with a zip-slip guard (CWE-22).
 
         A crafted archive can carry entries like ``../../evil.sh`` that a
-        plain extractall() would write outside *dest*. Every member is
-        validated first; anything absolute or escaping *dest* is skipped.
+        plain extractall() would write outside *dest*. Delegates to the
+        shared ``src.utils.zip_safe.safe_extractall`` so the guard logic
+        exists in exactly one place.
         """
-        dest_real = os.path.realpath(dest)
-        for member in zf.infolist():
-            name = member.filename
-            if os.path.isabs(name):
-                continue
-            target = os.path.realpath(os.path.join(dest, name))
-            if target != dest_real and not target.startswith(dest_real + os.sep):
-                continue
-            zf.extract(member, dest)
+        from src.utils.zip_safe import safe_extractall
+        safe_extractall(zf, dest)
 
     @staticmethod
     def resolve_icon_folder(extract_root: str, theme_name: str = None) -> str:

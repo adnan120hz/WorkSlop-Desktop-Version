@@ -9,8 +9,8 @@ from src.gui.ios.components import (
 )
 from src.gui.ios.compat import is_tweak_compatible
 from src.gui.theme import ColorThemeManager
-from src.tweaks.tweaks import tweaks, TweakID
-from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section
+from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
+from src.tweaks.registry import SPECS_BY_SECTION, SPECS_BY_ID, SECTION_FEATURES, Kind, Section
 from src.tweaks.tweak_loader import load_plist_tweaks, load_eligibility
 from src.tweaks.hidden import current_hidden_feature_names, current_hidden_tweak_names
 from src.gui.ios.eligibility import EligibilitySection
@@ -152,6 +152,7 @@ class IOSSectionContent(QWidget):
         self.layout().addWidget(inner)
 
         self._switch_labels = []
+        self._switches = {}
         self.force_solarium_fallback_card = None
 
         try:
@@ -197,7 +198,9 @@ class IOSSectionContent(QWidget):
             row_layout.addWidget(label, 1)
 
             switch = IOSSwitch(tweak.enabled)
-            switch.toggled.connect(lambda checked: tweak.set_enabled(checked))
+            self._switches[tweak_id] = switch
+            switch.toggled.connect(
+                lambda checked, tid=tweak_id: self._on_registry_switch(tid, checked))
             row_layout.addWidget(make_switch_column(card, switch))
 
             if description:
@@ -341,6 +344,21 @@ class IOSSectionContent(QWidget):
         # re-apply any remembered solarium-card visibility to the fresh card
         if self._solarium_visible is not None and self.force_solarium_fallback_card is not None:
             self.force_solarium_fallback_card.setVisible(self._solarium_visible)
+
+    def _on_registry_switch(self, tweak_id: TweakID, checked: bool):
+        # Mutual exclusion (B26): enabling one side of an Enable/Disable or
+        # RTL/LTR pair turns the other side off in the model; keep the partner
+        # switches visually in sync without re-firing their toggled signals.
+        set_tweak_enabled(tweak_id, checked)
+        spec = SPECS_BY_ID.get(tweak_id)
+        if spec is None:
+            return
+        for other_id in spec.excludes:
+            sw = self._switches.get(other_id)
+            if sw is not None and sw.isChecked():
+                sw.blockSignals(True)
+                sw.setChecked(False)
+                sw.blockSignals(False)
 
     def set_force_solarium_fallback_visible(self, visible: bool):
         # remember the intended state so a rebuild re-applies it (the card

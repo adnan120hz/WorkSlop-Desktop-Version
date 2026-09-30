@@ -100,17 +100,29 @@ def load_plist_tweaks():
 def load_daemons():
     if TweakID.Daemons in tweaks:
         return
-    # Daemons start empty; each interface toggle adds its own keys. Only
-    # interface-visible keys (INTERFACE_KEYS) survive filtering, so unrelated
-    # or hidden daemons can never leak into the apply pass or a stored preset.
-    defaults = {}
+    # B22 FIX: seed with upstream leminlimez/Nugget's six defaults (verified
+    # verbatim from Nugget's tweaks.py as quoted in
+    # https://github.com/leminlimez/nugget/issues/319). The old `defaults = {}`
+    # meant an apply wrote ONLY the user's toggles, silently re-enabling the
+    # six daemons upstream always keeps disabled.
+    # The six keys have no UI switch, so they are added to allowed_keys (same
+    # pattern as the HotLoad daemon forcing) — otherwise the apply-pass
+    # INTERFACE_KEYS whitelist would silently drop them again.
+    defaults = {
+        "com.apple.magicswitchd.companion": True,
+        "com.apple.security.otpaird": True,
+        "com.apple.dhcp6d": True,
+        "com.apple.bootpd": True,
+        "com.apple.ftp-proxy-embedded": False,
+        "com.apple.relevanced": True,
+    }
     tweaks.update({
         TweakID.Daemons: AdvancedPlistTweak(
             FileLocation.disabledDaemons,
             defaults,
             owner=0, group=0,
             never_enable=DANGEROUS_KEYS,
-            allowed_keys=INTERFACE_KEYS,
+            allowed_keys=INTERFACE_KEYS | frozenset(defaults),
         ),
         TweakID.ClearScreenTimeAgentPlist: NullifyFileTweak(FileLocation.screentime),
     })
