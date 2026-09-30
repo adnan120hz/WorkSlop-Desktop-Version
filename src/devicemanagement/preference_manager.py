@@ -92,8 +92,9 @@ class PreferenceManager:
         if mga_settings.contains(udid):
             mga_settings.remove(udid)
 
-    def has_mga_data(udid: str) -> bool:
-        return PreferenceManager.get_mga_prefs().contains(udid)
+    # REAUDIT FIX: has_mga_data() was dead code — zero callers. The real
+    # check used by the apply flow is has_valid_mga_data() below (which
+    # also validates build/model). Removed the unused helper.
 
     def has_valid_mga_data(self, udid: str, build: str, model: str) -> bool:
         # makes sure that it matches the build/model as well as existing

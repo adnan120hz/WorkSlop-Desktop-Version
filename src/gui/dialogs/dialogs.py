@@ -199,7 +199,8 @@ class AboutProgramDialog(QDialog):
         github_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         github_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         github_btn.setStyleSheet(f"QToolButton {{ color: {c.accent}; font-size: 14px; font-weight: 500; background: none; border: none; padding: 4px 8px; }} QToolButton:hover {{ text-decoration: underline; }}")
-        github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/awesomenull-dev/GoldenNugget")))
+        # REAUDIT FIX: was awesomenull-dev/GoldenNugget — point to this app's repo.
+        github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/adnan120hz/desk")))
         links_layout.addWidget(github_btn)
         
         website_btn = QToolButton()
@@ -260,7 +261,8 @@ class UpdateAppDialog(QDialog):
         message_text = ""
         latest_version = get_latest_version()
         if latest_version != None:
-            message_text += self.tr("Nugget v{0} is available. ").format(latest_version)
+            # REAUDIT FIX: was "Nugget v{0}" — user-visible dialog text.
+            message_text += self.tr("WorkSlop Desktop v{0} is available. ").format(latest_version)
         message_text += self.tr("Would you like to go to the download on GitHub?")
         message = QLabel(message_text)
 

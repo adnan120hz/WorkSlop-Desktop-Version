@@ -18,6 +18,8 @@ class LoginThread(QThread):
     # Emitted when Apple asks for a 2FA code: (method,) — "trusted" or "sms".
     # The page must then call submit_2fa(code) on this thread.
     twofa_required = Signal(str)
+    # Live stage text so the UI never sits silent during the network calls.
+    progress = Signal(str)
     # (ok, message)
     finished_with_result = Signal(bool, str)
 
@@ -39,7 +41,9 @@ class LoginThread(QThread):
     def run(self):
         from src.sideload.ipaside_engine import gsa
         try:
-            result = gsa.begin_login(self._email, self._password)
+            result = gsa.begin_login(
+                self._email, self._password,
+                on_progress=self.progress.emit)
             if isinstance(result, dict) and result.get("status") == "2fa_required":
                 method = result.get("method", "trusteddevice")
                 self.twofa_required.emit(method)
@@ -53,7 +57,8 @@ class LoginThread(QThread):
                         False, "Verification cancelled.")
                     return
                 result = gsa.complete_2fa(
-                    self._email, self._password, self._code.strip())
+                    self._email, self._password, self._code.strip(),
+                    on_progress=self.progress.emit)
             if isinstance(result, dict) and result.get("status") == "authenticated":
                 self.finished_with_result.emit(
                     True, f"Signed in as {self._email}.")

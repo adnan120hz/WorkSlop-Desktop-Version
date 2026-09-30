@@ -203,20 +203,39 @@ class IOSSettingsPage(QWidget):
         lay.addWidget(row)
         return row
 
+    def _clear_layout(self, lay):
+        while lay.count():
+            item = lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+
+    def _build_device_rows(self):
+        """(Re)build the 'This device' rows from the live device state."""
+        tr = lambda s: QCoreApplication.translate("Nugget", s)
+        lay = self._device_section_lay
+        self._clear_layout(lay)
+        dev = self.window.device_manager.data_singleton.current_device
+        if dev is not None:
+            self._ws_info_row(lay, "MD", tr("Model"), dev.model or "-", first=True)
+            self._ws_info_row(lay, "OS", tr("iOS version"), dev.version or "-")
+            self._ws_info_row(lay, "BL", tr("Build"), dev.build or "-")
+        else:
+            self._ws_info_row(lay, "--", tr("No device"),
+                              tr("Connect an iPhone over USB"), first=True)
+
+    def refresh(self):
+        """Called when navigating to Settings — picks up device changes."""
+        self._build_device_rows()
+
     def _build_settings_ui(self):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
         pref = self.window.device_manager.pref_manager
 
         # --- This device ---
         dev_lay = self._ws_section("This device")
-        dev = self.window.device_manager.data_singleton.current_device
-        if dev is not None:
-            self._ws_info_row(dev_lay, "MD", tr("Model"), dev.model or "-", first=True)
-            self._ws_info_row(dev_lay, "OS", tr("iOS version"), dev.version or "-")
-            self._ws_info_row(dev_lay, "BL", tr("Build"), dev.build or "-")
-        else:
-            self._ws_info_row(dev_lay, "--", tr("No device"),
-                              tr("Connect an iPhone over USB"), first=True)
+        self._device_section_lay = dev_lay
+        self._build_device_rows()
 
         # --- Appearance ---
         ap_lay = self._ws_section("Appearance")
@@ -674,7 +693,7 @@ class IOSSettingsPage(QWidget):
         if clicked == full_btn:
             self._on_restore_full_backup_clicked()
         elif clicked == gn_btn:
-            self._on_restore_goldennugget_backup_clicked()
+            self._on_restore_workslop_backup_clicked()
 
     def _on_restore_full_backup_clicked(self):
         folder = QFileDialog.getExistingDirectory(
@@ -696,7 +715,7 @@ class IOSSettingsPage(QWidget):
             return
         self.window._start_full_backup_restore(folder)
 
-    def _on_restore_goldennugget_backup_clicked(self):
+    def _on_restore_workslop_backup_clicked(self):
         # Original GoldenNugget protective-backup restore, unchanged.
         reply = QMessageBox.question(
             self.window,
@@ -820,10 +839,8 @@ class IOSSettingsPage(QWidget):
         self.window._sync_settings()
         self._refresh_backup_location_row()
 
-    def _on_backup_location_reset(self):
-        self.window.settings.remove("backup_storage_dir")
-        self.window._sync_settings()
-        self._refresh_backup_location_row()
+    # REAUDIT FIX: removed dead _on_backup_location_reset() — no button ever
+    # connected to it (only Browse exists), so it was unreachable code.
 
     def _refresh_backup_location_row(self):
         custom = self._custom_backup_dir_value()

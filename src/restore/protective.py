@@ -432,9 +432,9 @@ def _media_tree_scope(device_name: str) -> str:
     return ""
 
 
-def _is_afc_media_tree(device_name: str) -> bool:
-    """Whether an upload belongs to a Media tree moved to the AFC channel."""
-    return _media_tree_scope(device_name) in AFC_MEDIA_TREES
+# REAUDIT FIX: _is_afc_media_tree() was dead code — zero callers. Every
+# call site inlines `_media_tree_scope(x) in AFC_MEDIA_TREES` directly.
+# Removed the unused helper; behavior unchanged.
 
 
 def _posterboard_db_match(device_name: str) -> bool:

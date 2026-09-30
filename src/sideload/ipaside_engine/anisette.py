@@ -88,7 +88,7 @@ _WINDOWS_LOCALE_TO_APPLE: dict[str, str] = {
     "hindi_india": "hi_IN",
 }
 
-def _download_libs() -> io.BytesIO:
+def _download_libs(on_progress=None) -> io.BytesIO:
     """Fetch Apple's provisioning libraries, trying each source with retries.
 
     Raises :class:`AnisetteError` - not the archive parser's error - when nothing usable
@@ -96,8 +96,13 @@ def _download_libs() -> io.BytesIO:
     """
     attempts: list[str] = []
     for url in _LIBS_URLS:
-        for _ in range(3):
+        for attempt in range(3):
             try:
+                if on_progress:
+                    on_progress(
+                        f"Downloading Apple provisioning libraries "
+                        f"(attempt {attempt + 1}/3)..."
+                    )
                 response = requests.get(url, timeout=30)
                 response.raise_for_status()
                 data = response.content
@@ -115,7 +120,7 @@ def _download_libs() -> io.BytesIO:
     )
 
 
-def _load_provider() -> Any:
+def _load_provider(on_progress=None) -> Any:
     """Return a ready, provisioned Anisette provider, persisting its state.
 
     A cache that cannot be loaded is discarded and rebuilt rather than re-raised: an
@@ -128,7 +133,7 @@ def _load_provider() -> Any:
     state = paths.anisette_state_file()
 
     def _fresh() -> Any:
-        return Anisette.init(_download_libs())
+        return Anisette.init(_download_libs(on_progress=on_progress))
 
     if state.exists():
         try:
@@ -139,9 +144,13 @@ def _load_provider() -> Any:
             state.unlink(missing_ok=True)
             provider = _fresh()
     else:
+        if on_progress:
+            on_progress("Setting up device provisioning (first run)...")
         provider = _fresh()
 
     if not provider.is_provisioned:
+        if on_progress:
+            on_progress("Provisioning virtual device with Apple...")
         provider.provision()
 
     provider.save_all(str(state))
@@ -253,9 +262,9 @@ def _wire_safe_headers(raw: dict[str, Any]) -> dict[str, Any]:
     )
     return headers
 
-def get_headers() -> dict[str, Any]:
+def get_headers(on_progress=None) -> dict[str, Any]:
     """Return a fresh set of anisette headers for a GSA request."""
-    provider = _load_provider()
+    provider = _load_provider(on_progress=on_progress)
     return _wire_safe_headers(dict(provider.get_data()))
 
 

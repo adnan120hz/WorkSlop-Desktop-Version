@@ -2,10 +2,11 @@ from enum import Enum
 
 
 # Daemons that must never be disabled — disabling them bootloops the device.
-# Kept empty by design; entries are removed from the codebase entirely rather
-# than blocked at runtime. Every daemon listed in the Daemon enum is considered
-# interface-available and can be toggled on/off freely.
-DANGEROUS_DAEMONS: set["Daemon"] = set()  # filled below, after the class definition
+# REAUDIT FIX: the old comment claimed this was "filled below, after the
+# class definition" — it is not; the set is INTENTIONALLY empty (see the
+# HONESTY-AUDIT NOTE at its definition below). The Daemon enum only holds
+# non-critical daemons and the real guard is the allowed_keys whitelist.
+DANGEROUS_DAEMONS: set["Daemon"] = set()  # intentionally empty; see note below
 DANGEROUS_KEYS = frozenset()
 
 class Daemon(Enum):
@@ -218,3 +219,17 @@ INTERFACE_DAEMONS: frozenset["Daemon"] = frozenset({
 # Interface-visible daemon keys: everything a user can toggle in the UI.
 # Any key outside this set is stripped from presets / the apply pass.
 INTERFACE_KEYS = frozenset(k for d in INTERFACE_DAEMONS for k in d.value)
+
+# REAUDIT FIX: upstream leminlimez/Nugget's six always-disabled daemons,
+# verified verbatim from Nugget's tweaks.py as quoted in
+# https://github.com/leminlimez/nugget/issues/319. Single source of truth —
+# used by tweak_loader.load_daemons() (apply seed) and the Daemons reset in
+# device_manager (stock restore). Do NOT fork a copy elsewhere.
+UPSTREAM_DEFAULT_DAEMONS: dict[str, bool] = {
+    "com.apple.magicswitchd.companion": True,
+    "com.apple.security.otpaird": True,
+    "com.apple.dhcp6d": True,
+    "com.apple.bootpd": True,
+    "com.apple.ftp-proxy-embedded": False,
+    "com.apple.relevanced": True,
+}

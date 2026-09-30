@@ -104,12 +104,10 @@ class ProtectiveBackupCache:
         # manifest prune never touch it.
         self.media_dir = self.base / "media" / self.udid
 
-    def _read_info(self) -> dict:
-        try:
-            with open(self.info_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
+    # REAUDIT FIX: _read_info() was dead code — zero callers. locate()
+    # below inlines its own per-base read (it must try _temp_base then
+    # _persist_base, which a self.info_path-based helper cannot do).
+    # Removed the unused helper; behavior unchanged.
 
     def locate(self) -> Optional[dict]:
         """Find an existing master across both bases; point homes at it.
@@ -210,10 +208,9 @@ class ProtectiveBackupCache:
                        "created": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
         return str(self.master_root)
 
-    def make_working_copy(self) -> str:
-        """Build a throwaway hardlink copy of the master for prune + injection."""
-        from src.restore.protective import make_protective_working_copy
-        return make_protective_working_copy(str(self.master_root), self.udid)
+    # REAUDIT FIX: make_working_copy() was dead code — zero callers. The
+    # module-level make_protective_working_copy() in protective.py is the
+    # one the manual restore tools use. Removed the unused thin wrapper.
 
     def purge(self):
         shutil.rmtree(self.master_root, ignore_errors=True)

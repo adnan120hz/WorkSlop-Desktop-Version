@@ -444,6 +444,19 @@ class NavigationMixin:
             self.ios_nav.set_right_action(right[0], right[1])
         else:
             self.ios_nav.clear_right_action()
+        # REAUDIT FIX: device-dependent pages (Settings "This device" rows,
+        # Passcode device line, Backup apply state...) build their UI once at
+        # construction, so they showed stale "No device" after the iPhone was
+        # connected. Refresh on every navigation so they read live state.
+        # currentChanged fires synchronously from setCurrentIndex, which
+        # covers all navigation paths (sidebar, home tiles, direct calls).
+        try:
+            page = self.ios_pages.widget(index)
+            refresh = getattr(page, "refresh", None)
+            if callable(refresh):
+                refresh()
+        except Exception:
+            pass
 
 
     def _on_workslop_menu(self, menu_id: str):
@@ -604,6 +617,7 @@ class NavigationMixin:
 
 
     def on_settingsPageBtn_clicked(self):
+        self.ios_settings.refresh()
         self.show_ios_page(4)
         self._sync_sidebar_selection()
 
@@ -1344,13 +1358,15 @@ class ApplyMixin:
             "Have you made a backup of your iPhone? Tweaks and daemon changes "
             "are risky — a bad tweak can bootloop the device or force a full "
             "restore, which erases everything. Create a backup in iTunes or "
-            "Finder before using GoldenNugget."))
+            # REAUDIT FIX: dialog text said "GoldenNugget" — user-visible.
+            "Finder before using WorkSlop Desktop."))
         box.setDetailedText(QCoreApplication.translate(
             "Nugget",
             "Back up your iPhone before tweaking:\n"
             "• Windows: iTunes → your device → Back Up Now\n"
             "• Mac: Finder → your device → Back Up Now\n\n"
-            "GoldenNugget's own protected backup also runs automatically when "
+            # REAUDIT FIX: dialog text said "GoldenNugget" — user-visible.
+            "WorkSlop Desktop's own protected backup also runs automatically when "
             "you apply tweaks, but a full iTunes/Finder backup is the only "
             "complete safety net."))
         # Explicit opaque background: the dialog inherits the app's global

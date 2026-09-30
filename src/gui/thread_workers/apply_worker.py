@@ -98,7 +98,7 @@ class ApplyThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        self._log = logging.getLogger("GoldenNugget.apply")
+        self._log = logging.getLogger("WorkSlop.apply")
         mode = "reset" if self.reset_pages is not None else "apply"
         try:
             log_context(f"START {mode}",
@@ -193,7 +193,7 @@ class RestoreCacheThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.restore_cache")
+        log = logging.getLogger("WorkSlop.restore_cache")
         try:
             log_context("START restore-cache",
                         udid=self.manager.get_current_device_udid() or "unknown")
@@ -442,7 +442,7 @@ class RestoreFullBackupThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.restore_full")
+        log = logging.getLogger("WorkSlop.restore_full")
         try:
             log_context("START restore-full",
                         udid=self.manager.get_current_device_udid() or "unknown",
@@ -530,7 +530,7 @@ class GestaltApplyThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.gestalt")
+        log = logging.getLogger("WorkSlop.gestalt")
         try:
             log_context("START gestalt-apply",
                         udid=self.manager.get_current_device_udid() or "unknown")
@@ -599,7 +599,7 @@ class FullBackupThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.full_backup")
+        log = logging.getLogger("WorkSlop.full_backup")
         try:
             log_context("START full-backup",
                         udid=self.manager.get_current_device_udid() or "unknown",
@@ -682,7 +682,7 @@ class ProtectiveBackupThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.protective_backup")
+        log = logging.getLogger("WorkSlop.protective_backup")
         try:
             udid = self.manager.get_current_device_udid()
             log_context("START manual-protective-backup",
@@ -757,7 +757,7 @@ class CacheUpdateThread(QThread):
         import logging
         import asyncio
         from src.controllers.nugget_logger import log_context
-        log = logging.getLogger("GoldenNugget.cache_update")
+        log = logging.getLogger("WorkSlop.cache_update")
         try:
             log_context("START cache-update",
                         udid=self.manager.get_current_device_udid() or "unknown")
@@ -797,7 +797,7 @@ class RefreshDevicesThread(QThread):
 
     def run(self):
         import logging
-        log = logging.getLogger("GoldenNugget.refresh")
+        log = logging.getLogger("WorkSlop.refresh")
         try:
             self.manager.get_devices(self.settings, self.alert_window)
         except Exception as e:
@@ -826,7 +826,7 @@ class ResetPairingThread(QThread):
     def run(self):
         import logging
         import asyncio
-        log = logging.getLogger("GoldenNugget.pairing")
+        log = logging.getLogger("WorkSlop.pairing")
         try:
             asyncio.run(self.manager._reset_device_pairing())
         except Exception as e:

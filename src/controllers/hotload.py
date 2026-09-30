@@ -343,7 +343,8 @@ def confirm_flagged(rule: dict, parent=None) -> bool:
         reason_txt = str(reason)
     else:
         reason_txt = "This feature is currently flagged as dangerous or broken."
-    text = (f"GoldenNugget safety rules have flagged \"{tweak}\" as currently "
+    # REAUDIT FIX: warning text said "GoldenNugget" — user-visible dialog.
+    text = (f"WorkSlop Desktop safety rules have flagged \"{tweak}\" as currently "
             f"dangerous or broken.\n\n{reason_txt}\n\n"
             "It is recommended not to enable it. Do you still want to enable it?")
     box = QMessageBox(parent)

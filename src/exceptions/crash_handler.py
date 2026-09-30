@@ -38,13 +38,14 @@ from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QVBoxLayout, Q
 from src.controllers.nugget_logger import get_log_path, get_log_tail
 from src.exceptions.device_errors import is_connection_error, is_device_locked_error
 
-logger = logging.getLogger("GoldenNugget.crash")
+logger = logging.getLogger("WorkSlop.crash")
 
 ISSUES_URL = "https://github.com/adnan120hz/desk/issues/new"
 
 
 def _app_name() -> str:
-    return QCoreApplication.applicationName() or "GoldenNugget"
+    # REAUDIT FIX: fallback said "GoldenNugget".
+    return QCoreApplication.applicationName() or "WorkSlop Desktop"
 
 
 def _format_error(exc_type, exc_value, exc_tb) -> str:
@@ -494,7 +495,8 @@ def print_startup_banner() -> None:
     # always "yes" locally or on other repos.
     off_build = "no" if os.environ.get("GITHUB_ACTIONS") else "yes"
 
-    print(f"GoldenNugget {version_str}")
+    # REAUDIT FIX: console banner said "GoldenNugget" — user-visible.
+    print(f"WorkSlop Desktop {version_str}")
     print(f"Running on: {sys.platform} ({run_env})")
     print(f"Desktop: {desktop}")
     print(f"IsRelease?: {is_release}")

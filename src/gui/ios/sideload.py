@@ -308,11 +308,18 @@ class IOSSideloadPage(QWidget):
         self._account_status.setText(tr("Signing in..."))
         thread = LoginThread(email, password, self)
         thread.twofa_required.connect(self._on_2fa_required)
+        thread.progress.connect(self._on_login_progress)
         thread.finished_with_result.connect(self._on_login_done)
         thread.finished.connect(thread.deleteLater)
         self._threads.append(thread)
         self._login_thread = thread
         thread.start()
+
+    def _on_login_progress(self, stage):
+        # Live log line while the login network calls run, so the page never
+        # sits silent on "Signing in...".
+        if getattr(self, "_login_thread", None) is not None:
+            self._account_status.setText(str(stage))
 
     def _on_2fa_required(self, method):
         if method == "sms":

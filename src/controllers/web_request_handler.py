@@ -2,7 +2,9 @@ from requests import get, RequestException, HTTPError
 from json import JSONDecodeError
 from src.devicemanagement.constants import Version
 
-Nugget_Repo = "awesomenull-dev/GoldenNugget/releases/latest"
+# REAUDIT FIX: was "awesomenull-dev/GoldenNugget/releases/latest" — the app must
+# check the user's own repo for updates, not the upstream GoldenNugget repo.
+Nugget_Repo = "adnan120hz/desk/releases/latest"
 
 last_fetched_version: str = None
 

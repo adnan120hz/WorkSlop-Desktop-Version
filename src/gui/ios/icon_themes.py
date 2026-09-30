@@ -45,7 +45,8 @@ class IOSIconThemesPage(QWidget):
             "jailbreaking. Tapping the icon still opens the real app. "
             "WebClips launch \"Add to Home Screen\" shortcuts, so existing "
             "icon shortcuts stay untouched — remove disabled apps before "
-            "themes to avoid collisions."))
+            "themes to avoid collisions. Applying icon themes restarts the "
+            "iPhone so the new icons appear."))
         hint.setWordWrap(True)
         self._hint = hint
         self.content_layout.addWidget(hint)

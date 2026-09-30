@@ -8,7 +8,7 @@ from .tweak_classes import (
     RdarFixTweak, FeatureFlagTweak,
 )
 from .eligibility_tweak import EligibilityTweak, AITweak, BookRestoreFileTweak
-from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS
+from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS, UPSTREAM_DEFAULT_DAEMONS
 from src.devicemanagement.constants import is_gestalt_supported_build
 
 
@@ -100,22 +100,10 @@ def load_plist_tweaks():
 def load_daemons():
     if TweakID.Daemons in tweaks:
         return
-    # B22 FIX: seed with upstream leminlimez/Nugget's six defaults (verified
-    # verbatim from Nugget's tweaks.py as quoted in
-    # https://github.com/leminlimez/nugget/issues/319). The old `defaults = {}`
-    # meant an apply wrote ONLY the user's toggles, silently re-enabling the
-    # six daemons upstream always keeps disabled.
-    # The six keys have no UI switch, so they are added to allowed_keys (same
-    # pattern as the HotLoad daemon forcing) — otherwise the apply-pass
-    # INTERFACE_KEYS whitelist would silently drop them again.
-    defaults = {
-        "com.apple.magicswitchd.companion": True,
-        "com.apple.security.otpaird": True,
-        "com.apple.dhcp6d": True,
-        "com.apple.bootpd": True,
-        "com.apple.ftp-proxy-embedded": False,
-        "com.apple.relevanced": True,
-    }
+    # REAUDIT FIX: was a forked copy of the B22 dict — now uses the single
+    # source of truth UPSTREAM_DEFAULT_DAEMONS from daemons_tweak.py so the
+    # apply seed and the reset can never drift apart.
+    defaults = dict(UPSTREAM_DEFAULT_DAEMONS)
     tweaks.update({
         TweakID.Daemons: AdvancedPlistTweak(
             FileLocation.disabledDaemons,

@@ -785,15 +785,23 @@ def load_session(email: str | None = None) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
-def begin_login(email: str, password: str) -> dict[str, Any]:
+def begin_login(email: str, password: str, on_progress=None) -> dict[str, Any]:
     """Start login. Returns an 'authenticated' or '2fa_required' result."""
-    headers = anisette.get_headers()
+    if on_progress:
+        on_progress("Preparing device provisioning...")
+    headers = anisette.get_headers(on_progress=on_progress)
+    if on_progress:
+        on_progress("Contacting Apple ID servers...")
     spd, secondary = _authenticate_once(email, password, headers)
     if not secondary:
+        if on_progress:
+            on_progress("Finalizing sign-in...")
         return _finalize_session(email, spd, headers)
 
     adsid, idms = spd["adsid"], spd["GsIdmsToken"]
     method = "trusteddevice" if secondary == "trustedDeviceSecondaryAuth" else "sms"
+    if on_progress:
+        on_progress("Requesting verification code from Apple...")
     if method == "trusteddevice":
         _trigger_trusted(adsid, idms, anisette.get_headers())
     else:
@@ -802,16 +810,20 @@ def begin_login(email: str, password: str) -> dict[str, Any]:
     return {"status": "2fa_required", "method": method}
 
 
-def complete_2fa(email: str, password: str, code: str) -> dict[str, Any]:
+def complete_2fa(email: str, password: str, code: str, on_progress=None) -> dict[str, Any]:
     """Submit a 2FA code, then re-authenticate to obtain the session tokens."""
     pending = _load_pending()
     if not pending:
         raise GsaError("no pending 2FA request; run 'login' first")
+    if on_progress:
+        on_progress("Submitting verification code...")
     if pending["method"] == "trusteddevice":
         _submit_trusted(pending["adsid"], pending["idms"], code, anisette.get_headers())
     else:
         _submit_sms(pending["adsid"], pending["idms"], code, anisette.get_headers())
 
+    if on_progress:
+        on_progress("Verifying with Apple ID servers...")
     headers = anisette.get_headers()
     spd, secondary = _authenticate_once(email, password, headers)
     if secondary:

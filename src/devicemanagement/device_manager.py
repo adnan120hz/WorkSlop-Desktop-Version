@@ -208,10 +208,12 @@ class DeviceManager:
                                 show_alert(ApplyAlertMessage(
                                     txt=QCoreApplication.tr("Backup encryption is enabled on your iPhone."),
                                     detailed_txt=QCoreApplication.tr(
-                                        "GoldenNugget needs to temporarily disable backup encryption to apply tweaks safely.\n\n"
+                                        # REAUDIT FIX: user-visible alert still
+                                        # named the old upstream project.
+                                        "WorkSlop Desktop needs to temporarily disable backup encryption to apply tweaks safely.\n\n"
                                         "Please choose one:\n"
                                         "1. Disable encryption on your iPhone: Settings → General → Transfer or Reset iPhone → Backup Password → Turn Off\n"
-                                        "2. Or enable \"Use Encrypted Backups (Experimental)\" in GoldenNugget Settings → enter your backup password when prompted.\n\n"
+                                        "2. Or enable \"Use Encrypted Backups (Experimental)\" in WorkSlop Desktop Settings → enter your backup password when prompted.\n\n"
                                         "Tip: Option 1 is simpler if you don't know your backup password."
                                     )
                                 ))
@@ -338,8 +340,10 @@ class DeviceManager:
         except Exception:
             return False
         
-    def reset_device_pairing(self):
-        return asyncio.run(self._reset_device_pairing())
+    # REAUDIT FIX: the sync wrapper reset_device_pairing() was dead code —
+    # zero callers anywhere (grep); the only use is apply_worker.py calling
+    # _reset_device_pairing() directly via asyncio.run. Removed the wrapper,
+    # kept the implementation.
     async def _reset_device_pairing(self):
         # first, unpair it
         if self.data_singleton.current_device == None:
@@ -391,8 +395,10 @@ class DeviceManager:
                 domain="ManagedPreferencesDomain"
             ))
 
-    def get_domain_for_path(self, path: str, owner: int = 501) -> str:
-        # returns Domain: str?, Path: str
+    def get_domain_for_path(self, path: str) -> str:
+        # REAUDIT FIX: the old `owner` parameter was silently ignored (never
+        # used in the body) and the comment below had the return order
+        # backwards. Returns (relative_path, domain).
         from src.restore.path_mapping import split_path_into_domain
 
         mobile_domain, rel_path = split_path_into_domain(path)
@@ -402,7 +408,7 @@ class DeviceManager:
     
     def concat_file(self, contents: str, path: str, files_to_restore: list[FileToRestore], owner: int = 501, group: int = 501):
         # TODO: try using inodes here instead
-        file_path, domain = self.get_domain_for_path(path, owner=owner)
+        file_path, domain = self.get_domain_for_path(path)
         files_to_restore.append(FileToRestore(
             contents=contents,
             restore_path=file_path,
@@ -1553,16 +1559,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_null.append(FileLocation.nanoregistry.value)
                 elif page == Page.Daemons:
                     ## DAEMONS
-                    default_daemons = {
-                        "com.apple.magicswitchd.companion": True,
-                        "com.apple.security.otpaird": True,
-                        "com.apple.dhcp6d": True,
-                        "com.apple.bootpd": True,
-                        "com.apple.ftp-proxy-embedded": False,
-                        "com.apple.relevanced": True
-                    }
+                    # REAUDIT FIX: was a forked copy of the B22 defaults dict
+                    # in tweak_loader.load_daemons() — now uses the single
+                    # source of truth so apply and reset can never drift.
+                    from src.tweaks.daemons_tweak import UPSTREAM_DEFAULT_DAEMONS
                     self.concat_file(
-                        contents=plistlib.dumps(default_daemons),
+                        contents=plistlib.dumps(dict(UPSTREAM_DEFAULT_DAEMONS)),
                         path=FileLocation.disabledDaemons.value,
                         files_to_restore=files_to_restore,
                         owner=0, group=0

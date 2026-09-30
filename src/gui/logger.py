@@ -77,7 +77,7 @@ def setup_logging(log_file: str = None, level: int = logging.INFO,
         os.environ["GOLDENNUGGET_LOG_FILE"] = log_file
     init_logging()
 
-    logger = logging.getLogger("GoldenNugget")
+    logger = logging.getLogger("WorkSlop")
     # The session FILE always captures DEBUG (the file handler is created at
     # DEBUG in nugget_logger); only the console handler honours ``level`` so a
     # normal launch stays quiet on screen while the log stays verbose.
@@ -122,7 +122,7 @@ def get_logger(name: str = None) -> logging.Logger:
     """Get a logger instance."""
     if name:
         return logging.getLogger(f"GoldenNugget.{name}")
-    return logging.getLogger("GoldenNugget")
+    return logging.getLogger("WorkSlop")
 
 
 # Initialize default logger (console only, quiet) so import never crashes on

@@ -49,10 +49,9 @@ def is_version_supported(version: str) -> bool:
     return Version("16.0") <= v < Version("27.0")
 
 
-def is_version_ios27(version: str) -> bool:
-    # Cable-based: any iOS 27.x takes the protective-backup/wipe apply path.
-    v = _parse_version(version)
-    return v is not None and v >= Version("27.0")
+# REAUDIT FIX: is_version_ios27() was dead code — zero callers (the codebase
+# settled on inline `Version(x) >= Version("27.0")` checks with their own
+# None-guarding). Removed the unused helper; behavior unchanged.
 
 
 def is_device_supported(build: str, version: str) -> bool:

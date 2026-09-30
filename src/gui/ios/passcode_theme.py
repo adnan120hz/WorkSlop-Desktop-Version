@@ -43,7 +43,7 @@ from src.gui.ios.components import (
 )
 from src.gui.theme import ColorThemeManager
 
-logger = logging.getLogger("GoldenNugget.passthme")
+logger = logging.getLogger("WorkSlop.passthme")
 
 _NUGGET = "Nugget"
 
@@ -75,7 +75,7 @@ class PasscodeThemeWriteThread(QThread):
         # label's last line alone doesn't tell whether the sync observed a
         # tolerated SyncFailed and then completed, or was rejected.
         try:
-            logging.getLogger("GoldenNugget.passthme").info("atc: %s", message)
+            logging.getLogger("WorkSlop.passthme").info("atc: %s", message)
         except Exception:
             pass
         self.progress.emit(message)
@@ -164,7 +164,7 @@ class PasscodeThemeWriteThread(QThread):
                         "replace an existing theme.").format(len(failures)))
             self.done.emit(True, "\n".join(lines))
         except Exception as error:
-            logging.getLogger("GoldenNugget.passthme").error(
+            logging.getLogger("WorkSlop.passthme").error(
                 "Passcode theme write failed: %s\n%s", error, traceback.format_exc())
             self.done.emit(False, f"{type(error).__name__}: {error}")
         finally:
@@ -429,6 +429,12 @@ class IOSPasscodeThemePage(QWidget):
             return getattr(device, "locale", "") or ""
         except Exception:
             return ""
+
+    def refresh(self):
+        # REAUDIT FIX: called on page navigation (see _update_shared_nav) so
+        # the device line reflects the currently connected iPhone instead of
+        # the construction-time "No trusted iPhone connected" text.
+        self._refresh_device_line()
 
     def _refresh_device_line(self):
         c = ColorThemeManager.instance().colors

@@ -39,7 +39,8 @@ def get_log_dir() -> str:
     try:
         os.makedirs(log_dir, exist_ok=True)
     except OSError:
-        log_dir = os.path.join(os.path.expanduser("~"), ".nugget_logs")
+        # REAUDIT FIX: fallback dir said "nugget" — user-visible in console.
+        log_dir = os.path.join(os.path.expanduser("~"), ".workslop_logs")
         try:
             os.makedirs(log_dir, exist_ok=True)
         except OSError:
@@ -55,7 +56,8 @@ def get_log_path() -> str:
     if env:
         return env
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    return os.path.join(get_log_dir(), f"nugget_{timestamp}.log")
+    # REAUDIT FIX: log filename/dir said "nugget" — user-visible in console.
+    return os.path.join(get_log_dir(), f"workslop_{timestamp}.log")
 
 
 def get_file_handler() -> logging.Handler:
@@ -104,14 +106,14 @@ def init_logging() -> str:
     root = logging.getLogger()
     root.addHandler(_file_handler)
 
-    gn = logging.getLogger("GoldenNugget")
+    gn = logging.getLogger("WorkSlop")
     gn.addHandler(_file_handler)
     # Records headed for ``GoldenNugget`` are already handled here; without
     # this they would climb to the root handler and be written twice.
     gn.propagate = False
 
     logging.getLogger("pymobiledevice3").setLevel(logging.DEBUG)
-    logging.getLogger("GoldenNugget").setLevel(logging.DEBUG)
+    logging.getLogger("WorkSlop").setLevel(logging.DEBUG)
 
     return _active_log_path
 
@@ -138,7 +140,8 @@ def get_log_tail(max_chars: int = 64 * 1024) -> str:
         return ""
 
 
-def log_banner(logger_name: str = "GoldenNugget") -> None:
+# REAUDIT FIX: default logger name said "GoldenNugget" — user-visible.
+def log_banner(logger_name: str = "WorkSlop") -> None:
     """Log environment/version info at session start."""
     import platform
     try:
@@ -147,14 +150,15 @@ def log_banner(logger_name: str = "GoldenNugget") -> None:
     except Exception:
         version = "unknown"
     logger = logging.getLogger(logger_name)
-    logger.info("GoldenNugget %s | %s | Python %s | log=%s",
+    # REAUDIT FIX: banner said "GoldenNugget" — user-visible in console/log.
+    logger.info("WorkSlop Desktop %s | %s | Python %s | log=%s",
                 version, platform.platform(), platform.python_version(), get_log_path())
 
 
 def log_context(msg: str, **fields) -> None:
     """Log a context block (device, iOS, mode...) as a single readable line."""
     extra = " | ".join(f"{k}={v}" for k, v in fields.items() if v not in (None, "", "unknown"))
-    logger = logging.getLogger("GoldenNugget.context")
+    logger = logging.getLogger("WorkSlop.context")
     if extra:
         logger.info("CONTEXT %s | %s", msg, extra)
     else:

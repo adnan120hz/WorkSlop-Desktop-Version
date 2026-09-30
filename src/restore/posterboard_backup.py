@@ -52,7 +52,9 @@ async def backup_posterboard_database(udid: str, update_label=lambda x: None, up
             if not is_build_supported(service_provider.all_values.get("BuildVersion", "")):
                 raise NuggetException(
                     "This version of iOS is not supported by this fork.\n\n"
-                    "GoldenNugget only supports iOS 26.2 and newer. "
+                    # REAUDIT FIX: user-visible string still named the old
+                    # upstream project; this is WorkSlop Desktop now.
+                    "WorkSlop Desktop only supports iOS 26.2 and newer. "
                     "Please use the original Nugget for iOS 26.1 and earlier.")
             async with Mobilebackup2Service(service_provider) as backup_client:
                 try:
