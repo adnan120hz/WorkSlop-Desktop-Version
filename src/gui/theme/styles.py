@@ -446,6 +446,22 @@ STYLES = {
         IOSCard:hover {{ border-color: {accent}; }}
     """,
 
+    # Terminal-styled home tile: same card, green hover border.
+    "home_tile_term": """
+        IOSCard {{
+            background-color: {bg_secondary};
+            border-radius: 14px;
+            border: 1px solid {card_border};
+        }}
+        IOSCard:hover {{ border-color: #34d17b; }}
+    """,
+
+    # `$ workslop <command>` header line on each home tile.
+    "home_tile_cmd": (
+        "font-family: monospace; font-size: 11px; color: #34d17b; "
+        "background-color: transparent;"
+    ),
+
     "home_tile_title": (
         "font-size: 16px; font-weight: 600; color: {text_primary}; "
         # a styled QLabel paints its palette window color by default, which

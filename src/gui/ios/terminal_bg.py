@@ -108,9 +108,10 @@ APPLE_ART = (
     r"               #####",
 )
 
-MAX_LINES = 60          # hard cap: the deque never grows past this
-TICK_MIN_MS = 80        # scroll speed range (ms per new line)
-TICK_MAX_MS = 120
+MAX_LINES = 80          # hard cap: the deque never grows past this
+TICK_MIN_MS = 60        # scroll speed range (ms per new line)
+TICK_MAX_MS = 100
+APPLE_TICK_MS = 50      # apple drift animation frame interval
 
 
 class TerminalBackground(QWidget):
@@ -124,7 +125,7 @@ class TerminalBackground(QWidget):
 
         mono = QFont("monospace")
         mono.setStyleHint(QFont.Monospace)
-        mono.setPointSize(8)
+        mono.setPointSize(9)
 
         layout = QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -138,15 +139,21 @@ class TerminalBackground(QWidget):
         self._scroll_lbl.setAttribute(Qt.WA_TransparentForMouseEvents)
         layout.addWidget(self._scroll_lbl, 0, 0)
 
-        # Apple watermark: ONE label, centered over the same cell.
+        # Apple watermark: free-floating label (NOT in layout) so we can
+        # animate its position. Centered manually, drifts slowly.
         self._apple_lbl = QLabel("\n".join(APPLE_ART), self)
         self._apple_lbl.setFont(mono)
         self._apple_lbl.setAlignment(Qt.AlignCenter)
         self._apple_lbl.setAttribute(Qt.WA_TransparentForMouseEvents)
-        layout.addWidget(self._apple_lbl, 0, 0, Qt.AlignCenter)
+        self._apple_lbl.adjustSize()
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._on_tick)
+
+        # Apple drift animation: slow floating movement.
+        self._apple_phase = 0.0
+        self._apple_timer = QTimer(self)
+        self._apple_timer.timeout.connect(self._on_apple_tick)
 
         if ColorThemeManager is not None:
             try:
@@ -165,10 +172,13 @@ class TerminalBackground(QWidget):
         """Begin (or resume) the scrolling animation."""
         if not self._timer.isActive():
             self._timer.start(random.randint(TICK_MIN_MS, TICK_MAX_MS))
+        if not self._apple_timer.isActive():
+            self._apple_timer.start(APPLE_TICK_MS)
 
     def stop(self) -> None:
         """Pause the scrolling animation."""
         self._timer.stop()
+        self._apple_timer.stop()
 
     def is_running(self) -> bool:
         return self._timer.isActive()
@@ -184,6 +194,26 @@ class TerminalBackground(QWidget):
         self._render()
         # Slightly varied pacing feels more like a real terminal.
         self._timer.setInterval(random.randint(TICK_MIN_MS, TICK_MAX_MS))
+
+    def _on_apple_tick(self) -> None:
+        """Slow drift: apple logo floats in a gentle Lissajous pattern."""
+        import math
+        self._apple_phase += 0.02
+        dx = int(30 * math.sin(self._apple_phase))
+        dy = int(20 * math.sin(self._apple_phase * 0.7))
+        # Move via margin offset on the layout cell
+        self._apple_lbl.move(
+            (self.width() - self._apple_lbl.width()) // 2 + dx,
+            (self.height() - self._apple_lbl.height()) // 2 + dy,
+        )
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        # Keep apple centered (drift offset applied on next tick).
+        self._apple_lbl.move(
+            (self.width() - self._apple_lbl.width()) // 2,
+            (self.height() - self._apple_lbl.height()) // 2,
+        )
 
     def _render(self) -> None:
         self._scroll_lbl.setText("\n".join(self._lines))

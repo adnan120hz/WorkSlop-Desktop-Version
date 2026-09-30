@@ -464,6 +464,8 @@ class NavigationMixin:
         elif menu_id == "sideload":
             self.ios_sideload.refresh()
             self.show_ios_page(15)
+        elif menu_id == "appdata":
+            self.show_ios_page(16)
         elif menu_id == "themes":
             self.show_ios_page(14)
         elif menu_id == "settings":

@@ -21,6 +21,7 @@ MENUS = [
     ("wallpaper", "Wallpaper", ":/icon/wallpaper.svg"),
     ("backup", "Backup", ":/icon/shippingbox.svg"),
     ("sideload", "Sideload", ":/icon/app-indicator.svg"),
+    ("appdata", "App Data", ":/icon/hdd.svg"),
     ("themes", "Themes", ":/icon/brush.svg"),
     ("settings", "Settings", ":/icon/gear.svg"),
 ]

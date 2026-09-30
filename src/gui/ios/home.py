@@ -18,6 +18,19 @@ _FEATURE_ICONS = {
     "Icon Themes": ":/icon/brush.svg",
     "Passcode Theme": ":/icon/lock.svg",
     "MobileGestalt": ":/icon/iphone-island.svg",
+    "Sideload": ":/icon/import.svg",
+}
+
+# Terminal command shown on each home tile (`$ workslop <cmd>`).
+_TILE_COMMANDS = {
+    "PosterBoard": "posterboard",
+    "Tweaks": "tweaks",
+    "Daemons": "daemons",
+    "Status Bar": "statusbar",
+    "Icon Themes": "iconthemes",
+    "Passcode Theme": "passthm",
+    "MobileGestalt": "gestalt",
+    "Sideload": "sideload",
 }
 
 
@@ -25,16 +38,16 @@ class _TileCard(IOSCard):
     """A home feature tile (icon + name). Same look as a card, plus hover."""
 
     def _retheme(self):
-        self.setStyleSheet(t("home_tile"))
+        self.setStyleSheet(t("home_tile_term"))
 
 
 class _CardGrid(QWidget):
     """Responsive grid for the home feature tiles.
 
     Reflows the visible tiles into columns based on the available width, up to
-    ``MAX_COLUMNS``: all six features stay on one row at every window size the
+    ``MAX_COLUMNS``: the tiles fill rows left to right at every window size the
     app allows (the window has a 1000px minimum and the iOS shell hides the
-    sidebar, so the home page always has room for the full row).
+    sidebar, so the home page always has room for a full row).
     Tiles hidden on purpose (Status Bar on iOS 27, HotLoad-hidden features)
     are tracked via their Show/Hide events, so the grid stays correct even
     before the page itself has been shown. Hidden tiles are dropped from the
@@ -201,6 +214,8 @@ class IOSHomePage(QWidget):
             self._make_card(
             "Tweaks", "Customize system settings", 1),
             self._make_card(
+            "Sideload", "Install IPA files over USB", 15),
+            self._make_card(
             "Daemons", "Disable system daemons", 3),
             self._make_card(
             "Status Bar", "Customize the status bar", 5),
@@ -210,7 +225,7 @@ class IOSHomePage(QWidget):
             "Passcode Theme", "Custom keypad theme (.passthm)", 11),
             self._make_card(
             "MobileGestalt", "Device feature flags (iOS 26.1-)", 12)]
-        (self.posterboard_card, self.tweaks_card,
+        (self.posterboard_card, self.tweaks_card, self.sideload_card,
          self.daemons_card, self.statusbar_card,
          self.icon_themes_card, self.passcode_theme_card,
          self.mobilegestalt_card) = cards_row
@@ -459,15 +474,21 @@ class IOSHomePage(QWidget):
             self.statusbar_card.setToolTip("")
 
     def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:
-        """One home feature tile: a big themed icon with the name below it."""
+        """One home feature tile: terminal `$ workslop <cmd>` header over
+        a big themed icon with the name below it."""
         card = _TileCard()
         card.setSizePolicy(QSizePolicy.Policy.Expanding,
                            QSizePolicy.Policy.Preferred)
 
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(10, 20, 10, 16)
-        card_layout.setSpacing(12)
-        card_layout.setAlignment(Qt.AlignHCenter)
+        card_layout.setContentsMargins(12, 12, 12, 14)
+        card_layout.setSpacing(8)
+
+        # Terminal command header, e.g. `$ workslop sideload ▊`
+        cmd = _TILE_COMMANDS.get(title, title.lower().replace(" ", ""))
+        cmd_lbl = QLabel(f"$ workslop {cmd} \u258a", card)
+        cmd_lbl.setStyleSheet(t("home_tile_cmd"))
+        card_layout.addWidget(cmd_lbl, 0, Qt.AlignLeft)
 
         icon_res = _FEATURE_ICONS.get(title, ":/icon/compass.svg")
         icon_lbl = QLabel(card)

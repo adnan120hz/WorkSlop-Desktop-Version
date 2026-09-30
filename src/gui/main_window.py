@@ -187,9 +187,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         from src.gui.ios.backup import IOSBackupPage
         from src.gui.ios.themes_hub import IOSThemesHubPage
         from src.gui.ios.sideload import IOSSideloadPage
+        from src.gui.ios.appdata import IOSAppDataPage
         self.ios_backup = IOSBackupPage(self)
         self.ios_themes_hub = IOSThemesHubPage(self)
         self.ios_sideload = IOSSideloadPage(self)
+        self.ios_appdata = IOSAppDataPage(self)
         self.ios_pages.addWidget(self.ios_home)
         self.ios_pages.addWidget(self.ios_tweaks)
         self.ios_pages.addWidget(self.ios_posterboard)
@@ -204,10 +206,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.addWidget(self.ios_passthemes)
         self.ios_pages.addWidget(self.ios_gestalt)
         # WorkSlop menus: appended at the end so no existing page index shifts.
-        # 13 = backup, 14 = themes hub, 15 = sideload.
+        # 13 = backup, 14 = themes hub, 15 = sideload, 16 = app data.
         self.ios_pages.addWidget(self.ios_backup)
         self.ios_pages.addWidget(self.ios_themes_hub)
         self.ios_pages.addWidget(self.ios_sideload)
+        self.ios_pages.addWidget(self.ios_appdata)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -230,6 +233,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             13: QCoreApplication.translate("Nugget", "Backup"),
             14: QCoreApplication.translate("Nugget", "Themes"),
             15: QCoreApplication.translate("Nugget", "Sideload"),
+            16: QCoreApplication.translate("Nugget", "App Data"),
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
