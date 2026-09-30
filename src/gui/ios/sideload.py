@@ -14,6 +14,7 @@ Real implementation, no facade:
 
 Engine: ``src.sideload.ipaside_engine`` (MIT, see src/sideload/ATTRIBUTION.md).
 """
+import base64
 import os
 
 from PySide6.QtCore import Qt, QCoreApplication
@@ -367,8 +368,18 @@ class IOSSideloadPage(QWidget):
             f"v{ver} ({build})  ·  iOS {info.get('minimum_os', '?')}+")
         icon_data = info.get("icon")
         if icon_data:
+            # inspect() returns a "data:image/png;base64,..." URI string;
+            # QPixmap.loadFromData needs raw bytes, not str.
+            raw = icon_data
+            if isinstance(raw, str):
+                if "," in raw:
+                    raw = raw.split(",", 1)[1]
+                try:
+                    raw = base64.b64decode(raw)
+                except Exception:
+                    raw = None
             pm = QPixmap()
-            if pm.loadFromData(icon_data):
+            if raw and pm.loadFromData(raw):
                 self._ipa_icon.setPixmap(pm.scaled(
                     57, 57, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         warns = []

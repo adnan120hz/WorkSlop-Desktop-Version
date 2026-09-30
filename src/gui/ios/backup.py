@@ -160,14 +160,40 @@ class IOSBackupPage(QWidget):
         lay.addWidget(desc_lbl)
         row = QHBoxLayout()
         row.addStretch(1)
-        apply_btn = IOSPrimaryButton(tr("Apply Tweaks"))
-        apply_btn.clicked.connect(self._on_apply_tweaks)
-        row.addWidget(apply_btn)
+        self._apply_btn = IOSPrimaryButton(tr("Apply Tweaks"))
+        self._apply_btn.clicked.connect(self._on_apply_tweaks)
+        row.addWidget(self._apply_btn)
         remove_btn = IOSPrimaryButton(tr("Remove Tweaks"))
         remove_btn.clicked.connect(self._on_remove_tweaks)
         row.addWidget(remove_btn)
         lay.addLayout(row)
+        # Status line: explains why Apply is greyed out when nothing is on.
+        self._apply_status = QLabel("")
+        self._apply_status.setWordWrap(True)
+        self._apply_status.setStyleSheet(
+            t("value_label") + " background-color: transparent; font-size: 12px;")
+        lay.addWidget(self._apply_status)
         return card
+
+    def refresh_apply_state(self):
+        """Enable Apply only when at least one tweak toggle is on anywhere.
+
+        Called whenever the Backup page is shown; otherwise the button
+        would lie about there being something to apply.
+        """
+        try:
+            _lines, total = self.window._build_apply_summary()
+        except Exception:
+            total = 0
+        has = total > 0
+        self._apply_btn.setEnabled(has)
+        if has:
+            self._apply_status.setText(
+                tr("%n tweak(s) enabled — ready to apply.", "", total))
+        else:
+            self._apply_status.setText(
+                tr("Apply is disabled: enable at least one tweak toggle "
+                   "on any menu first."))
 
     # -- actions (same flows as Settings) -------------------------------
     def _on_protective_backup(self):
@@ -280,6 +306,7 @@ class IOSBackupPage(QWidget):
     def refresh(self):
         path = self._backup_dir()
         self._location_lbl.setText(path if path else tr("Default (system drive)"))
+        self.refresh_apply_state()
 
     def _retheme(self):
         c = self._tm.colors

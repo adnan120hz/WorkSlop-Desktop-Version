@@ -152,6 +152,19 @@ def main() -> int:
 
     threading.Thread(target=_preload_device_manager, name="device-manager-preload", daemon=True).start()
 
+    # Fix squished UI on Windows with fractional display scaling (125%/150%).
+    # Qt6 enables high-DPI scaling by default but rounds fractional factors,
+    # which squishes the layout. PassThrough uses the exact scale factor.
+    # Must be set BEFORE the QApplication is constructed. (No-op on
+    # platforms without fractional scaling.)
+    from PySide6.QtWidgets import QApplication as _QApplication
+    from PySide6.QtCore import Qt as _Qt
+    try:
+        _QApplication.setHighDpiScaleFactorRoundingPolicy(
+            _Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    except Exception:
+        pass
+
     app = CrashHandlerApp(sys.argv)
 
     # Fusion style is required for a custom QPalette to take effect on all

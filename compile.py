@@ -58,6 +58,16 @@ args = [
     '--collect-all=pymobiledevice3',
     '--collect-all=pillow_heif',
     '--collect-all=PIL',
+    # unicorn loads its native lib via ctypes at runtime, so PyInstaller
+    # never sees it — without this the frozen app dies at Apple ID login
+    # with "Failed to load the Unicorn dynamic library". anisette needs
+    # its data files (apple-root.pem) or login dies later with Errno 2.
+    '--collect-all=unicorn',
+    '--collect-data=anisette',
+    # tls.py pins Apple's CA via paths.resource_dir()/"certs" — in a frozen
+    # build that is <_MEIPASS>/ipaside_engine, so the pem must be bundled
+    # there or every Apple ID HTTPS request dies with FileNotFoundError.
+    '--add-data=src/sideload/ipaside_engine/certs' + (';ipaside_engine/certs' if os.name == 'nt' else ':ipaside_engine/certs'),
     '--add-data=files/:files',
     '--copy-metadata=pyimg4',
     '--hidden-import=zeroconf',
@@ -133,15 +143,18 @@ elif os.name == 'nt':
     else:
         print("[!] libimobiledevice binaries not bundled: 'idevice' folder not found")
 
-# zsign (built from source via tools/build_zsign.py) — the sideloading
-# engine looks for it next to the frozen executable, in the vendor dir,
-# on PATH, or via WORKSLOP_ZSIGN. Bundling it here covers the common case.
+# zsign (built from source via tools/build_zsign.py). The sideloading
+# engine's resolve_zsign() looks in <resource_dir>/vendor/ first, where
+# resource_dir() is <_MEIPASS>/ipaside_engine when frozen — so the binary
+# must be bundled at ipaside_engine/vendor/, NOT the bundle root (the old
+# "--add-binary ... :." destination never matched any lookup candidate,
+# which is why frozen builds always fell through to "zsign not found").
 _zsign = os.path.join("vendor", "zsign.exe" if os.name == "nt" else "zsign")
 if os.path.isfile(_zsign):
     _sep = ";" if os.name == "nt" else ":"
     args.append('--add-binary')
-    args.append(f"{_zsign}{_sep}.")
-    print(f"[+] Bundling zsign: {_zsign}")
+    args.append(f"{_zsign}{_sep}ipaside_engine/vendor")
+    print(f"[+] Bundling zsign: {_zsign} -> ipaside_engine/vendor")
 else:
     print("[!] zsign not bundled: run tools/build_zsign.py first "
           "(sideload signing will need zsign on PATH or WORKSLOP_ZSIGN)")

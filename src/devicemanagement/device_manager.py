@@ -430,6 +430,37 @@ class DeviceManager:
     def apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
         asyncio.run(self._apply_gestalt_tweaks(update_label, show_alert))
 
+    def _load_gestalt_plist(self, update_label=lambda x: None):
+        """Load + validate the device's MobileGestalt base plist.
+
+        Shared by the MobileGestalt page flow and the main Apply pass (K3):
+        gestalt tweaks patch CacheExtra/CacheData inside the *device's own*
+        plist, so there must be a user-provided (or saved) base file.
+        Raises NuggetException with a clear message instead of silently
+        skipping the tweaks.
+        """
+        udid = self.get_current_device_udid()
+        update_label(QCoreApplication.tr("Loading MobileGestalt file..."))
+        gestalt_plist = None
+        if self.data_singleton.gestalt_path is not None:
+            if self.data_singleton.gestalt_path == self.data_singleton.SAVED_GESTALT_STRING:
+                gestalt_plist = self.pref_manager.get_mga_data(udid)
+            else:
+                with open(self.data_singleton.gestalt_path, 'rb') as in_fp:
+                    gestalt_plist = plistlib.load(in_fp)
+        if gestalt_plist is None:
+            raise NuggetException(QCoreApplication.tr(
+                "No mobilegestalt file provided! Please select your device's "
+                "com.apple.MobileGestalt.plist file first (MobileGestalt menu)."))
+        if not self.pref_manager.is_valid_mga_plist(
+                gestalt_plist, self.get_current_device_build(),
+                self.get_current_device_model()):
+            raise NuggetException(QCoreApplication.tr(
+                "The MobileGestalt file does not match this device "
+                "(build/model mismatch). Please provide the file from "
+                "this exact device."))
+        return gestalt_plist
+
     async def _apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
         """Apply only the MobileGestalt tweaks (Nugget's gestalt flow).
 
@@ -450,25 +481,7 @@ class DeviceManager:
         if not udid:
             raise NuggetException(QCoreApplication.tr("No device selected."))
 
-        update_label(QCoreApplication.tr("Loading MobileGestalt file..."))
-        gestalt_plist = None
-        if self.data_singleton.gestalt_path != None:
-            if self.data_singleton.gestalt_path == self.data_singleton.SAVED_GESTALT_STRING:
-                gestalt_plist = self.pref_manager.get_mga_data(udid)
-            else:
-                with open(self.data_singleton.gestalt_path, 'rb') as in_fp:
-                    gestalt_plist = plistlib.load(in_fp)
-        if gestalt_plist is None:
-            raise NuggetException(QCoreApplication.tr(
-                "No mobilegestalt file provided! Please select your device's "
-                "com.apple.MobileGestalt.plist file first."))
-        if not self.pref_manager.is_valid_mga_plist(
-                gestalt_plist, self.get_current_device_build(),
-                self.get_current_device_model()):
-            raise NuggetException(QCoreApplication.tr(
-                "The MobileGestalt file does not match this device "
-                "(build/model mismatch). Please provide the file from "
-                "this exact device."))
+        gestalt_plist = self._load_gestalt_plist(update_label)
 
         update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
         gestalt_tweak_types = (
@@ -1057,6 +1070,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         basic_plists_ownership: dict = {}
         files_data: dict = {}
         uses_domains: bool = False
+        # K3: enabled MobileGestalt tweaks found on the Tweaks / Eligibility
+        # pages (SpoofModel, AIGestalt, DynamicIsland, ...). They cannot be
+        # written as plain plists — they patch the device's MobileGestalt
+        # plist, which is loaded and validated after the loop.
+        gestalt_tweaks: list = []
         # create the restore file list
         files_to_restore: list[FileToRestore] = [
         ]
@@ -1150,6 +1168,16 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         tweak.apply_classic_tweak(files_to_restore)
                         if tweak.enabled:
                             uses_domains = True
+                elif isinstance(tweak, (MobileGestaltTweak, MobileGestaltPickerTweak,
+                                        MobileGestaltMultiTweak, MobileGestaltCacheDataTweak)):
+                    # K3: these were silently skipped by the old chain, so
+                    # switches like SpoofModel / AIGestalt on the Tweaks and
+                    # Eligibility pages did nothing on Apply. Collect the
+                    # enabled ones; they are merged into the device's
+                    # MobileGestalt plist after the loop (needs the user's
+                    # base plist file, like the MobileGestalt page flow).
+                    if tweak.enabled:
+                        gestalt_tweaks.append(tweak)
 
             if hotload_skipped:
                 names = sorted(t.name if hasattr(t, "name") else str(t) for t in hotload_skipped)
@@ -1182,6 +1210,29 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_restore=files_to_restore,
                 )
 
+            # K3: MobileGestalt tweaks enabled on the Tweaks / Eligibility /
+            # MobileGestalt pages (SpoofModel, AIGestalt, DynamicIsland, ...).
+            # They patch the device's own MobileGestalt plist (CacheExtra /
+            # CacheData), so the user's base plist file is required — the
+            # same file the MobileGestalt page uses. Without it this raises
+            # a clear error instead of silently applying nothing.
+            if gestalt_tweaks or len(CustomGestaltTweaks.custom_tweaks) > 0:
+                if not is_gestalt_supported(self.get_current_device_build(),
+                                            self.get_current_device_version()):
+                    raise NuggetException(QCoreApplication.tr(
+                        "MobileGestalt tweaks are not supported on this iOS version.\n\n"
+                        "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
+                gestalt_plist = self._load_gestalt_plist(update_label)
+                for gtweak in gestalt_tweaks:
+                    gestalt_plist = gtweak.apply_tweak(gestalt_plist)
+                gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
+                self.concat_file(
+                    contents=plistlib.dumps(gestalt_plist),
+                    path=FileLocation.mga.value,
+                    files_to_restore=files_to_restore,
+                    owner=501, group=501,
+                )
+
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
             if len(flag_plist) > 0:
@@ -1203,18 +1254,28 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_restore=files_to_restore,
                     owner=ownership, group=ownership
                 )
-            # iOS 27+: Also write .GlobalPreferences.plist to HomeDomain so
-            # tweaks that depend on it survive the Phase 3 protective backup restore.
-            # ManagedPreferencesDomain is the primary location; HomeDomain is a
-            # secondary copy for iOS 27 compatibility. (Phase 3 skips this file
-            # to avoid overwriting the tweak copy.)
-            home_plist = basic_plists.get(FileLocation.globalPreferences, {})
-            self.concat_file(
-                contents=plistlib.dumps(home_plist),
-                path=FileLocation.globalPreferencesHomeDomain.value,
-                files_to_restore=files_to_restore,
-                owner=501, group=501
-            )
+            # iOS 27+: also write .GlobalPreferences.plist to HomeDomain so
+            # tweaks that depend on it survive the Phase 3 protective backup
+            # restore. ManagedPreferencesDomain is the primary location;
+            # HomeDomain is a secondary copy for iOS 27 compatibility.
+            # (Phase 0 skips this file in the protective backup so Phase 3
+            # cannot overwrite the tweak copy with a stale original.)
+            #
+            # SAFETY (K2): this write REPLACES the live file on the device.
+            # It must only happen when (a) the user actually enabled a GP
+            # tweak and (b) iOS 27+ needs the HomeDomain copy. Writing an
+            # empty or tweak-only dict on every Apply would wipe the user's
+            # keyboard/locale/region settings. iOS 26 keeps the upstream
+            # Nugget behavior: Managed Preferences overlay only.
+            gp_tweaks = basic_plists.get(FileLocation.globalPreferences)
+            if (gp_tweaks
+                    and Version(self.get_current_device_version()) >= Version("27.0")):
+                self.concat_file(
+                    contents=plistlib.dumps(gp_tweaks),
+                    path=FileLocation.globalPreferencesHomeDomain.value,
+                    files_to_restore=files_to_restore,
+                    owner=501, group=501
+                )
 
             for location, data in files_data.items():
                 self.concat_file(

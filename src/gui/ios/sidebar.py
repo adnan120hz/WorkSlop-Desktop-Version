@@ -112,9 +112,11 @@ class WorkSlopSidebar(QWidget):
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         mono = "'%s'" % c.__dict__.get("font_family", "monospace")
-        # Solid dark rail: keeps menu readable over the animated terminal bg.
-        # (menu_bg white is for light themes; terminal theme stays dark.)
-        rail_bg = c.bg_primary if c.bg_primary.lower() != "#ffffff" else c.menu_bg
+        # White terminal rail on the dark body: the menu_* palette entries
+        # are dark-on-white, so the rail must be menu_bg (white) — using
+        # bg_primary here would render near-black text on a near-black
+        # rail and make every menu label unreadable.
+        rail_bg = c.menu_bg
         self.setStyleSheet(
             f"WorkSlopSidebar {{ background-color: {rail_bg}; }}")
         # Ensure the stylesheet background actually paints on this custom QWidget.

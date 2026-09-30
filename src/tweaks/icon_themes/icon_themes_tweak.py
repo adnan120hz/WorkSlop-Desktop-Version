@@ -167,13 +167,31 @@ class IconThemesTweak(Tweak):
         tmp = tempfile.mkdtemp(prefix="icontheme_pack_")
         try:
             with zipfile.ZipFile(archive_path) as zf:
-                zf.extractall(tmp)
+                self._safe_extractall(zf, tmp)
             folder = self.resolve_icon_folder(tmp, theme_name)
             return self.import_pack(folder)
         except (zipfile.BadZipFile, OSError):
             return 0, []
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    @staticmethod
+    def _safe_extractall(zf: zipfile.ZipFile, dest: str) -> None:
+        """extractall() with a zip-slip guard (CWE-22).
+
+        A crafted archive can carry entries like ``../../evil.sh`` that a
+        plain extractall() would write outside *dest*. Every member is
+        validated first; anything absolute or escaping *dest* is skipped.
+        """
+        dest_real = os.path.realpath(dest)
+        for member in zf.infolist():
+            name = member.filename
+            if os.path.isabs(name):
+                continue
+            target = os.path.realpath(os.path.join(dest, name))
+            if target != dest_real and not target.startswith(dest_real + os.sep):
+                continue
+            zf.extract(member, dest)
 
     @staticmethod
     def resolve_icon_folder(extract_root: str, theme_name: str = None) -> str:

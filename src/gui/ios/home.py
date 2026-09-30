@@ -236,15 +236,10 @@ class IOSHomePage(QWidget):
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
-        # Apply / Reset share one row instead of stacking, which also keeps the
-        # preset widget closer to the top on short windows.
+        # Apply lives only in the Backup menu now — home keeps Reset only.
         actions = QHBoxLayout()
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(12)
-
-        apply_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "Apply Tweaks"))
-        apply_btn.clicked.connect(self.open_apply_classic)
-        actions.addWidget(apply_btn, 1)
 
         reset_btn = IOSDangerButton(QCoreApplication.translate("Nugget", "Reset Tweaks"))
         reset_btn.clicked.connect(self.reset_tweaks)
@@ -352,9 +347,6 @@ class IOSHomePage(QWidget):
 
     def switch_to_ios_page(self, index: int):
         self.window.ios_pages.setCurrentIndex(index)
-
-    def open_apply_classic(self):
-        self.window.apply_changes()
 
     def reset_tweaks(self):
         from src.gui.dialogs.reset_dialog import ResetDialog

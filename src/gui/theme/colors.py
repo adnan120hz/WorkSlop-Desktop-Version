@@ -68,56 +68,58 @@ class ThemeColors:
 
 
 # ---------------------------------------------------------------------------
-# Terminal palette (WorkSlop Desktop): pure black body, white navigation
+# Terminal palette (WorkSlop Desktop): soft-black body (pure black + pure
+# white at full brightness strains the eyes, so the background is lifted
+# to a very dark blue-gray and text to an off-white), white navigation
 # menu, terminal-green accents, monospace type. Flat and solid — no
 # gradients, no blur, no translucency on text surfaces.
 # ---------------------------------------------------------------------------
 DARK = ThemeColors(
-    bg_primary="#000000",
-    bg_secondary="#0E0E0E",
-    bg_tertiary="#161616",
-    bg_input="#0E0E0E",
-    bg_elevated="#141414",
+    bg_primary="#0B0E12",
+    bg_secondary="#10141A",
+    bg_tertiary="#171C23",
+    bg_input="#10141A",
+    bg_elevated="#151A21",
 
-    text_primary="#FFFFFF",
-    text_secondary="#A6A6A6",
-    text_disabled="#5C5C5C",
-    text_inverse="#000000",
+    text_primary="#E8EAED",
+    text_secondary="#9BA3AB",
+    text_disabled="#646A72",
+    text_inverse="#0B0E12",
 
-    accent="#00E676",
-    accent_hover="#2BFF8F",
-    accent_pressed="#00B35C",
+    accent="#00C853",
+    accent_hover="#3BE08A",
+    accent_pressed="#00963F",
 
-    success="#00E676",
-    error="#FF5252",
-    error_hover="#FF7373",
+    success="#00C853",
+    error="#FF6B6B",
+    error_hover="#FF8585",
     error_pressed="#D33A3A",
     warning="#FFD740",
 
-    border="#262626",
-    divider="#262626",
+    border="#2B3138",
+    divider="#2B3138",
 
-    scrollbar="#2E2E2E",
-    scrollbar_pressed="#3D3D3D",
-    selection="#00E676",
+    scrollbar="#343B43",
+    scrollbar_pressed="#41484F",
+    selection="#00C853",
 
-    card_border="#262626",
-    surface_hover="#1C1C1C",
-    danger_text="#FF5252",
+    card_border="#2B3138",
+    surface_hover="#1D232B",
+    danger_text="#FF6B6B",
 
-    bg_gradient_start="#000000",
-    bg_gradient_end="#000000",
-    glass_bg="#101010",
-    glass_border="#262626",
+    bg_gradient_start="#0B0E12",
+    bg_gradient_end="#0B0E12",
+    glass_bg="#11161C",
+    glass_border="#2B3138",
     bubble="rgba(0, 0, 0, 0)",
 
     menu_bg="#FFFFFF",
     menu_text="#0A0A0A",
     menu_dim="#6B6B6B",
-    menu_active_bg="#0A0A0A",
+    menu_active_bg="#10141A",
     menu_active_text="#FFFFFF",
-    term_green="#00E676",
-    term_green_dim="#00884A",
+    term_green="#00C853",
+    term_green_dim="#007A43",
 )
 
 
