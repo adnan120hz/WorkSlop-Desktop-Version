@@ -378,11 +378,10 @@ class IOSSettingsPage(QWidget):
         mbox.setWindowTitle("Restore Backup")
         mbox.setText("Choose the backup format to restore:")
         mbox.setInformativeText(
-            "Full Backup: a standard iPhone backup folder "
-            "(Manifest.db/Manifest.plist + Info.plist), e.g. one saved via "
-            "the backup-reveal feature.\n\n"
-            "GoldenNugget Backup: the protective backup this app keeps "
-            "on this computer.")
+            "Full Backup: a standard iPhone backup folder in iTunes/Finder "
+            "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
+            "GoldenNugget Backup: the selective protective backup this app "
+            "keeps on this computer (only restorable from this app).")
         full_btn = mbox.addButton(
             QCoreApplication.translate("Nugget", "Full Backup..."),
             QMessageBox.ButtonRole.ActionRole)
