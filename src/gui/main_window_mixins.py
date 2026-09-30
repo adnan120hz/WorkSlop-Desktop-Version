@@ -13,7 +13,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
-from src.devicemanagement.constants import Version
+from src.devicemanagement.constants import Version, is_gestalt_supported
 from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
@@ -150,6 +150,7 @@ class DeviceBarMixin:
             # mirror in the iOS UI: no device → no status bar card
             if hasattr(self, "ios_home"):
                 self.ios_home.set_statusbar_visible(False)
+                self.ios_home.set_mobilegestalt_visible(False)
         else:
             self.ui.devicePicker.setEnabled(True)
             # populate the ComboBox with device names
@@ -165,6 +166,7 @@ class DeviceBarMixin:
             self.ui.liquidGlassPageBtn.show()
             self.ui.daemonsPageBtn.show()
             self.ui.iconThemesPageBtn.show()
+            self.ui.gestaltPageBtn.show()
             self.ui.passcodePageBtn.hide()
             self.ui.posterboardPageBtn.show()
 
@@ -189,22 +191,23 @@ class DeviceBarMixin:
             self.device_manager.set_current_device(index=index)
             # hide sidebar buttons that are for newer versions
             MinTweakVersions = {
-                "no_patch": [self.ui.gestaltPageBtn],
                 "26.0": [self.ui.liquidGlassPageBtn],
             }
 
             device_ver = Version(self.device_manager.data_singleton.current_device.version)
+            # MobileGestalt follows Nugget upstream: visible only on iOS 26.1
+            # and below, never on 26.2+.
+            self.ui.gestaltPageBtn.setVisible(is_gestalt_supported(
+                self.device_manager.data_singleton.current_device.version))
+            if hasattr(self, "ios_home"):
+                self.ios_home.set_mobilegestalt_visible(is_gestalt_supported(
+                    self.device_manager.data_singleton.current_device.version))
             # toggle option visibility for the minimum versions
             for version, views in MinTweakVersions.items():
-                if version == "no_patch":
-                    # these items only apply to unpatched devices, which do not exist on this fork
-                    for view in views:
-                        view.hide()
-                else:
-                    # show views if the version is higher
-                    parsed_ver = Version(version)
-                    for view in views:
-                        view.setVisible(device_ver >= parsed_ver)
+                # show views if the version is higher
+                parsed_ver = Version(version)
+                for view in views:
+                    view.setVisible(device_ver >= parsed_ver)
             # The Status Bar page is no longer force-hidden on iOS 27 -- the
             # carrier name is delivered through StatusBarOverrides.archive.
             # Visibility is owned by _apply_hidden_feature_gating() (HotLoad
@@ -450,7 +453,8 @@ class NavigationMixin:
             self.ui.springboardOptionsPageBtn, self.ui.internalOptionsPageBtn,
             self.ui.liquidGlassPageBtn, self.ui.daemonsPageBtn,
             self.ui.applyPageBtn, self.ui.settingsPageBtn,
-            self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn)
+            self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn,
+            self.ui.gestaltPageBtn)
         page_to_btn = {
             0: 0,   # home
             2: 1,   # posterboard
@@ -462,6 +466,7 @@ class NavigationMixin:
             4: 7,   # settings
             5: 8,   # status bar
             10: 9,  # icon themes
+            12: 10, # mobilegestalt
         }
         idx = None
         if self.theme_manager.current_theme == ThemeManager.CLASSIC:
@@ -577,6 +582,12 @@ class NavigationMixin:
 
     def on_liquidGlassPageBtn_clicked(self):
         self.show_ios_page(9)
+        self._sync_sidebar_selection()
+
+
+    def on_mobileGestaltPageBtn_clicked(self):
+        self.ios_gestalt.refresh()
+        self.show_ios_page(12)
         self._sync_sidebar_selection()
 
 
@@ -1046,6 +1057,57 @@ class ApplyMixin:
     def _full_backup_thread_finished(self):
         try:
             self._full_backup_thread = None
+        except Exception:
+            pass
+
+
+    def _start_gestalt_apply(self):
+        """WorkSlop: apply only the MobileGestalt tweaks (Nugget's gestalt flow)."""
+        from src.gui.thread_workers.apply_worker import GestaltApplyThread
+        if getattr(self, '_gestalt_apply_in_progress', False):
+            return
+        if (self.apply_in_progress
+                or getattr(self, '_cache_restore_in_progress', False)
+                or getattr(self, '_full_restore_in_progress', False)
+                or getattr(self, '_full_backup_in_progress', False)):
+            self.alert_message(ApplyAlertMessage(
+                txt="Cannot apply MobileGestalt tweaks while another operation is in progress.",
+                title="MobileGestalt",
+                icon=QtWidgets.QMessageBox.Warning,
+            ), log_to_console=False)
+            return
+        if not self.device_manager.get_current_device_is_gestalt_supported():
+            self.alert_message(ApplyAlertMessage(
+                txt="MobileGestalt tweaks are not supported on iOS 26.2 and newer.\n\n"
+                    "This follows the original Nugget: it will never be supported "
+                    "there. MobileGestalt stays available on iOS 26.1 and below.",
+                title="MobileGestalt",
+                icon=QtWidgets.QMessageBox.Warning,
+            ), log_to_console=False)
+            return
+        self._gestalt_apply_in_progress = True
+        worker = GestaltApplyThread(manager=self.device_manager)
+        self._gestalt_apply_thread = worker
+        worker.progress.connect(self._update_restore_label)
+        worker.alert.connect(self.alert_message)
+        worker.finished_with_result.connect(self._finish_gestalt_apply)
+        worker.finished.connect(self._gestalt_apply_thread_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _finish_gestalt_apply(self, success: bool, error_msg: str = ""):
+        self._gestalt_apply_in_progress = False
+        try:
+            self._update_restore_label(
+                QCoreApplication.translate("Nugget", "MobileGestalt applied.")
+                if success else
+                QCoreApplication.translate("Nugget", "MobileGestalt failed."))
+        except Exception:
+            pass
+
+    def _gestalt_apply_thread_finished(self):
+        try:
+            self._gestalt_apply_thread = None
         except Exception:
             pass
 

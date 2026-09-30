@@ -17,6 +17,7 @@ _FEATURE_ICONS = {
     "Status Bar": ":/icon/app-indicator.svg",
     "Icon Themes": ":/icon/brush.svg",
     "Passcode Theme": ":/icon/lock.svg",
+    "MobileGestalt": ":/icon/iphone-island.svg",
 }
 
 
@@ -203,10 +204,13 @@ class IOSHomePage(QWidget):
             self._make_card(
             "Icon Themes", "Themed app icons & labels", 10),
             self._make_card(
-            "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
+            "Passcode Theme", "Custom keypad theme (.passthm)", 11),
+            self._make_card(
+            "MobileGestalt", "Device feature flags (iOS 26.1-)", 12)]
         (self.posterboard_card, self.tweaks_card,
          self.daemons_card, self.statusbar_card,
-         self.icon_themes_card, self.passcode_theme_card) = cards_row
+         self.icon_themes_card, self.passcode_theme_card,
+         self.mobilegestalt_card) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
@@ -392,6 +396,10 @@ class IOSHomePage(QWidget):
 
     def set_statusbar_visible(self, visible: bool):
         self.statusbar_card.setVisible(visible)
+        self.cards_grid.reflow()
+
+    def set_mobilegestalt_visible(self, visible: bool):
+        self.mobilegestalt_card.setVisible(visible)
         self.cards_grid.reflow()
 
     def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:

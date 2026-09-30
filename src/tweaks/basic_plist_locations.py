@@ -29,3 +29,6 @@ class FileLocation(Enum):
     # Daemons
     disabledDaemons = "/var/db/com.apple.xpc.launchd/disabled.plist"
     screentime = "/var/mobile/Library/Preferences/com.apple.ScreenTimeAgent.plist"
+
+    # MobileGestalt cache (ported from leminlimez/Nugget)
+    mga = "/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist"

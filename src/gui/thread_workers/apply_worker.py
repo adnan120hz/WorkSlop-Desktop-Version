@@ -510,6 +510,50 @@ class RestoreFullBackupThread(QThread):
             await reboot_device(True, lc)
 
 
+class GestaltApplyThread(QThread):
+    """Apply only the MobileGestalt tweaks (Nugget's gestalt flow).
+
+    Runs ``device_manager.apply_gestalt_tweaks`` off the UI thread. Version
+    rule follows leminlimez/Nugget 100%: never on iOS 26.2+.
+    """
+    progress = Signal(str)
+    alert = Signal(object)
+    finished_with_result = Signal(bool, str)
+
+    def __init__(self, manager):
+        super().__init__()
+        self.manager = manager
+
+    def update_label(self, txt: str):
+        self.progress.emit(txt)
+
+    def run(self):
+        import logging
+        from src.controllers.nugget_logger import log_context
+        log = logging.getLogger("GoldenNugget.gestalt")
+        try:
+            log_context("START gestalt-apply",
+                        udid=self.manager.get_current_device_udid() or "unknown")
+            alert = asyncio.run(self.manager._apply_gestalt_tweaks(
+                update_label=self.update_label))
+            log_context("FINISH gestalt-apply OK")
+            if alert is not None:
+                self.alert.emit(alert)
+            self.finished_with_result.emit(True, "")
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            log.error("gestalt-apply failed: %s\n%s", e, traceback_str)
+            self.alert.emit(ApplyAlertMessage(
+                f"Failed to apply MobileGestalt tweaks: {e}",
+                title="MobileGestalt",
+                icon=QMessageBox.Critical,
+                detailed_txt=traceback_str,
+                exc_type=type(e),
+                exc_value=e,
+            ))
+            self.finished_with_result.emit(False, f"{type(e).__name__}: {e}")
+
+
 class FullBackupThread(QThread):
     """Create a real FULL iPhone backup — the iTunes way.
 

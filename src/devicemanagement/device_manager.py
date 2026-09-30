@@ -33,7 +33,7 @@ _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 # regeneration, so the count is capped.
 MAX_TENDIES_PER_RESTORE = 5
 
-from src.devicemanagement.constants import Device, Version, is_supported_by_fork
+from src.devicemanagement.constants import Device, Version, is_supported_by_fork, is_gestalt_supported
 from src.devicemanagement.data_singleton import DataSingleton
 from .preference_manager import PreferenceManager
 
@@ -43,7 +43,12 @@ from src.controllers.path_handler import fix_windows_path
 
 from src.exceptions.nugget_exception import NuggetException
 
-from src.tweaks.tweaks import tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak, StatusBarTweak
+from src.tweaks.tweaks import (
+    tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
+    StatusBarTweak, MobileGestaltTweak, MobileGestaltPickerTweak,
+    MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+)
+from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks
 from src.tweaks.status_bar.statusbar_archive import build_reset_archive
 from src.tweaks.posterboard.posterboard_tweak import PosterboardTweak
 from src.tweaks.posterboard.template_options.templates_tweak import TemplatesTweak
@@ -274,11 +279,24 @@ class DeviceManager:
         else:
             self.data_singleton.current_device = self.devices[index]
             if not is_supported_by_fork(self.devices[index].version):
-                # hard-block old versions (< 26.2): the device is listed so the
-                # user sees it, but every action is refused.
-                self.data_singleton.device_available = False
+                # Version rules follow the original repos 100%:
+                # - GoldenNugget flow: iOS 26.2+ only (main tweaks blocked below).
+                # - Nugget MobileGestalt: iOS 26.1 and below (never 26.2+).
+                # So a 26.1-and-below device stays usable for MobileGestalt.
+                self.data_singleton.device_available = is_gestalt_supported(
+                    self.devices[index].version)
             else:
                 self.data_singleton.device_available = True
+            if is_gestalt_supported(self.devices[index].version):
+                # Nugget's gestalt flow: reuse the saved per-UDID MobileGestalt
+                # copy when it still matches this device's build/model.
+                if self.pref_manager.has_valid_mga_data(
+                        self.get_current_device_udid(),
+                        self.get_current_device_build(),
+                        self.get_current_device_model()):
+                    self.data_singleton.gestalt_path = self.data_singleton.SAVED_GESTALT_STRING
+                else:
+                    self.data_singleton.gestalt_path = None
             self.current_device_index = index
         
     def get_current_device_name(self) -> str:
@@ -394,6 +412,100 @@ class DeviceManager:
                 "This version of iOS is not supported by this fork.\n\n"
                 "GoldenNugget only supports iOS 26.2 and newer. "
                 "Please use the original Nugget for iOS 26.1 and earlier."))
+
+    def get_current_device_is_gestalt_supported(self) -> bool:
+        """Nugget's MobileGestalt rule: available on iOS 26.1 and below,
+        never on 26.2+."""
+        device = self.data_singleton.current_device
+        return is_gestalt_supported(device.version) if device != None else False
+
+    def apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
+        asyncio.run(self._apply_gestalt_tweaks(update_label, show_alert))
+
+    async def _apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
+        """Apply only the MobileGestalt tweaks (Nugget's gestalt flow).
+
+        Version rule follows leminlimez/Nugget 100%: gestalt tweaks are never
+        applied on iOS 26.2+. The device's own com.apple.MobileGestalt.plist
+        (provided by the user, Nugget's "Getting the File" flow) is modified
+        in CacheExtra/CacheData and restored to the mga location.
+        """
+        version = self.get_current_device_version()
+        if not is_gestalt_supported(version):
+            raise NuggetException(QCoreApplication.tr(
+                "MobileGestalt tweaks are not supported on iOS 26.2 and newer.\n\n"
+                "This follows the original Nugget: it will never be supported "
+                "there. MobileGestalt stays available on iOS 26.1 and below."))
+        udid = self.get_current_device_udid()
+        if not udid:
+            raise NuggetException(QCoreApplication.tr("No device selected."))
+
+        update_label(QCoreApplication.tr("Loading MobileGestalt file..."))
+        gestalt_plist = None
+        if self.data_singleton.gestalt_path != None:
+            if self.data_singleton.gestalt_path == self.data_singleton.SAVED_GESTALT_STRING:
+                gestalt_plist = self.pref_manager.get_mga_data(udid)
+            else:
+                with open(self.data_singleton.gestalt_path, 'rb') as in_fp:
+                    gestalt_plist = plistlib.load(in_fp)
+        if gestalt_plist is None:
+            raise NuggetException(QCoreApplication.tr(
+                "No mobilegestalt file provided! Please select your device's "
+                "com.apple.MobileGestalt.plist file first."))
+        if not self.pref_manager.is_valid_mga_plist(
+                gestalt_plist, self.get_current_device_build(),
+                self.get_current_device_model()):
+            raise NuggetException(QCoreApplication.tr(
+                "The MobileGestalt file does not match this device "
+                "(build/model mismatch). Please provide the file from "
+                "this exact device."))
+
+        update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
+        gestalt_tweak_types = (
+            MobileGestaltTweak, MobileGestaltPickerTweak,
+            MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
+        )
+        applied_any = False
+        for tweak_name in tweaks:
+            tweak = tweaks[tweak_name]
+            if isinstance(tweak, gestalt_tweak_types):
+                gestalt_plist = tweak.apply_tweak(gestalt_plist)
+                if tweak.enabled:
+                    applied_any = True
+        gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
+        if len(CustomGestaltTweaks.custom_tweaks) > 0:
+            applied_any = True
+        if not applied_any:
+            raise NuggetException(QCoreApplication.tr(
+                "No MobileGestalt tweaks are enabled."))
+
+        files_to_restore: list[FileToRestore] = []
+        self.concat_file(
+            contents=plistlib.dumps(gestalt_plist),
+            path=FileLocation.mga.value,
+            files_to_restore=files_to_restore,
+            owner=501, group=501,
+        )
+
+        self.update_label = update_label
+        self.do_not_unplug = ""
+        if self.data_singleton.current_device.connected_via_usb:
+            self.do_not_unplug = "\n" + QCoreApplication.tr("DO NOT UNPLUG")
+        async with lockdown_session(udid) as ld:
+            update_label(QCoreApplication.tr("Preparing to restore...") + self.do_not_unplug)
+            await restore_files(
+                files=files_to_restore, reboot=self.pref_manager.auto_reboot,
+                lockdown_client=ld,
+                progress_callback=self.progress_callback,
+                backup_password="",
+                # Nugget's gestalt flow restores the file directly: no
+                # GoldenNugget protective backup here.
+                skip_protective_backup=True,
+            )
+        msg = QCoreApplication.tr("Your device will now restart.\n\nRemember to turn Find My back on!")
+        if not self.pref_manager.auto_reboot:
+            msg = QCoreApplication.tr("Please restart your device to see changes.")
+        return ApplyAlertMessage(txt=QCoreApplication.tr("All done! ") + msg, title=QCoreApplication.tr("Success!"), icon=QMessageBox.Information)
 
     async def start_restore(self, files_to_restore: list[FileToRestore], update_label=lambda x: None, backup_password: str = "", prepared_backup_root: str = None, skip_protective_backup: bool = False, include_keychain: bool = False, prompt_choice=None, supervised: bool = False, organization_name: str = ""):
         # hard-block any restore on an unsupported (old) iOS version

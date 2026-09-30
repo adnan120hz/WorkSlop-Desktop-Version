@@ -44,6 +44,7 @@ from src.gui.ios.home import IOSHomePage
 from src.gui.ios.tweaks import IOSTweaksPage, IOSSectionPage
 from src.gui.ios.posterboard import IOSPosterboardPage
 from src.gui.ios.daemons import IOSDaemonsPage
+from src.gui.ios.mobilegestalt import IOSMobileGestaltPage
 from src.gui.ios.apply import IOSApplyPage
 from src.gui.ios.settings import IOSSettingsPage
 from src.gui.ios.statusbar import IOSStatusBarPage
@@ -164,6 +165,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_liquidglass = IOSSectionPage(self, Section.LIQUID_GLASS)
         self.ios_iconthemes = IOSIconThemesPage(self)
         self.ios_passthemes = IOSPasscodeThemePage(self)
+        self.ios_gestalt = IOSMobileGestaltPage(self)
         self.ios_pages.addWidget(self.ios_home)
         self.ios_pages.addWidget(self.ios_tweaks)
         self.ios_pages.addWidget(self.ios_posterboard)
@@ -176,6 +178,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.addWidget(self.ios_liquidglass)
         self.ios_pages.addWidget(self.ios_iconthemes)
         self.ios_pages.addWidget(self.ios_passthemes)
+        self.ios_pages.addWidget(self.ios_gestalt)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -194,6 +197,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             9: QtCore.QCoreApplication.translate("Nugget", "Liquid Glass"),
             10: QtCore.QCoreApplication.translate("Nugget", "Icon Themes"),
             11: QCoreApplication.translate("Nugget", "Passcode Themes"),
+            12: QCoreApplication.translate("Nugget", "MobileGestalt"),
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
@@ -276,6 +280,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.internalOptionsPageBtn.clicked.connect(self.on_internalOptionsPageBtn_clicked)
         self.ui.liquidGlassPageBtn.clicked.connect(self.on_liquidGlassPageBtn_clicked)
         self.ui.daemonsPageBtn.clicked.connect(self.on_daemonsPageBtn_clicked)
+        self.ui.gestaltPageBtn.clicked.connect(self.on_mobileGestaltPageBtn_clicked)
         self.ui.iconThemesPageBtn.clicked.connect(self.on_iconThemesPageBtn_clicked)
         self.ui.posterboardPageBtn.clicked.connect(self.on_posterboardPageBtn_clicked)
         self.ui.applyPageBtn.clicked.connect(self.on_applyPageBtn_clicked)
