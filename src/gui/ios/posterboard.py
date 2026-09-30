@@ -64,6 +64,32 @@ class IOSPosterboardPage(QWidget):
 
         layout.addWidget(reset_card)
 
+        # Disable PosterBoard card (iOS 26.2+ safety)
+        disable_card = IOSCard()
+        disable_layout = QVBoxLayout(disable_card)
+        disable_layout.setContentsMargins(16, 12, 16, 12)
+        disable_layout.setSpacing(8)
+
+        self._disable_check = QCheckBox(QCoreApplication.translate(
+            "Nugget", "Disable PosterBoard (skip on apply)"))
+        self._disable_check.setChecked(False)
+        self._disable_check.stateChanged.connect(self._on_disable_toggled)
+        disable_layout.addWidget(self._disable_check)
+
+        self._disable_caption = QLabel(QCoreApplication.translate(
+            "Nugget",
+            "iOS 26.2 and newer: PosterBoard restores work but are still "
+            "buggy (wallpapers may not appear, database can corrupt). "
+            "Enable this to completely skip PosterBoard on the next apply — "
+            "your current wallpapers stay untouched. If a PosterBoard apply "
+            "already failed, use Reset above first; if reset doesn't fix it, "
+            "use Full Reset (wipes all wallpapers and starts clean)."
+        ))
+        self._disable_caption.setWordWrap(True)
+        disable_layout.addWidget(self._disable_caption)
+
+        layout.addWidget(disable_card)
+
         # Tab bar
         self.tab_stack = QStackedWidget()
         layout.addWidget(self.tab_stack)
@@ -121,6 +147,8 @@ class IOSPosterboardPage(QWidget):
             QPushButton:hover {{ background-color: {c.surface_hover}; }}
         """)
         self._reset_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        self._disable_check.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
+        self._disable_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
         self._tab_bar.setStyleSheet(
             f"background-color: {c.bg_primary}; border-top: 1px solid {c.bg_secondary};"
         )
@@ -560,6 +588,19 @@ class IOSPosterboardPage(QWidget):
                     break
             self.refresh_tendies()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Sync the disable checkbox with the tweak state.
+        try:
+            from src.tweaks.tweak_loader import tweaks, TweakID
+            pb = tweaks.get(TweakID.PosterBoard)
+            if pb is not None:
+                self._disable_check.blockSignals(True)
+                self._disable_check.setChecked(bool(pb.disabled))
+                self._disable_check.blockSignals(False)
+        except Exception:
+            pass
+
     def refresh_tendies(self):
         for reply, *_ in self._tendie_preview_replies:
             reply.abort()
@@ -727,6 +768,17 @@ class IOSPosterboardPage(QWidget):
             tweaks[TweakID.PosterBoard].tendies.remove(tendie)
         self.refresh_tendies()
 
+    def _on_disable_toggled(self, state):
+        from src.tweaks.tweak_loader import tweaks, TweakID
+        pb = tweaks.get(TweakID.PosterBoard)
+        if pb is not None:
+            pb.disabled = (state == Qt.Checked)
+            if pb.disabled:
+                # Disabling cancels any pending reset too — a disabled
+                # PosterBoard means "don't touch it at all".
+                pb.full_reset = False
+                pb.resetModes = []
+
     def _reset_posterboard(self):
         c = ColorThemeManager.instance().colors
         from PySide6.QtWidgets import (
@@ -760,15 +812,17 @@ class IOSPosterboardPage(QWidget):
 
         desc = QLabel(QCoreApplication.translate(
             "Nugget",
-            "Select what to reset. This is useful if PosterBoard is behaving "
-            "strangely or the database is corrupted (malformed) after a restore."
+            "If PosterBoard is broken after a restore, try in this order:\n"
+            "1. Reset the items below (keeps your other wallpapers).\n"
+            "2. If that doesn't fix it, use Full Reset — wipes ALL wallpapers "
+            "and starts PosterBoard clean."
         ))
         desc.setWordWrap(True)
         desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
         layout.addWidget(desc)
 
         reset_full = QCheckBox(QCoreApplication.translate(
-            "Nugget", "Full Reset (empty database, wipe everything)"))
+            "Nugget", "Full Reset — delete ALL wallpapers (empty database, wipe everything)"))
         reset_full.setChecked(False)
         layout.addWidget(reset_full)
 

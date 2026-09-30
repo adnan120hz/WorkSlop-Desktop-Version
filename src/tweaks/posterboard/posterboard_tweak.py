@@ -35,13 +35,19 @@ class PosterboardTweak(Tweak):
         self.bundle_id = "com.apple.PosterBoard"
         self.resetModes = []
         self.full_reset = False
+        # When True, PosterBoard is completely excluded from the apply.
+        # Use this on iOS 26.2+ where PosterBoard restores are buggy —
+        # it guarantees we don't touch PosterBoard at all.
+        self.disabled = False
         self.structure_version = 61
         self.config_manager = PBConfigManager()
 
     def uses_domains(self):
+        if self.disabled:
+            return False
         return (len(self.tendies) > 0 or self.videoFile != None
                 or len(self.resetModes) > 0 or self.full_reset)
-    
+
     def is_empty(self) -> bool:
         return not self.uses_domains()
 
@@ -267,6 +273,11 @@ class PosterboardTweak(Tweak):
                     templates: list[TemplateFile],
                     version: str, force_pb_refresh: bool,
                     update_label=lambda x: None):
+        # Disabled: don't touch PosterBoard at all on this apply.
+        # This is the safe option on iOS 26.2+ where PosterBoard restores
+        # are known to be buggy.
+        if self.disabled:
+            return
         # find the directory
         # The on-device store structure version is learned from the fetched
         # DB's manifest path (61, 62, ... vary between iOS releases) by

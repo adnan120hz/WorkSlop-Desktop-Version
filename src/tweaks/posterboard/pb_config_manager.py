@@ -119,11 +119,8 @@ def create_empty_posterboard_db(dest_path: str) -> str:
             "  roleId TEXT,"
             "  roleSortKey INTEGER"
             ")")
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS sqlite_sequence ("
-            "  name TEXT,"
-            "  seq INTEGER"
-            ")")
+        # NOTE: sqlite_sequence is auto-created by SQLite when AUTOINCREMENT
+        # is used — it must NOT be created manually (reserved internal name).
         conn.commit()
     finally:
         conn.close()
