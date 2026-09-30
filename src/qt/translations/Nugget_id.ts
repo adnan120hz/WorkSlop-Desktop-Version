@@ -1959,6 +1959,64 @@ It will be automatically found if this is left blank.</translation>
       <source>Rebooting device...</source>
       <translation>Me-reboot perangkat...</translation>
     </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Backing up... ({0:.1f}%)</source>
+      <translation>Mencadangkan... ({0:.1f}%)</translation>
+    </message>
+    <message>
+      <location filename="../gui/thread_workers/apply_worker.py"/>
+      <source>Starting full backup...</source>
+      <translation>Memulai backup penuh...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Full Backup</source>
+      <translation>Backup Penuh</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Create a complete iPhone backup the way iTunes/Finder does.</source>
+      <translation>Buat backup iPhone yang lengkap seperti cara iTunes/Finder.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>This creates a COMPLETE backup of the iPhone, the way iTunes/Finder does.
+
+Make sure this computer has enough free storage — the backup can be as large as the used storage on the iPhone — and note this takes much longer than the protective backup.
+
+Continue?</source>
+      <translation>Ini membuat backup LENGKAP dari iPhone, seperti cara iTunes/Finder.
+
+Pastikan komputer ini punya ruang penyimpanan cukup — ukuran backup bisa sebesar storage yang terpakai di iPhone — dan proses ini jauh lebih lama daripada protective backup.
+
+Lanjutkan?</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/settings.py"/>
+      <source>Where to save the full backup</source>
+      <translation>Pilih tempat menyimpan backup penuh</translation>
+    </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>Full Backup Complete</source>
+      <translation>Backup Penuh Selesai</translation>
+    </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>Full backup complete.</source>
+      <translation>Backup penuh selesai.</translation>
+    </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>Saved at: {0}</source>
+      <translation>Tersimpan di: {0}</translation>
+    </message>
+    <message>
+      <location filename="../gui/main_window_mixins.py"/>
+      <source>The file manager was opened with the backup selected.</source>
+      <translation>File manager dibuka dengan backup terpilih.</translation>
+    </message>
   </context>
   <context>
     <name>PBHelpDialog</name>

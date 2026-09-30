@@ -151,6 +151,14 @@ class IOSSettingsPage(QWidget):
         restore_btn.clicked.connect(self._on_restore_data_clicked)
         self.content_layout.addWidget(restore_btn)
 
+        full_backup_btn = IOSPrimaryButton(
+            QCoreApplication.translate("Nugget", "Full Backup"))
+        full_backup_btn.setToolTip(QCoreApplication.translate(
+            "Nugget",
+            "Create a complete iPhone backup the way iTunes/Finder does."))
+        full_backup_btn.clicked.connect(self._on_full_backup_clicked)
+        self.content_layout.addWidget(full_backup_btn)
+
         # Setup
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Setup")))
 
@@ -430,6 +438,33 @@ class IOSSettingsPage(QWidget):
         if reply != QMessageBox.StandardButton.Yes:
             return
         self.window._start_cache_restore()
+
+    def _on_full_backup_clicked(self):
+        # WorkSlop: real full backup, the iTunes way (mobilebackup2 full).
+        reply = QMessageBox.warning(
+            self.window,
+            QCoreApplication.translate("Nugget", "Full Backup"),
+            QCoreApplication.translate(
+                "Nugget",
+                "This creates a COMPLETE backup of the iPhone, the way "
+                "iTunes/Finder does.\n\n"
+                "Make sure this computer has enough free storage — the backup "
+                "can be as large as the used storage on the iPhone — and note "
+                "this takes much longer than the protective backup.\n\n"
+                "Continue?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        folder = QFileDialog.getExistingDirectory(
+            self.window,
+            QCoreApplication.translate("Nugget", "Where to save the full backup"),
+            "",
+            QFileDialog.Option.ShowDirsOnly)
+        if not folder:
+            return
+        self.window._start_full_backup(folder)
 
     def _on_backup_cache_toggled(self, checked: bool, switch):
         pref = self.window.device_manager.pref_manager

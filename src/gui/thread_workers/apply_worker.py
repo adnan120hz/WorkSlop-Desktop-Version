@@ -510,6 +510,102 @@ class RestoreFullBackupThread(QThread):
             await reboot_device(True, lc)
 
 
+class FullBackupThread(QThread):
+    """Create a real FULL iPhone backup — the iTunes way.
+
+    Uses mobilebackup2 ``backup(full=True)`` with no filter callback, so
+    *everything* is copied: this is exactly what iTunes/Finder does, not the
+    selective protective backup the tweak flow uses. The result is a standard
+    backup folder (``<save dir>/<udid>/`` with Manifest.db + Info.plist) that
+    can be copied into iTunes' MobileSync/Backup folder.
+    """
+    progress = Signal(str)
+    alert = Signal(object)
+    finished_with_result = Signal(bool, str)
+    choice_prompt = Signal(str, str, object)  # title, text, result box ("abort"/"resume", main-thread prompt)
+    # Emitted with the finished backup directory on success.
+    backup_finished = Signal(str)
+
+    _PROMPT_TIMEOUT_SEC = 10 * 60
+
+    def __init__(self, manager, save_dir):
+        super().__init__()
+        self.manager = manager
+        self.save_dir = save_dir
+
+    def prompt_user_choice(self, title: str, text: str) -> str:
+        box = queue.Queue(maxsize=1)
+        self.choice_prompt.emit(title, text, box)
+        try:
+            return box.get(timeout=self._PROMPT_TIMEOUT_SEC)
+        except queue.Empty:
+            return "abort"
+
+    def update_label(self, txt: str):
+        self.progress.emit(txt)
+
+    def _progress_cb(self, value):
+        # mobilebackup2 reports 0-100 floats; guard like the apply path does.
+        if isinstance(value, str):
+            self.update_label(value)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Backing up... ({0:.1f}%)").format(value))
+
+    def run(self):
+        import logging
+        from src.controllers.nugget_logger import log_context
+        log = logging.getLogger("GoldenNugget.full_backup")
+        try:
+            log_context("START full-backup",
+                        udid=self.manager.get_current_device_udid() or "unknown",
+                        save_dir=self.save_dir)
+            backup_path = asyncio.run(self._backup())
+            log_context("FINISH full-backup OK")
+            self.backup_finished.emit(backup_path)
+            self.finished_with_result.emit(True, "")
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            log.error("full-backup failed: %s\n%s", e, traceback_str)
+            self.alert.emit(ApplyAlertMessage(
+                f"Failed to create full backup: {e}",
+                title="Full backup",
+                icon=QMessageBox.Critical,
+                detailed_txt=traceback_str,
+                exc_type=type(e),
+                exc_value=e,
+            ))
+            self.finished_with_result.emit(False, f"{type(e).__name__}: {e}")
+
+    async def _backup(self) -> str:
+        import os
+        from src.devicemanagement.session import lockdown_session
+        from src.restore.restore import _start_mobilebackup2
+
+        udid = self.manager.get_current_device_udid()
+        if not udid:
+            raise RuntimeError("No device selected.")
+        save_dir = os.path.abspath(self.save_dir)
+        os.makedirs(save_dir, exist_ok=True)
+
+        self.update_label(QCoreApplication.translate(
+            "Nugget", "Connecting to device..."))
+        async with lockdown_session(udid) as lc:
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Starting full backup..."))
+            async with _start_mobilebackup2(lc) as mb:
+                # full=True + NO filter_callback = complete backup, the way
+                # iTunes/Finder does it. mobilebackup2 creates the
+                # <udid> subfolder inside backup_directory itself.
+                await mb.backup(full=True, backup_directory=save_dir,
+                                progress_callback=self._progress_cb)
+        backup_path = os.path.join(save_dir, udid)
+        if not os.path.isdir(backup_path):
+            # Fallback: some layouts write directly into the given dir.
+            backup_path = save_dir
+        return backup_path
+
+
 class CacheUpdateThread(QThread):
     """Force a refresh of the backup cache master (pre-apply "Update Cache").
 

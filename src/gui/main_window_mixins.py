@@ -984,6 +984,72 @@ class ApplyMixin:
             pass
 
 
+    def _start_full_backup(self, save_dir: str):
+        """WorkSlop: create a real full iPhone backup (the iTunes way)."""
+        from src.gui.thread_workers.apply_worker import FullBackupThread
+        if getattr(self, '_full_backup_in_progress', False):
+            return
+        if (self.apply_in_progress
+                or getattr(self, '_cache_restore_in_progress', False)
+                or getattr(self, '_full_restore_in_progress', False)):
+            self.alert_message(ApplyAlertMessage(
+                txt="Cannot start a full backup while another operation is in progress.",
+                title="Full backup",
+                icon=QtWidgets.QMessageBox.Warning,
+            ), log_to_console=False)
+            return
+        self._full_backup_in_progress = True
+        worker = FullBackupThread(manager=self.device_manager, save_dir=save_dir)
+        self._full_backup_thread = worker
+        worker.progress.connect(self._update_restore_label)
+        worker.alert.connect(self.alert_message)
+        worker.choice_prompt.connect(self.on_choice_prompt)
+        worker.backup_finished.connect(self._on_full_backup_saved)
+        worker.finished_with_result.connect(self._finish_full_backup)
+        worker.finished.connect(self._full_backup_thread_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_full_backup_saved(self, backup_path: str):
+        """Full backup hit 100%: reveal it so the user sees where it is."""
+        from src.utils.file_manager import reveal_in_file_manager
+        revealed = reveal_in_file_manager(backup_path)
+        try:
+            mbox = QtWidgets.QMessageBox(self)
+            mbox.setWindowTitle(QCoreApplication.translate("Nugget", "Full Backup Complete"))
+            mbox.setIcon(QtWidgets.QMessageBox.Information)
+            mbox.setText(QCoreApplication.translate(
+                "Nugget", "Full backup complete."))
+            mbox.setInformativeText(
+                QCoreApplication.translate(
+                    "Nugget", "Saved at: {0}").format(backup_path)
+                + ("\n" + QCoreApplication.translate(
+                    "Nugget",
+                    "The file manager was opened with the backup selected.")
+                   if revealed else ""))
+            mbox.exec()
+        except Exception:
+            pass
+
+    def _finish_full_backup(self, success: bool, error_msg: str = ""):
+        self._full_backup_in_progress = False
+        if not success or error_msg:
+            try:
+                self.alert_message(ApplyAlertMessage(
+                    txt=f"Full backup: {error_msg or 'failed'}",
+                    title="Full backup",
+                    icon=QtWidgets.QMessageBox.Critical,
+                ), log_to_console=False)
+            except Exception:
+                pass
+
+    def _full_backup_thread_finished(self):
+        try:
+            self._full_backup_thread = None
+        except Exception:
+            pass
+
+
     def _update_restore_label(self, txt: str):
         try:
             self.ios_home.show_process_status(txt)
