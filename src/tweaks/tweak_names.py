@@ -50,6 +50,9 @@ class TweakID(Enum):
     SRD = auto()
     AOD = auto()
     AODVibrancy = auto()
+    # NOTE: in leminlimez/Nugget this tweak lives in load_eligibility()
+    # (eligibility page); the tweak definition itself is verbatim.
+    AIGestalt = auto()
 
     # feature flags (ported from leminlimez/Nugget; removed by GoldenNugget,
     # re-added here using Nugget's original flag definitions)

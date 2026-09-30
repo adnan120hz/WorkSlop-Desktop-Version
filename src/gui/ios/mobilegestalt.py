@@ -150,9 +150,12 @@ class _GestaltContent(QWidget):
         self._sync_switches()
         self._update_support_banner(version, build)
 
-        if device is None or not dm.data_singleton.device_available:
+        if device is None:
             self._show_notice(tr("Connect a device to use MobileGestalt tweaks."))
         elif not gestalt_ok:
+            # Device is connected but its build is outside iOS 16.0 - 26.2b1.
+            # (Checked separately from device_available so a connected device
+            # on an unsupported build gets the build reason, not "connect".)
             self._show_notice(tr(
                 "MobileGestalt tweaks are not supported on this iOS build. "
                 "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
@@ -259,6 +262,8 @@ class _GestaltContent(QWidget):
         self._add_switch("AOD Vibrancy", TweakID.AODVibrancy)
         self._add_switch("Enable Low Power Mode (LGLPM)", TweakID.EnableLGLPM)
         self._add_switch("Disable Low Power Mode (LGLPM)", TweakID.DisableLGLPM)
+        self._add_switch("Enable Apple Intelligence (for Unsupported Devices)",
+                         TweakID.AIGestalt)
 
         self._tweaks_layout.addWidget(IOSSectionHeader(tr("Internal")))
         self._add_switch("Internal Install", TweakID.InternalInstall)

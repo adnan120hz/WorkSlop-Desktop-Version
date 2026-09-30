@@ -37,7 +37,12 @@ def get_mobilegestalt_tweaks() -> dict:
         TweakID.SRD: MobileGestaltTweak("XYlJKKkj2hztRP1NWWnhlw"),
         TweakID.AOD: MobileGestaltMultiTweak(
                                 {"2OOJf1VhaM7NxfRok3HbWQ": 1, "j8/Omm6s1lsmTDFsXjsBfA": 1}),
-        TweakID.AODVibrancy: MobileGestaltTweak("ykpu7qyhqFweVMKtxNylWA")
+        TweakID.AODVibrancy: MobileGestaltTweak("ykpu7qyhqFweVMKtxNylWA"),
+        # Ported verbatim from leminlimez/Nugget's load_eligibility()
+        # (src/tweaks/tweak_loader.py). Nugget wires it to the eligibility
+        # page's "Enable Apple Intelligence (for Unsupported Devices)"
+        # checkbox; the tweak definition itself is identical.
+        TweakID.AIGestalt: MobileGestaltTweak("A62OafQ85EJAiiqKn4agtg"),
     }
 
 

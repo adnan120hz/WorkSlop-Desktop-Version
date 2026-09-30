@@ -279,12 +279,12 @@ class DeviceManager:
         else:
             self.data_singleton.current_device = self.devices[index]
             if not is_build_supported(self.devices[index].build):
-                # Build allowlist rules (user decision 2026-09-30):
-                # - Main tweaks: only the 49 listed builds, iOS 16.0 -> 27.0.
-                # - Nugget MobileGestalt: iOS 16.0 -> iOS 26.2 beta 1,
-                #   so an older build stays usable for MobileGestalt.
-                self.data_singleton.device_available = is_gestalt_supported_build(
-                    self.devices[index].build)
+                # Build allowlist (user decision 2026-09-30): only the 49
+                # listed builds are supported for the main tweak flow.
+                # Anything else -> device unusable (fail-closed), even for
+                # MobileGestalt (its builds are a subset of the allowlist,
+                # so this branch always resolves to False).
+                self.data_singleton.device_available = False
             else:
                 self.data_singleton.device_available = True
             if is_gestalt_supported_build(self.devices[index].build):

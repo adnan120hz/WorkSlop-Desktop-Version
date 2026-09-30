@@ -38,9 +38,10 @@ def is_gestalt_supported_build(build: str) -> bool:
 
 
 def is_ios27_build(build: str) -> bool:
-    # Any iOS 27 build (24A train). Used to lock the Status Bar menu, which
-    # is only open on iOS 26 and below.
-    return _norm_build(build).startswith("24A")
+    # Any iOS 27 build = the whole 24 train (24A = 27.0, 24B = 27.1, ...).
+    # Used to lock the Status Bar menu, which is only open on iOS 26 and
+    # below (user decision 2026-09-30: locked on any iOS 27).
+    return _norm_build(build).startswith("24")
 
 
 # WorkSlop Desktop explicit per-build support list (user decision 2026-09-30).
