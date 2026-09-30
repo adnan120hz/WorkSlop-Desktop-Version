@@ -124,13 +124,21 @@ STYLES = {
     "nav_back_btn": """
         QPushButton {{
             background: transparent;
-            color: {accent};
+            color: {text_primary};
             font-size: 17px;
             font-weight: 400;
             border: none;
-            padding: 8px 0;
+            padding: 8px 12px;
+            border-radius: 8px;
         }}
-        QPushButton:hover {{ color: {accent_hover}; }}
+        QPushButton:hover {{
+            background: rgba(255, 255, 255, 0.08);
+            color: {text_primary};
+        }}
+        QPushButton:pressed {{
+            background: rgba(255, 255, 255, 0.14);
+            color: {text_primary};
+        }}
     """,
 
     "nav_title": "font-size: 17px; font-weight: 600; color: {text_primary};",
@@ -277,8 +285,8 @@ STYLES = {
 
     # ---- Pages -----------------------------------------------------------
     # Solid black — the terminal body. No translucency, text stays crisp.
-    "page_bg": "background-color: {bg_primary};",
-    "scroll_area": "QScrollArea {{ background-color: {bg_primary}; border: none; }}",
+    "page_bg": "background: transparent;",
+    "scroll_area": "QScrollArea {{ background: transparent; border: none; }} QScrollArea > QWidget > QWidget {{ background: transparent; }}",
 
     # ---- Settings --------------------------------------------------------
     "settings_list": """
@@ -525,7 +533,7 @@ STYLES = {
     "global": """
         QWidget {{ color: {text_primary}; background-color: {bg_primary}; spacing: 0px; font-family: '{font_family}'; }}
         QWidget:focus {{ outline: none; }}
-        QWidget[cls=central] {{ background-color: {bg_primary}; border-radius: 0px; }}
+        QWidget[cls=central] {{ background: transparent; border-radius: 0px; }}
         QLabel {{ font-size: 14px; }}
         QLabel[cls=dim] {{ color: {text_secondary}; }}
         QLabel[cls=term] {{ color: {term_green}; }}

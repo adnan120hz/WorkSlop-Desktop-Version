@@ -5,6 +5,20 @@ from src.gui.theme.colors import ThemeColors, DARK, ACCENT_PRESETS
 from src.controllers.settings import migrate_legacy_key
 
 
+def _is_valid_hex(value) -> bool:
+    """True for a ``#rrggbb`` string (free-form accent from the color picker)."""
+    if not isinstance(value, str):
+        return False
+    v = value.strip()
+    if len(v) != 7 or not v.startswith("#"):
+        return False
+    try:
+        int(v[1:], 16)
+    except ValueError:
+        return False
+    return True
+
+
 class ColorThemeManager(QObject):
     """Manages the app's color theme (dark + accent).
 
@@ -22,7 +36,16 @@ class ColorThemeManager(QObject):
         # One-time: carry over the accent saved by GoldenNugget/Nugget builds.
         migrate_legacy_key("accent_color")
         self._settings = QSettings("WorkSlop", "WorkSlop")
-        self._accent_name = self._settings.value("accent_color", "blue")
+        saved = self._settings.value("accent_color", "blue")
+        if saved in ACCENT_PRESETS:
+            self._accent_name = saved
+            self._custom_hex = None
+        elif _is_valid_hex(saved):
+            self._accent_name = "custom"
+            self._custom_hex = saved.strip().lower()
+        else:
+            self._accent_name = "blue"
+            self._custom_hex = None
         self._colors = self._build_colors()
 
     @classmethod
@@ -57,7 +80,25 @@ class ColorThemeManager(QObject):
         if name == self._accent_name:
             return
         self._accent_name = name
+        self._custom_hex = None
         self._settings.setValue("accent_color", name)
+        self._colors = self._build_colors()
+        self.theme_changed.emit()
+
+    def set_accent_hex(self, hex_color: str):
+        """Free-form accent color from the color picker (``#rrggbb``).
+
+        Stored in the same ``accent_color`` QSettings key as presets, so the
+        save mechanism is unchanged.
+        """
+        if not _is_valid_hex(hex_color):
+            return
+        hex_color = hex_color.strip().lower()
+        if self._accent_name == "custom" and self._custom_hex == hex_color:
+            return
+        self._accent_name = "custom"
+        self._custom_hex = hex_color
+        self._settings.setValue("accent_color", hex_color)
         self._colors = self._build_colors()
         self.theme_changed.emit()
 
@@ -115,15 +156,21 @@ class ColorThemeManager(QObject):
     # ---- helpers ---------------------------------------------------------
 
     def _build_colors(self) -> ThemeColors:
-        accent, hover, pressed = ACCENT_PRESETS[self._accent_name]
+        if self._accent_name == "custom" and self._custom_hex:
+            accent = self._custom_hex
+            hover = QColor(accent).darker(115).name()
+            pressed = QColor(accent).darker(130).name()
+        else:
+            accent, hover, pressed = ACCENT_PRESETS[self._accent_name]
         return DARK.with_accent(accent, hover, pressed)
 
     def accent_hex(self) -> str:
-        """Return the ``(r, g, b)`` tuple for the current accent."""
+        """Return the ``#rrggbb`` string for the current accent."""
+        if self._accent_name == "custom" and self._custom_hex:
+            return self._custom_hex
         accent, _, _ = ACCENT_PRESETS[self._accent_name]
         return accent
 
     def accent_rgb(self) -> tuple:
-        accent, _, _ = ACCENT_PRESETS[self._accent_name]
-        q = QColor(accent)
+        q = QColor(self.accent_hex())
         return (q.red(), q.green(), q.blue())

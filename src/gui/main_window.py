@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 try:
@@ -63,7 +63,7 @@ from src.gui.main_window_mixins import (
 
 # Classic chrome (device bar + sidebar + home toolbar) uses monochrome white
 # bootstrap SVGs; they must be recolored on every theme change.
-_CLASSIC_THEMED_ICONS = {
+_HIDDEN_THEMED_ICONS = {
     "phoneIconBtn": ":/icon/phone.svg",
     "refreshBtn": ":/icon/arrow-clockwise.svg",
     "homePageBtn": ":/icon/house.svg",
@@ -88,7 +88,7 @@ _CLASSIC_THEMED_ICONS = {
 }
 
 # Classic home "credits" buttons that hardcode dark borders in the .ui.
-_CLASSIC_BORDERED_BTNS = [
+_HIDDEN_BORDERED_BTNS = [
     "helpFromBtn", "posterRestoreBtn", "snoolieBtn", "disfordottieBtn",
     "mikasaBtn", "wind0ws11AeroBtn", "translatorsBtn", "libiBtn",
     "duyBtn", "jjtechBtn", "qtBtn",
@@ -100,6 +100,24 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         super(MainWindow, self).__init__()
         self.device_manager = device_manager
         self.translator = translator
+        # WorkSlop app icon (flask). Falls back silently when running from a
+        # source tree without the generated icon next to the repo root.
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _candidates = [
+                _Path(__file__).resolve().parents[2] / "workslop_icon.png",
+            ]
+            # PyInstaller bundle: data files land under sys._MEIPASS.
+            _meipass = getattr(_sys, "_MEIPASS", None)
+            if _meipass:
+                _candidates.insert(0, _Path(_meipass) / "workslop_icon.png")
+            for _icon_path in _candidates:
+                if _icon_path.is_file():
+                    self.setWindowIcon(QtGui.QIcon(str(_icon_path)))
+                    break
+        except Exception:
+            pass
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
@@ -229,27 +247,35 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         ios_root_layout.addWidget(self.ios_nav)
         ios_root_layout.addWidget(self.ios_pages)
 
-        # Unified shell: classic sidebar + [classic home | iOS root | classic daemons].
-        # The sidebar is the only survivor of the old UI chrome; most pages
-        # render through the iOS-style stack. Daemons has been ported to the
-        # same iOS-style interface and lives as its own classic page. The REST
-        # of the classic UI is parked (hidden, alive): wrappers and flows still
-        # reference its widgets.
-        self._classic_parking = QtWidgets.QWidget(self)
-        self._classic_parking.hide()
-        self.ui.centralwidget.setParent(self._classic_parking)
+        # Unified shell: the classic GoldenNugget UI is gone. The stack holds
+        # only the iOS-style pages (index 0). The generated Ui_Nugget object
+        # still exists for the hidden device-bar widgets that background flows
+        # (device refresh, picker signals) reference.
+        self.ui.centralwidget.setParent(None)
         self.ui.homePage.setParent(None)
         self.ui.sidebar.setParent(None)
         self.ui.daemonsPage.setParent(None)
         # the top device bar (phone icon + picker) comes back too
         self.ui.deviceBar.setParent(None)
         self.content_stack = QtWidgets.QStackedWidget(self)
-        self.content_stack.addWidget(self.ui.homePage)   # 0 = classic home
-        self.content_stack.addWidget(ios_root)           # 1 = iOS pages
-        self.content_stack.addWidget(self.ui.daemonsPage)  # 2 = classic daemons
+        self.content_stack.addWidget(ios_root)           # 0 = iOS pages
+        self.content_stack.setStyleSheet("background: transparent;")
         shell = QtWidgets.QWidget(self)
         shell.setProperty("cls", "central")  # picks up the global #1e1e1e background
-        self.shell_layout = QtWidgets.QVBoxLayout(shell)
+        # Overlay grid: animated terminal background behind the content.
+        overlay = QtWidgets.QGridLayout(shell)
+        overlay.setContentsMargins(0, 0, 0, 0)
+        overlay.setSpacing(0)
+        from src.gui.ios.terminal_bg import TerminalBackground
+        self._term_bg = TerminalBackground(shell)
+        self._term_bg.set_opacity(0.85)
+        self._term_bg.start()
+        overlay.addWidget(self._term_bg, 0, 0)
+        content = QtWidgets.QWidget(shell)
+        content.setStyleSheet("background: transparent; border: none;")
+        overlay.addWidget(content, 0, 0)
+        content.raise_()  # keep content above the terminal background
+        self.shell_layout = QtWidgets.QVBoxLayout(content)
         self.shell_layout.setContentsMargins(0, 0, 0, 0)
         self.shell_layout.setSpacing(0)
         self.shell_layout.addWidget(self.ui.deviceBar)
@@ -413,7 +439,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         c = self._color_theme.colors
 
         # Recolor white SVG chrome icons to the current text color
-        for obj_name, res in _CLASSIC_THEMED_ICONS.items():
+        for obj_name, res in _HIDDEN_THEMED_ICONS.items():
             widget = getattr(self.ui, obj_name, None)
             if widget is not None:
                 widget.setIcon(theme_icon(res, c.text_primary))
@@ -443,7 +469,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
         # Credit buttons hardcode #3b3b3b borders in the generated .ui
         bordered_style = themed_stylesheet("classic_bordered_btn")
-        for obj_name in _CLASSIC_BORDERED_BTNS:
+        for obj_name in _HIDDEN_BORDERED_BTNS:
             widget = getattr(self.ui, obj_name, None)
             if widget is not None:
                 widget.setStyleSheet(bordered_style)

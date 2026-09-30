@@ -47,7 +47,7 @@ class IOSBackupPage(QWidget):
                "applying tweaks, run a Full Backup first.")))
 
         self._content_layout.addWidget(self._make_card(
-            tr("Protective Backup (Backup Biasa)"),
+            tr("Protective Backup"),
             tr("A selective backup of the things the tweak flow needs to "
                "restore: photos, messages, contacts, Apple ID and settings "
                "data, plus the keychain when the device backup is encrypted.\n\n"

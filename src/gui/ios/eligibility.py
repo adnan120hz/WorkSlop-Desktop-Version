@@ -86,9 +86,19 @@ class EligibilitySection(QWidget):
 
     # -- ui ----------------------------------------------------------------
     def _row_card(self):
+        # Same row shell as the registry tweak rows in tweaks.py (lazy import:
+        # tweaks.py imports this module at top level, so a top-level import
+        # would be circular).
+        from src.gui.ios.tweaks import (
+            ROW_CARD_MIN_HEIGHT, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN,
+            make_switch_column,
+        )
+        self._make_switch_column = make_switch_column
         card = IOSCard()
+        card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
         lay = QHBoxLayout(card)
-        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setContentsMargins(ROW_CARD_HMARGIN, ROW_CARD_VMARGIN,
+                               ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
         lay.setSpacing(12)
         return card, lay
 
@@ -100,7 +110,7 @@ class EligibilitySection(QWidget):
         lay.addWidget(lbl, 1)
         sw = IOSSwitch()
         sw.toggled.connect(lambda checked, tid=tweak_id: self._on_switch(tid, checked))
-        lay.addWidget(sw)
+        lay.addWidget(self._make_switch_column(card, sw))
         self._layout.addWidget(card)
         self._switches[tweak_id] = sw
         return sw

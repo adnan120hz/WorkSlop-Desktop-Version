@@ -1,74 +1,61 @@
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QColorDialog
 
-from src.gui.theme.colors import ACCENT_PRESETS
 from src.gui.theme.theme_manager import ColorThemeManager
 
 
 class AccentPicker(QWidget):
-    """Row of colored circles for choosing the accent color."""
+    """Single circle showing the active accent color.
+
+    Clicking it opens a color dialog so the user can pick any color;
+    the choice is saved through ``ColorThemeManager.set_accent_hex``,
+    which uses the same ``accent_color`` QSettings key as the presets.
+    """
 
     accent_changed = Signal(str)
 
-    _SIZE = 32
+    _SIZE = 52
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._tm = ColorThemeManager.instance()
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(10)
-        self._buttons: dict[str, QPushButton] = {}
+        layout.setSpacing(0)
 
-        for name in ACCENT_PRESETS:
-            btn = QPushButton(self)
-            btn.setFixedSize(self._SIZE, self._SIZE)
-            btn.setCursor(Qt.PointingHandCursor)
-            accent_hex = ACCENT_PRESETS[name][0]
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {accent_hex};
-                    border-radius: {self._SIZE // 2}px;
-                    border: 3px solid transparent;
-                }}
-                QPushButton:hover {{
-                    border: 3px solid {accent_hex};
-                    background-color: {accent_hex};
-                }}
-            """)
-            btn.clicked.connect(lambda checked, n=name: self._on_click(n))
-            btn.setToolTip(name.capitalize())
-            self._buttons[name] = btn
-            layout.addWidget(btn)
-        layout.addStretch()
+        self._btn = QPushButton(self)
+        self._btn.setFixedSize(self._SIZE, self._SIZE)
+        self._btn.setCursor(Qt.PointingHandCursor)
+        self._btn.setToolTip("Choose accent color")
+        self._btn.clicked.connect(self._on_click)
+        layout.addWidget(self._btn)
+        layout.addStretch(1)
 
-        self._highlight_selected()
+        self._paint()
+        self._tm.theme_changed.connect(self._paint)
 
-    def _on_click(self, name: str):
-        self._tm.set_accent(name)
-        self._highlight_selected()
-        self.accent_changed.emit(name)
+    def _on_click(self):
+        initial = QColor(self._tm.accent_hex())
+        color = QColorDialog.getColor(initial, self, "Choose accent color")
+        if not color.isValid():
+            return
+        self._tm.set_accent_hex(color.name())
+        self.accent_changed.emit(color.name())
 
-    def _highlight_selected(self):
-        current = self._tm._accent_name
-        for name, btn in self._buttons.items():
-            accent_hex = ACCENT_PRESETS[name][0]
-            if name == current:
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: {accent_hex};
-                        border-radius: {self._SIZE // 2}px;
-                        border: 3px solid {self._tm.c('text_primary')};
-                    }}
-                """)
-            else:
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: {accent_hex};
-                        border-radius: {self._SIZE // 2}px;
-                        border: 3px solid transparent;
-                    }}
-                    QPushButton:hover {{
-                        border: 3px solid {accent_hex};
-                    }}
-                """)
+    def _paint(self):
+        accent = self._tm.accent_hex()
+        radius = self._SIZE // 2
+        ring = self._tm.c("text_primary")
+        self._btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {accent};
+                border-radius: {radius}px;
+                border: 3px solid {ring};
+            }}
+            QPushButton:hover {{
+                background-color: {accent};
+                border: 3px solid {ring};
+            }}
+        """)

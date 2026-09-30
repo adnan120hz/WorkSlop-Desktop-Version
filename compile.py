@@ -72,6 +72,8 @@ args = [
     '--hidden-import=restore',
     '--hidden-import=skip_setup',
     '--hidden-import=main_app',
+    # Runtime window icon (loaded by MainWindow from repo root).
+    '--add-data=workslop_icon.png' + (';.' if os.name == 'nt' else ':.'),
 ]
 
 if target_arch:

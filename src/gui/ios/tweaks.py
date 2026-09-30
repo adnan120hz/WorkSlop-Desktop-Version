@@ -1,4 +1,4 @@
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout
 )
@@ -70,6 +70,39 @@ def _save_collapsed_section(name: str, collapsed: bool):
     store.setValue(_COLLAPSED_KEY, ",".join(sorted(names)))
 
 
+# Layout rhythm for the tweaks page (terminal UI): one set of numbers for the
+# whole page so every section and every tweak row lines up. The row-card
+# constants are also used by eligibility.py / risky.py, which render their
+# rows inside this page's collapsible sections (imported lazily there to
+# avoid a circular import: this module imports those at top level).
+ROW_CARD_MIN_HEIGHT = 56  # every tweak row card gets the same minimum height
+ROW_CARD_HMARGIN = 16     # horizontal padding inside a card
+ROW_CARD_VMARGIN = 10     # vertical padding inside a card
+SWITCH_COL_WIDTH = 64     # fixed right column: all switches on one vertical line
+ROW_LABEL_FONT_PX = 15
+
+_PAGE_MARGIN = 16      # outer page margins
+_SECTION_GAP = 16      # vertical gap between collapsible sections
+_ROW_GAP = 8           # vertical gap between tweak cards inside a section
+
+
+def make_switch_column(card, switch):
+    """Fixed-width right column holding a fixed-size switch.
+
+    ``IOSSwitch`` is already a fixed 51x31 painted widget (no stretch, no
+    rotation); the 64px column pins it to the same vertical line on every
+    row regardless of label length.
+    """
+    col = QWidget(card)
+    col.setFixedWidth(SWITCH_COL_WIDTH)
+    col_layout = QHBoxLayout(col)
+    col_layout.setContentsMargins(0, 0, 0, 0)
+    col_layout.setSpacing(0)
+    col_layout.addStretch(1)
+    col_layout.addWidget(switch, 0, Qt.AlignVCenter | Qt.AlignRight)
+    return col
+
+
 class IOSSectionContent(QWidget):
     """iOS-style tweak controls for one or more registry sections.
 
@@ -111,8 +144,8 @@ class IOSSectionContent(QWidget):
             self._inner = None
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(16, 16, 16, 32)
-        layout.setSpacing(8)
+        layout.setContentsMargins(_PAGE_MARGIN, _PAGE_MARGIN, _PAGE_MARGIN, 32)
+        layout.setSpacing(_SECTION_GAP)
         inner = QWidget(self)
         inner.setLayout(layout)
         self._inner = inner
@@ -134,30 +167,38 @@ class IOSSectionContent(QWidget):
         def is_compatible(tweak_id: TweakID) -> bool:
             return is_tweak_compatible(tweak_id, device_ver, is_iphone)
 
-        # Helper to create a switch row for boolean tweaks
+        # Helper to create a switch row for boolean tweaks.
+        # Every row is the same height with the same inner padding, and the
+        # switch lives in a fixed-width right column so all switches line up
+        # on one vertical line no matter how long the label is.
         def make_switch(tweak_id: TweakID, title: str, description: str = "",
                         target: QVBoxLayout = None):
             if tweak_id not in tweaks:
                 return
             tweak = tweaks[tweak_id]
             card = IOSCard()
+            card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
             if tweak_id == TweakID.ForceSolariumFallback:
                 self.force_solarium_fallback_card = card
             if not is_compatible(tweak_id):
                 card.hide()
             row_layout = QHBoxLayout(card)
-            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setContentsMargins(
+                ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
             row_layout.setSpacing(12)
 
             c = ColorThemeManager.instance().colors
             label = QLabel(title)
-            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            label.setWordWrap(True)
+            label.setStyleSheet(
+                f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
+                " background-color: transparent;")
             self._switch_labels.append(label)
             row_layout.addWidget(label, 1)
 
             switch = IOSSwitch(tweak.enabled)
             switch.toggled.connect(lambda checked: tweak.set_enabled(checked))
-            row_layout.addWidget(switch)
+            row_layout.addWidget(make_switch_column(card, switch))
 
             if description:
                 label.setToolTip(description)
@@ -166,7 +207,8 @@ class IOSSectionContent(QWidget):
 
             (target or layout).addWidget(card)
 
-        # Helper for text input tweaks
+        # Helper for text input tweaks: same card shell as the switch rows so
+        # every row on the page has identical height and padding.
         def make_text_input(tweak_id: TweakID, title: str, description: str = "",
                             target: QVBoxLayout = None):
             if tweak_id not in tweaks:
@@ -175,9 +217,13 @@ class IOSSectionContent(QWidget):
                 return
             tweak = tweaks[tweak_id]
             card = IOSCard()
+            card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
             card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(0, 0, 0, 0)
+            card_layout.setContentsMargins(
+                ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
+            card_layout.setSpacing(0)
             row = IOSSettingsRow(title)
+            row.setMinimumHeight(ROW_CARD_MIN_HEIGHT - 2 * ROW_CARD_VMARGIN)
             if description:
                 row.setToolTip(description)
             current = ""
@@ -188,7 +234,7 @@ class IOSSectionContent(QWidget):
             card_layout.addWidget(row)
             (target or layout).addWidget(card)
 
-        # Helper for number input tweaks
+        # Helper for number input tweaks: same card shell as the other rows.
         def make_number_input(tweak_id: TweakID, title: str, min_val: int = 0, max_val: int = 999,
                               description: str = "", step: float = 1.0,
                               target: QVBoxLayout = None):
@@ -198,9 +244,13 @@ class IOSSectionContent(QWidget):
                 return
             tweak = tweaks[tweak_id]
             card = IOSCard()
+            card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
             card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(0, 0, 0, 0)
+            card_layout.setContentsMargins(
+                ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
+            card_layout.setSpacing(0)
             row = IOSSettingsRow(title)
+            row.setMinimumHeight(ROW_CARD_MIN_HEIGHT - 2 * ROW_CARD_VMARGIN)
             if description:
                 row.setToolTip(f"{description}\n\n"
                                + QCoreApplication.translate("Nugget", "Range: {0} – {1}")
@@ -245,6 +295,7 @@ class IOSSectionContent(QWidget):
             collapsible = IOSCollapsibleSection(
                 QCoreApplication.translate("Nugget", section.value),
                 expanded=section.value not in collapsed_sections)
+            collapsible.body_layout.setSpacing(_ROW_GAP)
             collapsible.toggled.connect(
                 lambda expanded, name=section.value: _save_collapsed_section(
                     name, not expanded))
@@ -263,6 +314,7 @@ class IOSSectionContent(QWidget):
         elig_collapsible = IOSCollapsibleSection(
             QCoreApplication.translate("Nugget", "Eligibility"),
             expanded="Eligibility" not in collapsed_sections)
+        elig_collapsible.body_layout.setSpacing(_ROW_GAP)
         elig_collapsible.toggled.connect(
             lambda expanded: _save_collapsed_section("Eligibility", not expanded))
         layout.addWidget(elig_collapsible)
@@ -276,6 +328,7 @@ class IOSSectionContent(QWidget):
         risky_collapsible = IOSCollapsibleSection(
             QCoreApplication.translate("Nugget", "Risky"),
             expanded="Risky" not in collapsed_sections)
+        risky_collapsible.body_layout.setSpacing(_ROW_GAP)
         risky_collapsible.toggled.connect(
             lambda expanded: _save_collapsed_section("Risky", not expanded))
         layout.addWidget(risky_collapsible)
@@ -299,7 +352,9 @@ class IOSSectionContent(QWidget):
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         for lbl in self._switch_labels:
-            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            lbl.setStyleSheet(
+                f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
+                " background-color: transparent;")
 
     def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
         dialog = TextInputDialog(title, current, self)

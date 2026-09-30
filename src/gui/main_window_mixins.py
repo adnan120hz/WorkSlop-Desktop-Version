@@ -391,40 +391,16 @@ class SettingsMixin:
 
 
     def apply_theme(self, theme: int):
-        """Apply the UI mode WITHOUT navigating away.
-
-        CLASSIC: sidebar + classic home; iOS-style pages open as actions.
-        IOS: full-screen iOS UI with the shared header providing back
-        navigation. Only the chrome changes — the current page stays put.
-        """
+        """Apply the terminal UI chrome (classic mode is removed)."""
         self.theme_manager.save_theme(theme)
-        is_ios = theme == ThemeManager.IOS
-        self.ui.sidebar.setVisible(not is_ios)
-        self.ui.deviceBar.setVisible(not is_ios)
-        if is_ios:
-            # iOS mode: full-screen, no padding
-            self.shell_layout.setContentsMargins(0, 0, 0, 0)
-            self.shell_layout.setSpacing(0)
-            self.body_row.setSpacing(0)
-            # entering the new UI: land on its home unless already inside it
-            if self.content_stack.currentIndex() != 1:
-                self.content_stack.setCurrentIndex(1)
-                self.ios_pages.setCurrentIndex(0)
-            self._update_shared_nav(self.ios_pages.currentIndex())
-        else:
-            # Classic mode: add padding around the shell
-            self.shell_layout.setContentsMargins(16, 16, 16, 16)
-            self.shell_layout.setSpacing(12)
-            self.body_row.setSpacing(16)
-            # classic UI hides the shared header except on pages that need it
-            # (Icon Themes keeps "+ Add Icon")
-            self._update_shared_nav(self.ios_pages.currentIndex())
-            if self.ios_pages.currentIndex() == 0:
-                # the iOS home has no meaning inside the classic shell
-                self.show_home()
-        self._sync_sidebar_selection()
-
-
+        self.ui.sidebar.setVisible(False)
+        self.ui.deviceBar.setVisible(False)
+        # full-screen, no padding
+        self.shell_layout.setContentsMargins(0, 0, 0, 0)
+        self.shell_layout.setSpacing(0)
+        self.body_row.setSpacing(0)
+        self.content_stack.setCurrentIndex(0)
+        self._update_shared_nav(self.ios_pages.currentIndex())
     def updateAppVersionLabel(self):
         new_text: str = self.ui.appVersionLbl.text()
         new_text = new_text.replace("%VERSION", App_Version)
@@ -447,7 +423,7 @@ class SettingsMixin:
 class NavigationMixin:
     """Page structure, shared IOS nav bar and sidebar selection."""
 
-    # Pages allowed to keep the iOS-style header inside the CLASSIC shell.
+    # Pages allowed to keep the iOS-style header.
     # Each one has a right action that is otherwise unreachable on the page
     # itself (Icon Themes "+ Add Icon"). The PosterBoard page keeps its header
     # in iOS mode only: it already has its own in-page "Import Files" card,
@@ -455,11 +431,6 @@ class NavigationMixin:
     _classic_nav_pages = (10,)
 
     def _update_shared_nav(self, index: int):
-        if self.theme_manager.current_theme == ThemeManager.CLASSIC:
-            use_nav = index in self._classic_nav_pages
-            self.ios_nav.setVisible(use_nav)
-            if not use_nav:
-                return
         # the iOS home page is full-screen — no header at all
         self.ios_nav.setVisible(index != 0)
         if index == 0:
@@ -513,28 +484,16 @@ class NavigationMixin:
             10: "themes", 11: "themes", 14: "themes",
             4: "settings",
         }
-        menu = None
-        if self.theme_manager.current_theme == ThemeManager.CLASSIC:
-            if self.content_stack.currentIndex() == 0:
-                menu = "home"
-            elif self.content_stack.currentIndex() == 2:
-                menu = "tweaks"  # classic daemons page
-            else:
-                menu = page_to_menu.get(self.ios_pages.currentIndex())
-        else:
-            menu = page_to_menu.get(self.ios_pages.currentIndex())
+        menu = page_to_menu.get(self.ios_pages.currentIndex())
         if menu is not None and hasattr(self, "workslop_sidebar"):
             self.workslop_sidebar.select(menu)
 
 
     def show_home(self):
-        """Open the home page of the ACTIVE UI mode."""
-        if self.theme_manager.current_theme == ThemeManager.IOS:
-            self.content_stack.setCurrentIndex(1)
-            self.ios_pages.setCurrentIndex(0)
-            self._update_shared_nav(0)
-        else:
-            self.content_stack.setCurrentIndex(0)
+        """Open the home page."""
+        self.content_stack.setCurrentIndex(0)
+        self.ios_pages.setCurrentIndex(0)
+        self._update_shared_nav(0)
         self._refresh_preset_widgets()
         self._sync_sidebar_selection()
 
@@ -552,13 +511,13 @@ class NavigationMixin:
 
 
     def show_ios_page(self, index: int):
-        self.content_stack.setCurrentIndex(1)
+        self.content_stack.setCurrentIndex(0)
         self.ios_pages.setCurrentIndex(index)
 
 
     def open_presets_section(self):
         """Open the settings page and scroll straight to the presets section."""
-        self.content_stack.setCurrentIndex(1)
+        self.content_stack.setCurrentIndex(0)
         self.ios_pages.setCurrentIndex(4)
         self._update_shared_nav(4)
         self._sync_sidebar_selection()
@@ -582,24 +541,10 @@ class NavigationMixin:
 
 
     def _go_back(self) -> bool:
-        """Navigate back.
-
-        IOS mode: subpage -> iOS home (stay there).
-        CLASSIC mode: any action page backs out to the classic home.
-        """
-        if self.content_stack.currentIndex() == 1:
-            if self.theme_manager.current_theme == ThemeManager.IOS:
-                if self.ios_pages.currentIndex() != 0:
-                    self.ios_pages.setCurrentIndex(0)
-                    return True
-                return False
-            # classic shell: action pages back out straight to classic home
-            self.content_stack.setCurrentIndex(0)
-            self._sync_sidebar_selection()
-            return True
-        if self.content_stack.currentIndex() == 2:
-            # classic daemons page -> classic home
-            self.content_stack.setCurrentIndex(0)
+        """Navigate back: subpage -> home (stay in the UI)."""
+        if self.ios_pages.currentIndex() != 0:
+            self.ios_pages.setCurrentIndex(0)
+            self._update_shared_nav(0)
             self._sync_sidebar_selection()
             return True
         return False
@@ -636,13 +581,8 @@ class NavigationMixin:
 
 
     def on_daemonsPageBtn_clicked(self):
-        if self.theme_manager.current_theme == ThemeManager.CLASSIC:
-            self.pages[Page.Daemons].load()
-            self.pages[Page.Daemons].refresh()
-            self.content_stack.setCurrentIndex(2)
-        else:
-            self.ios_daemons.refresh_from_tweaks()
-            self.show_ios_page(3)
+        self.ios_daemons.refresh_from_tweaks()
+        self.show_ios_page(3)
         self._sync_sidebar_selection()
 
 
