@@ -8,8 +8,34 @@ The workers drive the vendored engine in ``src.sideload.ipaside_engine``
 login and developerservices2 provisioning flow Sideloadly-style tools use.
 The Apple ID password is kept only in memory for the duration of the login
 call and is never written to disk or settings.
+
+Every worker also mirrors its progress into the session log file
+(``logging.getLogger("WorkSlop.sideload")``). The file handler flushes after
+each record, so even if the process is force-closed mid-login the log on disk
+still shows the last completed step — the GUI label alone dies with the
+process. Never log the password, 2FA code, or any token here.
 """
+import logging
+
 from PySide6.QtCore import QThread, Signal
+
+_slog = logging.getLogger("WorkSlop.sideload")
+
+
+def _logged_progress(emit, tag: str):
+    """Wrap a progress callback so each stage is also written to the session log."""
+    def _cb(*args):
+        try:
+            text = " ".join(str(a) for a in args if a is not None)
+        except Exception:
+            text = "<progress>"
+        if text:
+            _slog.info("[%s] %s", tag, text)
+        try:
+            emit(*args)
+        except Exception:
+            pass
+    return _cb
 
 
 class LoginThread(QThread):
@@ -40,33 +66,42 @@ class LoginThread(QThread):
 
     def run(self):
         from src.sideload.ipaside_engine import gsa
+        _slog.info("[login] thread started for %s", self._email)
+        progress = _logged_progress(self.progress.emit, "login")
         try:
             result = gsa.begin_login(
                 self._email, self._password,
-                on_progress=self.progress.emit)
+                on_progress=progress)
             if isinstance(result, dict) and result.get("status") == "2fa_required":
                 method = result.get("method", "trusteddevice")
+                _slog.info("[login] 2FA required (method=%s), waiting for code", method)
                 self.twofa_required.emit(method)
                 # Wait for the page to hand us the code (5-minute cap).
                 if not self._event.wait(timeout=300):
+                    _slog.warning("[login] timed out waiting for 2FA code")
                     self.finished_with_result.emit(
                         False, "Timed out waiting for the verification code.")
                     return
                 if not self._code_ready or not self._code:
+                    _slog.warning("[login] 2FA cancelled by user")
                     self.finished_with_result.emit(
                         False, "Verification cancelled.")
                     return
+                _slog.info("[login] 2FA code received, completing login")
                 result = gsa.complete_2fa(
                     self._email, self._password, self._code.strip(),
-                    on_progress=self.progress.emit)
+                    on_progress=progress)
             if isinstance(result, dict) and result.get("status") == "authenticated":
+                _slog.info("[login] authenticated as %s", self._email)
                 self.finished_with_result.emit(
                     True, f"Signed in as {self._email}.")
             else:
                 detail = result.get("error") if isinstance(result, dict) else None
+                _slog.warning("[login] failed: %s", detail or result)
                 self.finished_with_result.emit(
                     False, str(detail or result or "Unknown login error."))
         except Exception as exc:  # GsaError and friends carry human text
+            _slog.exception("[login] exception")
             self.finished_with_result.emit(False, str(exc))
         finally:
             # Never retain the password longer than the login attempt.
@@ -100,18 +135,22 @@ class SideloadThread(QThread):
 
     def run(self):
         from src.sideload.ipaside_engine import sideload
+        _slog.info("[sideload] thread started: ipa=%s udid=%s bundle=%s",
+                   self._ipa_path, self._udid, self._bundle_id)
         try:
             result = sideload.run_sideload(
                 self._ipa_path,
                 self._udid,
                 bundle_id=self._bundle_id,
                 display_name=self._display_name,
-                on_progress=self._on_progress,
+                on_progress=_logged_progress(self._on_progress, "sideload"),
             )
             app = result.get("name") or result.get("bundle_id") or "App"
+            _slog.info("[sideload] installed: %s", app)
             self.finished_with_result.emit(
                 True, f"{app} installed on the iPhone.")
         except Exception as exc:
+            _slog.exception("[sideload] exception")
             self.finished_with_result.emit(False, str(exc))
 
 
@@ -157,6 +196,22 @@ class UninstallThread(QThread):
         try:
             engine_apps.uninstall(self._bundle_id, serial=self._udid)
             self.finished_with_result.emit(True, self._bundle_id)
+        except Exception as exc:
+            self.finished_with_result.emit(False, str(exc))
+
+
+class ServiceStartThread(QThread):
+    """Start Apple's Mobile Device Service on Windows (UAC prompt handled
+    by the engine). Off the UI thread because elevation can take a while."""
+
+    finished_with_result = Signal(bool, str)  # ok, human-readable message
+
+    def run(self):
+        from src.sideload.ipaside_engine import apple_support
+        try:
+            result = apple_support.start_service()
+            ok = bool(result.get("started"))
+            self.finished_with_result.emit(ok, str(result.get("detail", "")))
         except Exception as exc:
             self.finished_with_result.emit(False, str(exc))
 

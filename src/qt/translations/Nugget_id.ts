@@ -8,7 +8,7 @@
 Are you sure you want to use this one?</source>
       <translation>File gestalt ini tampaknya dibuat untuk perangkat lain. Apakah anda yakin untuk menggunakannya?</translation>
     </message>
-  </context>
+  <message><source>App Data</source><translation type="unfinished">App Data</translation></message><message><source>Backing up app data only — keep the iPhone unlocked.</source><translation type="unfinished">Backing up app data only — keep the iPhone unlocked.</translation></message><message><source>Backup data not available.</source><translation type="unfinished">Backup data not available.</translation></message><message><source>Browse app containers like iMazing. Select an app to see its data. </source><translation type="unfinished">Browse app containers like iMazing. Select an app to see its data. </translation></message><message><source>Choose file to upload</source><translation type="unfinished">Choose file to upload</translation></message><message><source>Delete</source><translation type="unfinished">Delete</translation></message><message><source>Documents only (File Sharing)</source><translation type="unfinished">Documents only (File Sharing)</translation></message><message><source>Download</source><translation type="unfinished">Download</translation></message><message><source>File</source><translation type="unfinished">File</translation></message><message><source>File Sharing enabled — Documents accessible</source><translation type="unfinished">File Sharing enabled — Documents accessible</translation></message><message><source>Folder</source><translation type="unfinished">Folder</translation></message><message><source>Folder name:</source><translation type="unfinished">Folder name:</translation></message><message><source>Full container access</source><translation type="unfinished">Full container access</translation></message><message><source>Installed Apps</source><translation type="unfinished">Installed Apps</translation></message><message><source>Loading apps...</source><translation type="unfinished">Loading apps...</translation></message><message><source>Name</source><translation type="unfinished">Name</translation></message><message><source>New Folder</source><translation type="unfinished">New Folder</translation></message><message><source>New name:</source><translation type="unfinished">New name:</translation></message><message><source>No device connected.</source><translation type="unfinished">No device connected.</translation></message><message><source>Refresh Apps</source><translation type="unfinished">Refresh Apps</translation></message><message><source>Rename</source><translation type="unfinished">Rename</translation></message><message><source>Save file</source><translation type="unfinished">Save file</translation></message><message><source>Select a file first.</source><translation type="unfinished">Select a file first.</translation></message><message><source>Select a file or folder first.</source><translation type="unfinished">Select a file or folder first.</translation></message><message><source>Select a file, not a folder.</source><translation type="unfinished">Select a file, not a folder.</translation></message><message><source>Select an app first.</source><translation type="unfinished">Select an app first.</translation></message><message><source>Select an app to browse its data</source><translation type="unfinished">Select an app to browse its data</translation></message><message><source>This view is read-only (data comes from a device backup, </source><translation type="unfinished">This view is read-only (data comes from a device backup, </translation></message><message><source>Type</source><translation type="unfinished">Type</translation></message><message><source>Upload</source><translation type="unfinished">Upload</translation></message><message><source>Via device backup (read-only, like iMazing)</source><translation type="unfinished">Via device backup (read-only, like iMazing)</translation></message><message><source>file</source><translation type="unfinished">file</translation></message><message><source>folder</source><translation type="unfinished">folder</translation></message><message><source>↑ Up</source><translation type="unfinished">↑ Up</translation></message><message><source>Browse app containers like iMazing. Select an app to see its data. Full container access works for sideloaded/development apps; App Store apps only expose Documents if they enable File Sharing.</source><translation type="unfinished">Browse app containers like iMazing. Select an app to see its data. Full container access works for sideloaded/development apps; App Store apps only expose Documents if they enable File Sharing.</translation></message><message><source>This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</source><translation type="unfinished">This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</translation></message></context>
   <context>
     <name>Nugget</name>
     <message>
@@ -2015,6 +2015,209 @@ Lanjutkan?</translation>
       <location filename="../gui/main_window_mixins.py" />
       <source>The file manager was opened with the backup selected.</source>
       <translation>File manager dibuka dengan backup terpilih.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Log</source>
+      <translation>Log</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Copy Log</source>
+      <translation>Salin Log</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Save Log...</source>
+      <translation>Simpan Log...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Clear</source>
+      <translation>Hapus</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Log copied to clipboard.</source>
+      <translation>Log disalin ke clipboard.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Save Sideload Log</source>
+      <translation>Simpan Log Sideload</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Log Files (*.log);;Text Files (*.txt)</source>
+      <translation>File Log (*.log);;File Teks (*.txt)</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Log saved to %1</source>
+      <translation>Log disimpan ke %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Could not save log: %1</source>
+      <translation>Gagal menyimpan log: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Windows device-stack check: %1</source>
+      <translation>Pemeriksaan device-stack Windows: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Device-stack check failed: %1</source>
+      <translation>Pemeriksaan device-stack gagal: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Apple Driver Missing</source>
+      <translation>Driver Apple Hilang</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>No iPhone can be seen because Apple's device driver is not installed on this PC.
+
+%1
+
+Install iTunes from apple.com or the "Apple Devices" app from the Microsoft Store, then reconnect the iPhone.</source>
+      <translation>iPhone tidak terdeteksi karena driver perangkat Apple belum terinstal di PC ini.
+
+%1
+
+Instal iTunes dari apple.com atau aplikasi "Apple Devices" dari Microsoft Store, lalu sambungkan ulang iPhone.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Apple Service Stopped</source>
+      <translation>Layanan Apple Berhenti</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>
+
+Start the Apple Mobile Device Service now? Windows will ask for administrator permission.</source>
+      <translation>
+
+Jalankan Apple Mobile Device Service sekarang? Windows akan meminta izin administrator.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Starting Apple Mobile Device Service...</source>
+      <translation>Menjalankan Apple Mobile Device Service...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Service started: %1</source>
+      <translation>Layanan berjalan: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Service start failed: %1</source>
+      <translation>Layanan gagal dijalankan: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Apple Service</source>
+      <translation>Layanan Apple</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>
+
+Reconnect the iPhone if it is not detected yet.</source>
+      <translation>
+
+Sambungkan ulang iPhone jika belum terdeteksi.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Sideloading %1...</source>
+      <translation>Sideloading %1...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Sideload finished: %1</source>
+      <translation>Sideload selesai: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Sideload failed: %1</source>
+      <translation>Sideload gagal: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Listing installed apps...</source>
+      <translation>Memuat daftar aplikasi terinstal...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Failed to list apps: %1</source>
+      <translation>Gagal memuat daftar aplikasi: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Signing in as %1...</source>
+      <translation>Masuk sebagai %1...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Apple requires two-factor authentication (%1).</source>
+      <translation>Apple memerlukan autentikasi dua faktor (%1).</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>trusted device</source>
+      <translation>perangkat tepercaya</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Signed in: %1</source>
+      <translation>Masuk: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Sign in failed: %1</source>
+      <translation>Gagal masuk: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Uninstalling %1...</source>
+      <translation>Menghapus instalasi %1...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Uninstalled: %1</source>
+      <translation>Terhapus: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Uninstall failed: %1</source>
+      <translation>Gagal menghapus: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Signing %1 with manual certificate...</source>
+      <translation>Menandatangani %1 dengan sertifikat manual...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Signed IPA saved: %1</source>
+      <translation>IPA bertanda tersimpan: %1</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Sign failed: %1</source>
+      <translation>Gagal menandatangani: %1</translation>
+    </message>
+    <message numerus="yes">
+      <location filename="../gui/ios/sideload.py" line="1" />
+      <source>Found %n installed app(s).</source>
+      <translation>
+        <numerusform>Ditemukan %n aplikasi terinstal.</numerusform>
+      </translation>
     </message>
   </context>
   <context>

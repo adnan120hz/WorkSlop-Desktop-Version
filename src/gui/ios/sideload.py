@@ -22,19 +22,19 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFileDialog,
     QMessageBox, QLineEdit, QProgressBar, QProgressDialog, QInputDialog,
-    QListWidget, QListWidgetItem, QCheckBox,
+    QListWidget, QListWidgetItem, QCheckBox, QTextEdit, QApplication,
 )
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
 from src.gui.theme import t, ColorThemeManager
 from src.gui.thread_workers.sideload_worker import (
     LoginThread, SideloadThread, InstalledAppsThread, UninstallThread,
-    SignOnlyThread,
+    SignOnlyThread, ServiceStartThread,
 )
 
 
-def tr(text: str) -> str:
-    return QCoreApplication.translate("Nugget", text)
+def tr(text: str, disambiguation: str = "", n: int = -1) -> str:
+    return QCoreApplication.translate("Nugget", text, disambiguation, n)
 
 
 class IOSSideloadPage(QWidget):
@@ -80,6 +80,7 @@ class IOSSideloadPage(QWidget):
         self._content_layout.addWidget(self._make_sideload_card())
         self._content_layout.addWidget(self._make_installed_card())
         self._content_layout.addWidget(self._make_manual_card())
+        self._content_layout.addWidget(self._make_log_card())
 
         self._content_layout.addStretch(1)
         scroll.setWidget(content)
@@ -271,6 +272,66 @@ class IOSSideloadPage(QWidget):
         lay.addLayout(row)
         return card
 
+    def _make_log_card(self):
+        # Copyable log: every sideload event lands here with a timestamp,
+        # selectable and copyable (the old status label could not be copied).
+        card, lay = self._make_card_shell(tr("Log"))
+        self._log_view = QTextEdit()
+        self._log_view.setReadOnly(True)
+        self._log_view.setMinimumHeight(150)
+        self._log_view.setMaximumHeight(260)
+        self._log_view.setLineWrapMode(QTextEdit.NoWrap)
+        lay.addWidget(self._log_view)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        copy_btn = IOSPrimaryButton(tr("Copy Log"))
+        copy_btn.clicked.connect(self._on_copy_log)
+        row.addWidget(copy_btn)
+        save_btn = IOSPrimaryButton(tr("Save Log..."))
+        save_btn.clicked.connect(self._on_save_log)
+        row.addWidget(save_btn)
+        clear_btn = IOSPrimaryButton(tr("Clear"))
+        clear_btn.clicked.connect(self._log_view.clear)
+        row.addWidget(clear_btn)
+        lay.addLayout(row)
+        self._style_log_view()
+        return card
+
+    def _style_log_view(self):
+        c = self._tm.colors
+        self._log_view.setStyleSheet(
+            f"QTextEdit {{ background-color: {c.bg_input}; "
+            f"color: {c.text_primary}; border: 1px solid {c.divider}; "
+            f"border-radius: 8px; padding: 8px; "
+            f"font-family: monospace; font-size: 12px; }}")
+
+    def _log_line(self, text):
+        # Called from GUI-thread slots only (all worker output arrives via
+        # signals), so direct append is thread-safe.
+        from datetime import datetime
+        stamp = datetime.now().strftime("%H:%M:%S")
+        self._log_view.append(f"[{stamp}] {text}")
+
+    def _on_copy_log(self):
+        QApplication.clipboard().setText(self._log_view.toPlainText())
+        self._log_line(tr("Log copied to clipboard."))
+
+    def _on_save_log(self):
+        from datetime import datetime
+        default = f"workslop-sideload-{datetime.now():%Y%m%d-%H%M%S}.log"
+        path, _ = QFileDialog.getSaveFileName(
+            self.window, tr("Save Sideload Log"), default,
+            tr("Log Files (*.log);;Text Files (*.txt)"))
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self._log_view.toPlainText())
+            self._log_line(tr("Log saved to %1") % path)
+        except OSError as exc:
+            QMessageBox.warning(self.window, tr("Save Log"),
+                                tr("Could not save log: %1") % str(exc))
+
     # -- Apple ID -------------------------------------------------------
     def refresh_account(self):
         try:
@@ -306,6 +367,7 @@ class IOSSideloadPage(QWidget):
         self._pass_edit.clear()
         self._signin_btn.setEnabled(False)
         self._account_status.setText(tr("Signing in..."))
+        self._log_line(tr("Signing in as %1...") % email)
         thread = LoginThread(email, password, self)
         thread.twofa_required.connect(self._on_2fa_required)
         thread.progress.connect(self._on_login_progress)
@@ -317,11 +379,16 @@ class IOSSideloadPage(QWidget):
 
     def _on_login_progress(self, stage):
         # Live log line while the login network calls run, so the page never
-        # sits silent on "Signing in...".
+        # sits silent on "Signing in...". Also mirrored into the copyable log.
         if getattr(self, "_login_thread", None) is not None:
             self._account_status.setText(str(stage))
+            if str(stage) != getattr(self, "_last_login_stage", None):
+                self._last_login_stage = str(stage)
+                self._log_line(str(stage))
 
     def _on_2fa_required(self, method):
+        self._log_line(tr("Apple requires two-factor authentication (%1).")
+                       % ("SMS" if method == "sms" else tr("trusted device")))
         if method == "sms":
             prompt = tr("Apple sent a verification code by SMS. Enter it:")
         else:
@@ -340,6 +407,9 @@ class IOSSideloadPage(QWidget):
         self._threads = [t for t in self._threads
                          if t is not getattr(self, "_login_thread", None)]
         self._login_thread = None
+        self._last_login_stage = None
+        self._log_line((tr("Signed in: %1") if ok
+                        else tr("Sign in failed: %1")) % message)
         if ok:
             QMessageBox.information(self.window, tr("Apple ID"), message)
         else:
@@ -425,17 +495,80 @@ class IOSSideloadPage(QWidget):
         except Exception:
             return None
 
+    def _device_or_diagnose(self, action):
+        """Return the UDID, or — on Windows with no device — diagnose the
+        real cause instead of blaming the cable.
+
+        "No iPhone connected" is the wrong message when Apple's driver
+        stack (Apple Mobile Device Service) is stopped or missing; the
+        engine knows the difference, so ask it before giving up.
+        """
+        udid = self._device_udid()
+        if udid:
+            return udid
+        import os
+        if os.name == "nt":
+            try:
+                from src.sideload.ipaside_engine import apple_support
+                report = apple_support.status()
+                state = report.get("state")
+                detail = report.get("detail", "")
+                self._log_line(tr("Windows device-stack check: %1") % detail)
+                if state == apple_support.STOPPED:
+                    self._offer_service_start(detail)
+                    return None
+                if state == apple_support.MISSING:
+                    QMessageBox.warning(
+                        self.window, tr("Apple Driver Missing"),
+                        tr("No iPhone can be seen because Apple's device "
+                           "driver is not installed on this PC.\n\n%1\n\n"
+                           "Install iTunes from apple.com or the "
+                           "\"Apple Devices\" app from the Microsoft Store, "
+                           "then reconnect the iPhone.") % detail)
+                    return None
+            except Exception as exc:
+                self._log_line(tr("Device-stack check failed: %1") % str(exc))
+        QMessageBox.warning(
+            self.window, action,
+            tr("No iPhone connected. Connect it over USB, unlock it and "
+               "tap Trust, then try again."))
+        return None
+
+    def _offer_service_start(self, detail):
+        reply = QMessageBox.question(
+            self.window, tr("Apple Service Stopped"),
+            detail + tr("\n\nStart the Apple Mobile Device Service now? "
+                        "Windows will ask for administrator permission."),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._log_line(tr("Starting Apple Mobile Device Service..."))
+        thread = ServiceStartThread(self)
+        thread.finished_with_result.connect(self._on_service_started)
+        thread.finished.connect(thread.deleteLater)
+        self._threads.append(thread)
+        thread.start()
+
+    def _on_service_started(self, ok, message):
+        self._threads = [t for t in self._threads
+                         if not isinstance(t, ServiceStartThread)]
+        self._log_line((tr("Service started: %1") if ok
+                        else tr("Service start failed: %1")) % message)
+        if ok:
+            QMessageBox.information(
+                self.window, tr("Apple Service"),
+                message + tr("\n\nReconnect the iPhone if it is not "
+                             "detected yet."))
+        else:
+            QMessageBox.warning(self.window, tr("Apple Service"), message)
+
     def _on_sideload(self):
         if not self._ipa_path:
             QMessageBox.warning(self.window, tr("Sideload"),
                                 tr("Choose an IPA first."))
             return
-        udid = self._device_udid()
+        udid = self._device_or_diagnose(tr("Sideload"))
         if not udid:
-            QMessageBox.warning(
-                self.window, tr("Sideload"),
-                tr("No iPhone connected. Connect it over USB, unlock it and "
-                   "tap Trust, then try again."))
             return
         try:
             from src.sideload.ipaside_engine import gsa
@@ -448,6 +581,7 @@ class IOSSideloadPage(QWidget):
         except Exception as exc:
             QMessageBox.warning(self.window, tr("Sideload"), str(exc))
             return
+        self._log_line(tr("Sideloading %1...") % os.path.basename(self._ipa_path))
         self._sideload_btn.setEnabled(False)
         self._progress.setVisible(True)
         self._progress.setValue(0)
@@ -469,6 +603,10 @@ class IOSSideloadPage(QWidget):
         if pct >= 0:
             self._progress.setValue(min(pct, 100))
         self._progress_lbl.setText(text)
+        # Log stage transitions only — install progress ticks every percent.
+        if text != getattr(self, "_last_sideload_stage", None):
+            self._last_sideload_stage = text
+            self._log_line(text)
 
     def _on_sideload_done(self, ok, message):
         self._threads = [t for t in self._threads
@@ -476,6 +614,9 @@ class IOSSideloadPage(QWidget):
         self._sideload_btn.setEnabled(True)
         self._progress.setVisible(False)
         self._progress_lbl.setVisible(False)
+        self._last_sideload_stage = None
+        self._log_line((tr("Sideload finished: %1") if ok
+                        else tr("Sideload failed: %1")) % message)
         if ok:
             QMessageBox.information(self.window, tr("Sideload"), message)
             self._on_refresh_apps()
@@ -484,11 +625,10 @@ class IOSSideloadPage(QWidget):
 
     # -- installed apps -------------------------------------------------
     def _on_refresh_apps(self):
-        udid = self._device_udid()
+        udid = self._device_or_diagnose(tr("Installed Apps"))
         if not udid:
-            QMessageBox.warning(self.window, tr("Installed Apps"),
-                                tr("No iPhone connected."))
             return
+        self._log_line(tr("Listing installed apps..."))
         self._apps_list.clear()
         item = QListWidgetItem(tr("Loading..."))
         item.setFlags(Qt.NoItemFlags)
@@ -504,10 +644,12 @@ class IOSSideloadPage(QWidget):
                          if not isinstance(t, InstalledAppsThread)]
         self._apps_list.clear()
         if not ok:
+            self._log_line(tr("Failed to list apps: %1") % str(payload))
             item = QListWidgetItem(tr("Failed: ") + str(payload))
             item.setFlags(Qt.NoItemFlags)
             self._apps_list.addItem(item)
             return
+        self._log_line(tr("Found %n installed app(s).", "", len(payload)))
         for app in payload:
             item = QListWidgetItem(
                 f"{app['name']}  ({app['version']})\n{app['bundle_id']}")
@@ -530,7 +672,11 @@ class IOSSideloadPage(QWidget):
             tr("Uninstall %1 from the iPhone?") % bundle_id)
         if reply != QMessageBox.StandardButton.Yes:
             return
-        thread = UninstallThread(bundle_id, self._device_udid(), self)
+        udid = self._device_or_diagnose(tr("Uninstall"))
+        if not udid:
+            return
+        self._log_line(tr("Uninstalling %1...") % str(bundle_id))
+        thread = UninstallThread(bundle_id, udid, self)
         thread.finished_with_result.connect(self._on_uninstall_done)
         thread.finished.connect(thread.deleteLater)
         self._threads.append(thread)
@@ -539,6 +685,8 @@ class IOSSideloadPage(QWidget):
     def _on_uninstall_done(self, ok, payload):
         self._threads = [t for t in self._threads
                          if not isinstance(t, UninstallThread)]
+        self._log_line((tr("Uninstalled: %1") if ok
+                        else tr("Uninstall failed: %1")) % str(payload))
         if ok:
             self._on_refresh_apps()
         else:
@@ -597,6 +745,8 @@ class IOSSideloadPage(QWidget):
             return
         # Sign off the UI thread so the page stays responsive while zsign
         # works (signing an IPA can take a while on large apps).
+        self._log_line(tr("Signing %1 with manual certificate...")
+                       % os.path.basename(self._ipa_path))
         thread = SignOnlyThread(
             self._ipa_path, out, self._p12_path, password,
             self._prov_path, self)
@@ -624,6 +774,8 @@ class IOSSideloadPage(QWidget):
             self._sign_progress = None
         if self._sign_btn is not None:
             self._sign_btn.setEnabled(True)
+        self._log_line((tr("Signed IPA saved: %1") if ok
+                        else tr("Sign failed: %1")) % message)
         if ok:
             QMessageBox.information(
                 self.window, tr("Signed"),
@@ -640,4 +792,6 @@ class IOSSideloadPage(QWidget):
         c = self._tm.colors
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;")
+        if hasattr(self, "_log_view"):
+            self._style_log_view()
         self.refresh()

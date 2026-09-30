@@ -50,6 +50,13 @@ from requests.adapters import HTTPAdapter
 from . import anisette, paths, tls
 from .errors import EngineError
 
+import logging
+
+# Session-log mirror: the GUI worker also logs progress callbacks, but these
+# entry/exit lines live here so a native crash inside anisette/SRP still
+# leaves the last reached step on disk (the file handler flushes per record).
+log = logging.getLogger("WorkSlop.sideload.gsa")
+
 # Configure the SRP library for Apple's variant (SHA-256, 2048-bit group,
 # username excluded from the x computation).
 srp.rfc5054_enable()
@@ -787,19 +794,23 @@ def load_session(email: str | None = None) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 def begin_login(email: str, password: str, on_progress=None) -> dict[str, Any]:
     """Start login. Returns an 'authenticated' or '2fa_required' result."""
+    log.info("begin_login started for %s", email)
     if on_progress:
         on_progress("Preparing device provisioning...")
     headers = anisette.get_headers(on_progress=on_progress)
+    log.info("anisette headers ready")
     if on_progress:
         on_progress("Contacting Apple ID servers...")
     spd, secondary = _authenticate_once(email, password, headers)
     if not secondary:
+        log.info("no secondary auth required")
         if on_progress:
             on_progress("Finalizing sign-in...")
         return _finalize_session(email, spd, headers)
 
     adsid, idms = spd["adsid"], spd["GsIdmsToken"]
     method = "trusteddevice" if secondary == "trustedDeviceSecondaryAuth" else "sms"
+    log.info("secondary auth required: method=%s", method)
     if on_progress:
         on_progress("Requesting verification code from Apple...")
     if method == "trusteddevice":
@@ -807,11 +818,13 @@ def begin_login(email: str, password: str, on_progress=None) -> dict[str, Any]:
     else:
         _trigger_sms(adsid, idms, anisette.get_headers())
     _save_pending(email, adsid, idms, method)
+    log.info("begin_login returning 2fa_required")
     return {"status": "2fa_required", "method": method}
 
 
 def complete_2fa(email: str, password: str, code: str, on_progress=None) -> dict[str, Any]:
     """Submit a 2FA code, then re-authenticate to obtain the session tokens."""
+    log.info("complete_2fa started for %s", email)
     pending = _load_pending()
     if not pending:
         raise GsaError("no pending 2FA request; run 'login' first")
@@ -821,6 +834,7 @@ def complete_2fa(email: str, password: str, code: str, on_progress=None) -> dict
         _submit_trusted(pending["adsid"], pending["idms"], code, anisette.get_headers())
     else:
         _submit_sms(pending["adsid"], pending["idms"], code, anisette.get_headers())
+    log.info("2FA code submitted, re-authenticating")
 
     if on_progress:
         on_progress("Verifying with Apple ID servers...")
@@ -828,6 +842,7 @@ def complete_2fa(email: str, password: str, code: str, on_progress=None) -> dict
     spd, secondary = _authenticate_once(email, password, headers)
     if secondary:
         raise GsaError(f"account still requires secondary auth after 2FA: {secondary}")
+    log.info("complete_2fa authenticated")
     return _finalize_session(email, spd, headers)
 
 
