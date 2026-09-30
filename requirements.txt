@@ -1,4 +1,10 @@
 pymobiledevice3==10.7.1
+# Sideloading engine (Apple ID login via GrandSlam/SRP + anisette, Apple
+# developer-services provisioning, zsign-based signing). Engine code vendored
+# in src/sideload/ipaside_engine/ (MIT, see src/sideload/ATTRIBUTION.md).
+Anisette>=1.2.4
+srp>=1.0.22
+zstandard>=0.22
 PySide6-Essentials==6.11.1; sys_platform != 'linux'
 PySide6==6.11.1; sys_platform == 'linux'
 PyInstaller==6.22.1

@@ -43,7 +43,7 @@ class PosterBoardDBWizard(QWizard):
         # information page telling the user about backing up
         page = QWizardPage()
         page.setTitle("Notice")
-        message = QLabel("GoldenNugget needs to download the PosterBoard database from your device.")
+        message = QLabel("WorkSlop Desktop needs to download the PosterBoard database from your device.")
         contLbl = QLabel("\nYour device is not erased or wiped — only the PosterBoard data is fetched.")
         layout = QVBoxLayout(page)
         layout.addWidget(message)

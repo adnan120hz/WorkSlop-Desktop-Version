@@ -38,6 +38,27 @@ class IOSBackupPage(QWidget):
 
         self._content_layout.addWidget(IOSSectionHeader(tr("Backup")))
 
+        # Safety notice: protective != full.
+        self._content_layout.addWidget(self._make_notice_card(
+            tr("For maximum safety, use Full Backup"),
+            tr("The protective backup below only saves your photos, messages, "
+               "contacts, Apple ID / settings data and the keychain — not "
+               "everything on the iPhone. If you want to be fully safe before "
+               "applying tweaks, run a Full Backup first.")))
+
+        self._content_layout.addWidget(self._make_card(
+            tr("Protective Backup (Backup Biasa)"),
+            tr("A selective backup of the things the tweak flow needs to "
+               "restore: photos, messages, contacts, Apple ID and settings "
+               "data, plus the keychain when the device backup is encrypted.\n\n"
+               "This is NOT a full backup — app data and the rest of the "
+               "iPhone are not included. On iOS 27 this backup runs "
+               "automatically before tweaks are applied."),
+            tr("Start Protective Backup"),
+            self._on_protective_backup))
+
+        self._content_layout.addWidget(self._make_apply_card())
+
         self._content_layout.addWidget(self._make_card(
             tr("Full Backup"),
             tr("Create a complete backup of the iPhone, the way iTunes/Finder "
@@ -99,7 +120,77 @@ class IOSBackupPage(QWidget):
         lay.addLayout(row)
         return card
 
+    def _make_notice_card(self, title, desc):
+        """Warning-style card for the full-backup safety notice."""
+        card = IOSCard()
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(6)
+        title_lbl = QLabel("⚠  " + tr(title))
+        title_lbl.setWordWrap(True)
+        title_lbl.setStyleSheet(
+            "font-size: 14px; font-weight: 700; color: #ffb86b; "
+            "background-color: transparent;")
+        lay.addWidget(title_lbl)
+        desc_lbl = QLabel(tr(desc))
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")
+        lay.addWidget(desc_lbl)
+        return card
+
+    def _make_apply_card(self):
+        """Apply/Remove Tweaks lives here (not a separate sidebar item)."""
+        card = IOSCard()
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(8)
+        title_lbl = QLabel(tr("Apply Tweaks"))
+        title_lbl.setStyleSheet(
+            "font-size: 15px; font-weight: 600; background-color: transparent;")
+        lay.addWidget(title_lbl)
+        desc_lbl = QLabel(tr(
+            "Apply the tweaks you enabled on the other pages.\n\n"
+            "On iOS 27 the protective backup runs automatically first, then "
+            "the tweaks are applied, the iPhone reboots, is wiped to a safe "
+            "state, and your photos / messages / contacts / settings are "
+            "put back.\n\n"
+            "On iOS 26 the tweaks apply directly, without a wipe."))
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")
+        lay.addWidget(desc_lbl)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        apply_btn = IOSPrimaryButton(tr("Apply Tweaks"))
+        apply_btn.clicked.connect(self._on_apply_tweaks)
+        row.addWidget(apply_btn)
+        remove_btn = IOSPrimaryButton(tr("Remove Tweaks"))
+        remove_btn.clicked.connect(self._on_remove_tweaks)
+        row.addWidget(remove_btn)
+        lay.addLayout(row)
+        return card
+
     # -- actions (same flows as Settings) -------------------------------
+    def _on_protective_backup(self):
+        reply = QMessageBox.warning(
+            self.window, tr("Protective Backup"),
+            tr("This creates a SELECTIVE backup: photos, messages, contacts, "
+               "Apple ID and settings data, plus the keychain when the "
+               "device backup is encrypted.\n\n"
+               "It is NOT a full backup. For maximum safety, run a Full "
+               "Backup too.\n\n"
+               "Continue?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self.window._start_protective_backup()
+
+    def _on_apply_tweaks(self):
+        self.window.apply_tweaks_clicked()
+
+    def _on_remove_tweaks(self):
+        self.window.remove_tweaks_clicked()
+
     def _on_full_backup(self):
         reply = QMessageBox.warning(
             self.window, tr("Full Backup"),

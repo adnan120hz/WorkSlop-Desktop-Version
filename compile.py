@@ -42,10 +42,17 @@ def _package_macos_app(dist_path):
     print(f"[+] macOS app packaged: {zip_path} (extracts to WorkSlopDesktop.app)")
 
 # Base PyInstaller args
+import sys as _sys
+if _sys.platform == "darwin":
+    _icon_file = "workslop.icns"
+elif os.name == "nt":
+    _icon_file = "workslop.ico"
+else:
+    _icon_file = "workslop_icon.png"
 args = [
 'workslop_cli.py',
     '--name=WorkSlopDesktop',
-    '--icon=workslop.ico',
+    f'--icon={_icon_file}',
     '--onedir',
     '--noconfirm',
     '--collect-all=pymobiledevice3',
@@ -123,6 +130,19 @@ elif os.name == 'nt':
         args.append('--add-data=idevice;idevice')
     else:
         print("[!] libimobiledevice binaries not bundled: 'idevice' folder not found")
+
+# zsign (built from source via tools/build_zsign.py) — the sideloading
+# engine looks for it next to the frozen executable, in the vendor dir,
+# on PATH, or via WORKSLOP_ZSIGN. Bundling it here covers the common case.
+_zsign = os.path.join("vendor", "zsign.exe" if os.name == "nt" else "zsign")
+if os.path.isfile(_zsign):
+    _sep = ";" if os.name == "nt" else ":"
+    args.append('--add-binary')
+    args.append(f"{_zsign}{_sep}.")
+    print(f"[+] Bundling zsign: {_zsign}")
+else:
+    print("[!] zsign not bundled: run tools/build_zsign.py first "
+          "(sideload signing will need zsign on PATH or WORKSLOP_ZSIGN)")
 
 PyInstaller.__main__.run(args)
 

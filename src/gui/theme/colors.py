@@ -53,53 +53,71 @@ class ThemeColors:
     glass_border: str = "rgba(150, 180, 255, 40)"
     bubble: str = "rgba(140, 175, 255, 26)"
 
+    # Terminal theme (WorkSlop Desktop): white navigation menu on a black
+    # terminal body. Defaults keep older constructions working.
+    menu_bg: str = "#FFFFFF"
+    menu_text: str = "#0A0A0A"
+    menu_dim: str = "#6B6B6B"
+    menu_active_bg: str = "#0A0A0A"
+    menu_active_text: str = "#FFFFFF"
+    term_green: str = "#00E676"
+    term_green_dim: str = "#00884a"
+
     def with_accent(self, accent: str, hover: str, pressed: str) -> "ThemeColors":
         return replace(self, accent=accent, accent_hover=hover, accent_pressed=pressed)
 
 
 # ---------------------------------------------------------------------------
-# Cobalt Flow palette (WorkSlop Desktop): deep cobalt gradient base, glass
-# surfaces, electric-blue accent. Reflections are deliberately restrained —
-# one thin glass border, no heavy top highlights.
+# Terminal palette (WorkSlop Desktop): pure black body, white navigation
+# menu, terminal-green accents, monospace type. Flat and solid — no
+# gradients, no blur, no translucency on text surfaces.
 # ---------------------------------------------------------------------------
 DARK = ThemeColors(
-    bg_primary="#0A1230",
-    bg_secondary="#101B45",
-    bg_tertiary="#16225A",
-    bg_input="#0E1840",
-    bg_elevated="#132052",
+    bg_primary="#000000",
+    bg_secondary="#0E0E0E",
+    bg_tertiary="#161616",
+    bg_input="#0E0E0E",
+    bg_elevated="#141414",
 
     text_primary="#FFFFFF",
-    text_secondary="#9DB1DC",
-    text_disabled="#5E6E99",
-    text_inverse="#FFFFFF",
+    text_secondary="#A6A6A6",
+    text_disabled="#5C5C5C",
+    text_inverse="#000000",
 
-    accent="#3D7BFF",
-    accent_hover="#5B93FF",
-    accent_pressed="#2B5FD9",
+    accent="#00E676",
+    accent_hover="#2BFF8F",
+    accent_pressed="#00B35C",
 
-    success="#30D158",
-    error="#FF453A",
-    error_hover="#FF5A50",
-    error_pressed="#C2322A",
-    warning="#FFD60A",
+    success="#00E676",
+    error="#FF5252",
+    error_hover="#FF7373",
+    error_pressed="#D33A3A",
+    warning="#FFD740",
 
-    border="#26346B",
-    divider="#223063",
+    border="#262626",
+    divider="#262626",
 
-    scrollbar="#2A3A75",
-    scrollbar_pressed="#3A4E96",
-    selection="#3D7BFF",
+    scrollbar="#2E2E2E",
+    scrollbar_pressed="#3D3D3D",
+    selection="#00E676",
 
-    card_border="#2A3C7E",
-    surface_hover="#1B2A66",
-    danger_text="#FF453A",
+    card_border="#262626",
+    surface_hover="#1C1C1C",
+    danger_text="#FF5252",
 
-    bg_gradient_start="#0C1C4E",
-    bg_gradient_end="#050A20",
-    glass_bg="rgba(35, 64, 150, 110)",
-    glass_border="rgba(150, 180, 255, 40)",
-    bubble="rgba(140, 175, 255, 26)",
+    bg_gradient_start="#000000",
+    bg_gradient_end="#000000",
+    glass_bg="#101010",
+    glass_border="#262626",
+    bubble="rgba(0, 0, 0, 0)",
+
+    menu_bg="#FFFFFF",
+    menu_text="#0A0A0A",
+    menu_dim="#6B6B6B",
+    menu_active_bg="#0A0A0A",
+    menu_active_text="#FFFFFF",
+    term_green="#00E676",
+    term_green_dim="#00884A",
 )
 
 

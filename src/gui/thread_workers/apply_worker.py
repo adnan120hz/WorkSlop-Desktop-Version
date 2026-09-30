@@ -650,6 +650,88 @@ class FullBackupThread(QThread):
         return backup_path
 
 
+class ProtectiveBackupThread(QThread):
+    """Run the selective protective backup on demand (the "Backup Biasa").
+
+    This is the SAME backup the iOS 27 apply flow runs automatically before
+    touching the device: photos, messages, contacts, Apple ID / settings
+    data, and the keychain when the device backup is encrypted. It is NOT a
+    full backup — it only covers what the tweak flow needs to restore.
+    """
+    progress = Signal(str)
+    alert = Signal(object)
+    finished_with_result = Signal(bool, str)
+    # Emitted with the finished backup directory on success.
+    backup_finished = Signal(str)
+
+    def __init__(self, manager):
+        super().__init__()
+        self.manager = manager
+
+    def update_label(self, txt: str):
+        self.progress.emit(txt)
+
+    def _progress_cb(self, value):
+        # perform_protective_backup reports either text or 0-100 floats.
+        if isinstance(value, str):
+            self.update_label(value)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Backing up... ({0:.1f}%)").format(value))
+
+    def run(self):
+        import logging
+        from src.controllers.nugget_logger import log_context
+        log = logging.getLogger("GoldenNugget.protective_backup")
+        try:
+            udid = self.manager.get_current_device_udid()
+            log_context("START manual-protective-backup",
+                        udid=udid or "unknown")
+            backup_root = asyncio.run(self._backup(udid))
+            log_context("FINISH manual-protective-backup OK")
+            self.backup_finished.emit(backup_root)
+            self.finished_with_result.emit(True, "")
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            log.error("manual-protective-backup failed: %s\n%s", e, traceback_str)
+            self.alert.emit(ApplyAlertMessage(
+                f"Failed to create protective backup: {e}",
+                title="Protective backup",
+                icon=QMessageBox.Critical,
+                detailed_txt=traceback_str,
+                exc_type=type(e),
+                exc_value=e,
+            ))
+            self.finished_with_result.emit(False, f"{type(e).__name__}: {e}")
+
+    async def _backup(self, udid) -> str:
+        import os
+        from src.devicemanagement.session import lockdown_session
+        from src.restore.protective import (
+            new_protective_backup_dir, perform_protective_backup,
+        )
+        from src.restore.afc_media import afc_media_enabled
+
+        if not udid:
+            raise RuntimeError("No device selected.")
+        backup_root = new_protective_backup_dir(udid)
+
+        self.update_label(QCoreApplication.translate(
+            "Nugget", "Connecting to device..."))
+        async with lockdown_session(udid) as lc:
+            self.update_label(QCoreApplication.translate(
+                "Nugget", "Backing up device..."))
+            await perform_protective_backup(
+                lc, backup_root,
+                progress_callback=self._progress_cb,
+                include_photos=True, include_posterboard=False,
+                include_keychain=None,
+                include_afc_media=afc_media_enabled(
+                    self.manager.pref_manager.use_afc_media),
+            )
+        return backup_root
+
+
 class CacheUpdateThread(QThread):
     """Force a refresh of the backup cache master (pre-apply "Update Cache").
 

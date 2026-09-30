@@ -7,67 +7,89 @@ Usage::
 """
 
 
-# Single UI font used on every platform. The bundled variable font
-# (src/qt/fonts/InterVariable.ttf + InterVariable-Italic.ttf) is registered at
-# startup in main_app.py; the global stylesheet pins it here so Designer
-# hardcoded families (e.g. .AppleSystemUIFont) can never leak in.
-FONT_FAMILY = "Inter Variable"
+# Single UI font used on every platform. Terminal theme: the real monospace
+# font of the OS (resolved lazily once a QApplication exists), so the UI
+# reads like a terminal on Windows, macOS and Linux alike.
+FONT_FAMILY = "monospace"
+
+_MONO_FAMILY_CACHE: str | None = None
+
+
+def mono_family() -> str:
+    """Return the OS monospace font family, resolved once and cached."""
+    global _MONO_FAMILY_CACHE
+    if _MONO_FAMILY_CACHE is None:
+        try:
+            from PySide6.QtGui import QFontDatabase
+            from PySide6.QtWidgets import QApplication
+            if QApplication.instance() is not None:
+                _MONO_FAMILY_CACHE = QFontDatabase.systemFont(
+                    QFontDatabase.SystemFont.FixedFont).family()
+            else:
+                _MONO_FAMILY_CACHE = FONT_FAMILY
+        except Exception:
+            _MONO_FAMILY_CACHE = FONT_FAMILY
+    return _MONO_FAMILY_CACHE
 
 
 STYLES = {
     # ---- Components ------------------------------------------------------
     "text_input_dialog": """
-        QDialog {{ background-color: {bg_elevated}; }}
+        QDialog {{ background-color: {bg_primary}; border: 1px solid {border}; }}
         QLabel {{ color: {text_primary}; font-size: 15px; }}
         QLineEdit {{
             background-color: {bg_input};
-            border: none;
+            border: 1px solid {border};
             border-radius: 10px;
             color: {text_primary};
             font-size: 15px;
             padding: 12px 16px;
+            selection-background-color: {accent};
+            selection-color: #000000;
         }}
         QPushButton {{
-            background-color: {accent};
+            background-color: {text_primary};
             border-radius: 10px;
             color: {text_inverse};
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             padding: 12px 24px;
             border: none;
             min-width: 80px;
         }}
-        QPushButton:hover {{ background-color: {accent_hover}; }}
+        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
     """,
 
     "number_input_dialog": """
-        QDialog {{ background-color: {bg_elevated}; }}
+        QDialog {{ background-color: {bg_primary}; border: 1px solid {border}; }}
         QLabel {{ color: {text_primary}; font-size: 15px; }}
         QSpinBox {{
             background-color: {bg_input};
-            border: none;
+            border: 1px solid {border};
             border-radius: 10px;
             color: {text_primary};
             font-size: 15px;
             padding: 12px 16px;
+            selection-background-color: {accent};
+            selection-color: #000000;
         }}
         QSpinBox::up-button, QSpinBox::down-button {{ width: 0; }}
         QPushButton {{
-            background-color: {accent};
+            background-color: {text_primary};
             border-radius: 10px;
             color: {text_inverse};
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             padding: 12px 24px;
             border: none;
             min-width: 80px;
         }}
-        QPushButton:hover {{ background-color: {accent_hover}; }}
+        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
     """,
 
     "section_header": (
-        "font-size: 13px; font-weight: 600; color: {text_secondary}; "
-        "text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px;"
+        "font-size: 12px; font-weight: 700; color: {term_green}; "
+        "letter-spacing: 1.5px; padding-left: 4px;"
     ),
 
     # Header of an IOSCollapsibleSection: same look as a plain section header,
@@ -76,9 +98,10 @@ STYLES = {
         QPushButton#iosCollapsibleHeader {{
             background: transparent;
             border: none;
-            color: {text_secondary};
-            font-size: 13px;
-            font-weight: 600;
+            color: {term_green};
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
             text-align: left;
             padding: 10px 4px 10px 4px;
         }}
@@ -86,13 +109,13 @@ STYLES = {
         QPushButton#iosCollapsibleHeader:checked {{ color: {text_primary}; }}
     """,
 
-    # Cobalt Flow card: fluid 20px radius, translucent glass, one thin
-    # glass border. No heavy top highlight — reflections stay restrained.
+    # Terminal card: solid near-black surface, fluid 18px radius, one thin
+    # neutral border. No glass, no translucency — text stays crisp.
     "card": """
         IOSCard {{
-            background-color: {glass_bg};
-            border-radius: 20px;
-            border: 1px solid {glass_border};
+            background-color: {bg_secondary};
+            border-radius: 18px;
+            border: 1px solid {card_border};
         }}
     """,
 
@@ -139,61 +162,56 @@ STYLES = {
 
     "primary_button": """
         QPushButton {{
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {accent}, stop:1 {accent_pressed});
+            background-color: {text_primary};
             border-radius: 14px;
             color: {text_inverse};
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 15px;
+            font-weight: 700;
             border: none;
+            padding: 12px 20px;
         }}
-        QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {accent_hover}, stop:1 {accent}); }}
-        QPushButton:pressed {{ background-color: {accent_pressed}; }}
-        QPushButton:disabled {{ background-color: {border}; color: {text_disabled}; }}
+        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
+        QPushButton:pressed {{ background-color: {accent_pressed}; color: #000000; }}
+        QPushButton:disabled {{ background-color: {bg_tertiary}; color: {text_disabled}; }}
     """,
 
     "danger_button": """
         QPushButton {{
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {error}, stop:1 {error_pressed});
+            background-color: {error};
             border-radius: 14px;
-            color: {text_inverse};
-            font-size: 17px;
-            font-weight: 600;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
             border: none;
+            padding: 12px 20px;
         }}
-        QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {error_hover}, stop:1 {error}); }}
+        QPushButton:hover {{ background-color: {error_hover}; }}
         QPushButton:pressed {{ background-color: {error_pressed}; }}
-        QPushButton:disabled {{ background-color: {border}; color: {text_disabled}; }}
+        QPushButton:disabled {{ background-color: {bg_tertiary}; color: {text_disabled}; }}
     """,
 
     "confirm_dialog": """
-        QDialog {{ background-color: {bg_elevated}; }}
+        QDialog {{ background-color: {bg_primary}; border: 1px solid {border}; }}
         QLabel {{ color: {text_primary}; font-size: 15px; }}
         QLabel#confirmTitle {{ font-size: 17px; font-weight: 700; color: {text_primary}; }}
         QLabel#confirmMuted {{ color: {text_secondary}; font-size: 13px; }}
         QLabel#confirmRow {{ font-size: 14px; color: {text_primary}; }}
         QPushButton {{
-            background-color: {accent};
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {accent}, stop:1 {accent_pressed});
+            background-color: {text_primary};
             border-radius: 10px;
             color: {text_inverse};
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             padding: 12px 24px;
             border: none;
             min-width: 110px;
         }}
-        QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                        stop:0 {accent_hover}, stop:1 {accent}); }}
+        QPushButton:hover {{ background-color: {accent}; color: #000000; }}
         QPushButton#cancelBtn {{
             background-color: {bg_tertiary};
             color: {text_primary};
         }}
-        QPushButton#cancelBtn:hover {{ background-color: {surface_hover}; }}
+        QPushButton#cancelBtn:hover {{ background-color: {surface_hover}; color: {text_primary}; }}
     """,
 
     # IOSSwitch paints its own track/knob (it animates the knob position and
@@ -258,9 +276,9 @@ STYLES = {
     """,
 
     # ---- Pages -----------------------------------------------------------
-    # Transparent so the cobalt gradient + bubble backdrop shows through.
-    "page_bg": "background-color: transparent;",
-    "scroll_area": "QScrollArea {{ background-color: transparent; border: none; }}",
+    # Solid black — the terminal body. No translucency, text stays crisp.
+    "page_bg": "background-color: {bg_primary};",
+    "scroll_area": "QScrollArea {{ background-color: {bg_primary}; border: none; }}",
 
     # ---- Settings --------------------------------------------------------
     "settings_list": """
@@ -374,8 +392,8 @@ STYLES = {
     """,
 
     # ---- Home ------------------------------------------------------------
-    "home_title": "font-size: 32px; font-weight: 700; color: {text_primary};",
-    "home_subtitle": "color: {text_secondary}; font-size: 14px;",
+    "home_title": "font-size: 28px; font-weight: 700; color: {text_primary};",
+    "home_subtitle": "color: {term_green}; font-size: 13px;",
 
     "home_combo": """
         QComboBox {{
@@ -413,9 +431,9 @@ STYLES = {
     # raised tile against the page background, like the home screen mockup.
     "home_tile": """
         IOSCard {{
-            background-color: {glass_bg};
-            border-radius: 20px;
-            border: 1px solid {glass_border};
+            background-color: {bg_secondary};
+            border-radius: 18px;
+            border: 1px solid {card_border};
         }}
         IOSCard:hover {{ border-color: {accent}; }}
     """,
@@ -502,20 +520,25 @@ STYLES = {
     """,
 
     # ---- Global (main window stylesheet) ---------------------------------
-    # Cobalt Flow: the window sits on a deep cobalt diagonal gradient; pages
-    # are transparent so the gradient (and the bubble backdrop) shows through.
+    # Terminal: the window sits on solid black; every surface is opaque so
+    # text stays crisp at any DPI. Monospace everywhere.
     "global": """
-        QWidget {{ color: {text_primary}; background-color: transparent; spacing: 0px; font-family: '{font_family}'; }}
+        QWidget {{ color: {text_primary}; background-color: {bg_primary}; spacing: 0px; font-family: '{font_family}'; }}
         QWidget:focus {{ outline: none; }}
-        QWidget[cls=central] {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {bg_gradient_start}, stop:1 {bg_gradient_end}); border-radius: 0px; border: 1px solid {divider}; }}
+        QWidget[cls=central] {{ background-color: {bg_primary}; border-radius: 0px; }}
         QLabel {{ font-size: 14px; }}
-        QToolButton {{ background-color: {scrollbar}; border: none; color: {text_primary}; font-size: 14px; min-height: 35px; icon-size: 16px; padding-left: 10px; padding-right: 10px; border-radius: 8px; }}
+        QLabel[cls=dim] {{ color: {text_secondary}; }}
+        QLabel[cls=term] {{ color: {term_green}; }}
+        QToolButton {{ background-color: {bg_tertiary}; border: none; color: {text_primary}; font-size: 14px; min-height: 35px; icon-size: 16px; padding-left: 10px; padding-right: 10px; border-radius: 8px; }}
         QToolButton[cls=sidebarBtn] {{ background-color: transparent; icon-size: 24px; }}
         QToolButton:pressed {{ background-color: {scrollbar_pressed}; color: {text_primary}; }}
-        QToolButton:checked {{ background-color: {accent}; color: {text_inverse}; }}
+        QToolButton:checked {{ background-color: {accent}; color: #000000; }}
         QCheckBox {{ spacing: 8px; font-size: 14px; }}
+        QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 5px; border: 1px solid {border}; background-color: {bg_tertiary}; }}
+        QCheckBox::indicator:checked {{ background-color: {accent}; border: 1px solid {accent}; }}
         QRadioButton {{ spacing: 8px; font-size: 14px; }}
-        QLineEdit {{ border: none; background-color: transparent; color: {text_primary}; font-size: 14px; }}
+        QLineEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; padding: 8px 10px; selection-background-color: {accent}; selection-color: #000000; }}
+        QTextEdit {{ border: 1px solid {border}; border-radius: 8px; background-color: {bg_input}; color: {text_primary}; font-size: 14px; selection-background-color: {accent}; selection-color: #000000; }}
         QScrollBar:vertical {{ background: transparent; width: 8px; }}
         QScrollBar:horizontal {{ background: transparent; height: 8px; }}
         QScrollBar::handle {{ background: {scrollbar}; border-radius: 4px; }}
@@ -523,8 +546,10 @@ STYLES = {
         QScrollBar::add-line, QScrollBar::sub-line {{ background: none; }}
         QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
         QSlider::groove:horizontal {{ background-color: {scrollbar}; height: 4px; border-radius: 2px; }}
-        QSlider::handle:horizontal {{ background-color: {scrollbar_pressed}; width: 8px; border-radius: 4px; }}
+        QSlider::handle:horizontal {{ background-color: {text_primary}; width: 10px; border-radius: 5px; }}
         QSlider::handle:horizontal:pressed {{ background-color: {accent}; }}
         QSlider::tick:horizontal {{ background-color: {scrollbar_pressed}; width: 1px; }}
+        QProgressBar {{ background-color: {bg_tertiary}; border: none; border-radius: 6px; text-align: center; color: {text_primary}; font-size: 12px; }}
+        QProgressBar::chunk {{ background-color: {accent}; border-radius: 6px; }}
     """,
 }

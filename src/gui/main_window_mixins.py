@@ -490,6 +490,9 @@ class NavigationMixin:
         elif menu_id == "backup":
             self.ios_backup.refresh()
             self.show_ios_page(13)
+        elif menu_id == "sideload":
+            self.ios_sideload.refresh()
+            self.show_ios_page(15)
         elif menu_id == "themes":
             self.show_ios_page(14)
         elif menu_id == "settings":
@@ -506,6 +509,7 @@ class NavigationMixin:
             12: "gestalt",
             2: "wallpaper",
             13: "backup",
+            15: "sideload",
             10: "themes", 11: "themes", 14: "themes",
             4: "settings",
         }
@@ -1100,6 +1104,74 @@ class ApplyMixin:
         except Exception:
             pass
 
+    def _start_protective_backup(self):
+        """WorkSlop: run the selective protective backup on demand.
+
+        Same backup the iOS 27 apply flow runs automatically — photos,
+        messages, contacts, Apple ID/settings data, keychain when encrypted.
+        NOT a full backup.
+        """
+        from src.gui.thread_workers.apply_worker import ProtectiveBackupThread
+        if getattr(self, '_protective_backup_in_progress', False):
+            return
+        if (self.apply_in_progress
+                or getattr(self, '_cache_restore_in_progress', False)
+                or getattr(self, '_full_restore_in_progress', False)
+                or getattr(self, '_full_backup_in_progress', False)):
+            self.alert_message(ApplyAlertMessage(
+                txt="Cannot start a protective backup while another operation is in progress.",
+                title="Protective backup",
+                icon=QtWidgets.QMessageBox.Warning,
+            ), log_to_console=False)
+            return
+        self._protective_backup_in_progress = True
+        worker = ProtectiveBackupThread(manager=self.device_manager)
+        self._protective_backup_thread = worker
+        worker.progress.connect(self._update_restore_label)
+        worker.alert.connect(self.alert_message)
+        worker.backup_finished.connect(self._on_protective_backup_saved)
+        worker.finished_with_result.connect(self._finish_protective_backup)
+        worker.finished.connect(self._protective_backup_thread_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_protective_backup_saved(self, backup_path: str):
+        try:
+            mbox = QtWidgets.QMessageBox(self)
+            mbox.setWindowTitle(QCoreApplication.translate("Nugget", "Protective Backup Complete"))
+            mbox.setIcon(QtWidgets.QMessageBox.Information)
+            mbox.setText(QCoreApplication.translate(
+                "Nugget", "Protective backup complete."))
+            mbox.setInformativeText(
+                QCoreApplication.translate(
+                    "Nugget", "Saved at: {0}").format(backup_path)
+                + "\n" + QCoreApplication.translate(
+                    "Nugget",
+                    "This is a selective backup (photos, messages, contacts, "
+                    "settings, keychain) — not a full backup. For maximum "
+                    "safety, also run a Full Backup."))
+            mbox.exec()
+        except Exception:
+            pass
+
+    def _finish_protective_backup(self, success: bool, error_msg: str = ""):
+        self._protective_backup_in_progress = False
+        if not success or error_msg:
+            try:
+                self.alert_message(ApplyAlertMessage(
+                    txt=f"Protective backup: {error_msg or 'failed'}",
+                    title="Protective backup",
+                    icon=QtWidgets.QMessageBox.Critical,
+                ), log_to_console=False)
+            except Exception:
+                pass
+
+    def _protective_backup_thread_finished(self):
+        try:
+            self._protective_backup_thread = None
+        except Exception:
+            pass
+
 
     def _start_gestalt_apply(self):
         """WorkSlop: apply only the MobileGestalt tweaks (Nugget's gestalt flow)."""
@@ -1252,14 +1324,14 @@ class ApplyMixin:
         self._sync_settings()
         box = QtWidgets.QMessageBox(self)
         box.setIcon(QtWidgets.QMessageBox.Question)
-        box.setWindowTitle(self.tr("Enjoying GoldenNugget?"))
-        box.setText(self.tr("If you like GoldenNugget, please consider giving it a star on GitHub!"))
+        box.setWindowTitle(self.tr("Enjoying WorkSlop Desktop?"))
+        box.setText(self.tr("If you like WorkSlop Desktop, please consider giving it a star on GitHub!"))
         star_btn = box.addButton(self.tr("Star on GitHub"), QtWidgets.QMessageBox.AcceptRole)
         box.addButton(self.tr("Not now"), QtWidgets.QMessageBox.RejectRole)
         box.exec()
         if box.clickedButton() == star_btn:
             from PySide6.QtGui import QDesktopServices
-            QDesktopServices.openUrl(QtCore.QUrl("https://github.com/awesomenull-dev/GoldenNugget"))
+            QDesktopServices.openUrl(QtCore.QUrl("https://github.com/adnan120hz/desk"))
 
 
     def prompt_first_launch_backup(self) -> bool:

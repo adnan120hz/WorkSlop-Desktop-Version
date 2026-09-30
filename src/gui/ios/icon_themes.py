@@ -94,7 +94,7 @@ class IOSIconThemesPage(QWidget):
             QCoreApplication.translate("Nugget", "Reset Icon Themes"),
             QCoreApplication.translate(
                 "Nugget",
-                "Remove all icon themes from GoldenNugget? The themed "
+                "Remove all icon themes from WorkSlop Desktop? The themed "
                 "home-screen icons already on the device are not touched."),
             QMessageBox.Yes | QMessageBox.Cancel,
             QMessageBox.StandardButton.Cancel)

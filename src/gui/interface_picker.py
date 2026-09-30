@@ -37,7 +37,7 @@ class InterfacePickerDialog(QDialog):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
 
-        title = QLabel(QCoreApplication.translate("Nugget", "Welcome to GoldenNugget"))
+        title = QLabel(QCoreApplication.translate("Nugget", "Welcome to WorkSlop Desktop"))
         title.setStyleSheet("font-size: 20px; font-weight: 600;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)

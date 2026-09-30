@@ -61,6 +61,9 @@ jobs:
           python -m pip install -U pip setuptools wheel
           pip install --no-binary sslpsk_pmd3 -r requirements.txt
 
+      - name: Build zsign (sideload signing)
+        run: python3 tools/build_zsign.py
+
       - name: Build macOS Intel
         run: |
           source .env/bin/activate
@@ -93,6 +96,9 @@ jobs:
           source .env/bin/activate
           python -m pip install -U pip setuptools wheel
           pip install --no-binary sslpsk_pmd3 -r requirements-legacy.txt
+
+      - name: Build zsign (sideload signing)
+        run: python3 tools/build_zsign.py
 
       - name: Build macOS Intel Legacy
         run: |
@@ -137,6 +143,9 @@ jobs:
 
           pip install --no-binary sslpsk_pmd3 -r requirements.txt
 
+      - name: Build zsign (sideload signing)
+        run: python3 tools/build_zsign.py
+
       - name: Build macOS ARM
         run: |
           source .env/bin/activate
@@ -168,6 +177,16 @@ jobs:
           python -m pip install -U pip setuptools wheel
           pip install -r requirements.txt
           pip install pyuac
+
+      - name: Build zsign (sideload signing)
+        shell: powershell
+        run: |
+          git clone --depth 1 https://github.com/zhlynn/zsign.git .zsign-build
+          msbuild .zsign-build/build/windows/vs2022/zsign.sln /p:Configuration=Release /p:Platform=x64
+          $exe = Get-ChildItem -Path .zsign-build -Recurse -Filter zsign.exe | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path vendor | Out-Null
+          Copy-Item $exe.FullName vendor/zsign.exe
+          Remove-Item -Recurse -Force .zsign-build
 
       - name: Build Windows
         run: python compile.py
@@ -216,6 +235,9 @@ jobs:
           fi
           pip check
 
+      - name: Build zsign (sideload signing)
+        run: python3 tools/build_zsign.py
+
       - name: Build Linux
         run: python compile.py
 
@@ -262,6 +284,9 @@ jobs:
             exit 1
           fi
           pip check
+
+      - name: Build zsign (sideload signing)
+        run: python3 tools/build_zsign.py
 
       - name: Build Linux ARM
         run: python compile.py

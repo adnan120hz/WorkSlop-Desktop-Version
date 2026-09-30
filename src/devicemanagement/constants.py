@@ -2,7 +2,7 @@ from packaging.version import Version
 
 
 class Device:
-    def __init__(self, 
+    def __init__(self,
                 udid: int, usb: bool, name: str,
                 version: str, build: str,
                 model: str, hardware: str, cpu: str, locale: str
@@ -31,10 +31,54 @@ def is_build_supported(build: str) -> bool:
     return _norm_build(build) in SUPPORTED_BUILDS
 
 
+def _parse_version(version):
+    try:
+        return Version(str(version or "").strip())
+    except Exception:
+        return None
+
+
+def is_version_supported(version: str) -> bool:
+    # Cable-based detection (user decision 2026-09-30): the iOS version is
+    # read straight from the device over the cable (lockdown ProductVersion).
+    # Any 16.0 -> 26.x version is supported for the tweak flow even when its
+    # exact build number is not in the allowlist (RC variants, new patches).
+    v = _parse_version(version)
+    if v is None:
+        return False
+    return Version("16.0") <= v < Version("27.0")
+
+
+def is_version_ios27(version: str) -> bool:
+    # Cable-based: any iOS 27.x takes the protective-backup/wipe apply path.
+    v = _parse_version(version)
+    return v is not None and v >= Version("27.0")
+
+
+def is_device_supported(build: str, version: str) -> bool:
+    # A device is usable when EITHER its build is allowlisted OR its
+    # cable-reported iOS version is in the supported range.
+    return is_build_supported(build) or is_version_supported(version)
+
+
 def is_gestalt_supported_build(build: str) -> bool:
     # MobileGestalt rule (user decision 2026-09-30): open and usable from
     # iOS 16.0 through iOS 26.2 beta 1. Locked on 26.2 beta 2 and newer.
     return _norm_build(build) in MOBILEGESTALT_BUILDS
+
+
+def is_gestalt_supported_version(version: str) -> bool:
+    # Cable-based fallback for MobileGestalt. ProductVersion cannot tell
+    # 26.2 beta 1 apart from beta 2+, so anything 26.2+ needs the
+    # build-level check (conservative: locked).
+    v = _parse_version(version)
+    if v is None:
+        return False
+    return Version("16.0") <= v < Version("26.2")
+
+
+def is_gestalt_supported(build: str, version: str) -> bool:
+    return is_gestalt_supported_build(build) or is_gestalt_supported_version(version)
 
 
 def is_ios27_build(build: str) -> bool:
@@ -44,46 +88,116 @@ def is_ios27_build(build: str) -> bool:
     return _norm_build(build).startswith("24")
 
 
-# WorkSlop Desktop explicit per-build support list (user decision 2026-09-30).
-# Only these iOS builds are supported — 49 builds, iOS 16.0 -> iOS 27.0.
+# WorkSlop Desktop explicit per-build support list.
+# Every iOS 17.0 -> iOS 27.2 build from the user's verified list (2026-09-30),
+# plus the verified iOS 16.x range and the 26.2 beta 1 MobileGestalt boundary
+# build. The device is ALSO accepted when its cable-reported ProductVersion is
+# inside 16.0 -> 26.x (see is_device_supported), so RC variants and new
+# patches keep working even before their exact build is listed here.
 SUPPORTED_BUILDS = frozenset({
-    # iOS 16.x
-    "20A362", "20A371", "20A380", "20A392",
+    # ---- iOS 16.x (20A - 20H) — research-verified by me (2026-09-30),
+    # 16.0 -> 16.7.16 complete. User handled 17/18/26/27, I filled 16. ----
+    # 16.0 - 16.0.3 (20A357 = 16.0 RTM)
+    "20A357", "20A362", "20A371", "20A380", "20A392",
+    # 16.1 - 16.1.2
     "20B82", "20B101", "20B110",
+    # 16.2
     "20C65",
+    # 16.3 - 16.3.1
     "20D47", "20D67",
+    # 16.4 - 16.4.1
     "20E247", "20E252",
+    # 16.5 - 16.5.1
     "20F66", "20F75",
+    # 16.6 - 16.6.1
     "20G75", "20G81",
-    "20H19", "20H24", "20H30", "20H57", "20H68",
-    "20H115", "20H219", "20H315", "20H332", "20H350",
-    # iOS 18.x
-    "22A3354",
-    "22B5007p", "22B5023e", "22B5034e", "22B5045g",
-    # iOS 26.x
-    "23A341", "23A342",          # 26.0, 26.0.1
-    "23B85",                     # 26.1
-    "23C5027f",                  # 26.2 beta 1
-    "23C5035e", "23C5042d",      # 26.2 betas
-    "23C89",                     # 26.2
-    "23D57",                     # 26.3
-    "23E215",                    # 26.4
-    "23F72",                     # 26.5
-    # iOS 27.0
-    "24A5264w", "24A5279h", "24A5288g", "24A5299d",
-    "24A5309f", "24A5315a", "24A5320a",  # 27.0 betas
-    "24A335",                    # 27.0
+    # 16.7 - 16.7.16 (verified builds only; 17.5.2 was cancelled by Apple)
+    "20H19", "20H30",
+    "20H115", "20H232", "20H240",
+    "20H307", "20H320", "20H330", "20H343",
+    "20H348", "20H350", "20H360", "20H364", "20H365",
+    "20H370", "20H380", "20H392",
+    # ---- iOS 17.x (21A - 21H) — user-verified list 2026-09-30 ----
+    # 17.0 - 17.0.3
+    "21A329", "21A340", "21A350", "21A351", "21A360",
+    # 17.1 - 17.1.2
+    "21B74", "21B80", "21B91", "21B101",
+    # 17.2 - 17.2.1
+    "21C62", "21C66",
+    # 17.3 - 17.3.1
+    "21D50", "21D61",
+    # 17.4 - 17.4.1
+    "21E219", "21E236", "21E237",
+    # 17.5 - 17.5.1  (17.5.2 was cancelled by Apple, never released)
+    "21F79", "21F90",
+    # 17.6 - 17.6.1
+    "21G80", "21G93", "21G101",
+    # 17.7 - 17.7.2
+    "21H16", "21H216", "21H221",
+    # ---- iOS 18.x (22A - 22H) — user-verified list 2026-09-30 ----
+    # 18.0 - 18.0.1
+    "22A3354", "22A3370",
+    # 18.1 - 18.1.1
+    "22B83", "22B91",
+    # 18.2 - 18.2.1
+    "22C152", "22C161",
+    # 18.3 - 18.3.2
+    "22D63", "22D72", "22D82",
+    # 18.4 - 18.4.1
+    "22E240", "22E252",
+    # 18.5
+    "22F76",
+    # 18.6 - 18.6.2
+    "22G86", "22G90", "22G100",
+    # 18.7 - 18.7.10
+    "22H20", "22H31", "22H124", "22H217", "22H218",
+    "22H311", "22H320", "22H333", "22H340", "22H352", "22H355",
+    "22H374",
+    # ---- iOS 26.x (23A - 23H) — user-verified list 2026-09-30 ----
+    # 26.0 - 26.0.1
+    "23A341", "23A345", "23A355",
+    # 26.1
+    "23B85",
+    # 26.2 beta 1 (MobileGestalt boundary, inclusive) + 26.2 final
+    "23C5027f",
+    "23C54", "23C55",
+    # 26.2.1
+    "23C71",
+    # 26.3 - 26.3.1
+    "23D127", "23D8133",
+    # 26.4 - 26.4.2
+    "23E246", "23E254", "23E261",
+    # 26.5 - 26.5.2
+    "23F77", "23F81", "23F84",
+    # 26.6 - 26.6.2
+    "23G71", "23G82", "23G83", "23G90",
+    # 26.7
+    "23H24",
+    # ---- iOS 27.x (24A - 24B) — user-verified list 2026-09-30 ----
+    # 27.0 betas 1-8
+    "24A5355q", "24A5370h", "24A5380h", "24A5390f",
+    "24A5408d", "24A5418b", "24A5424a", "24A5430a",
+    # 27.0 RC + final
+    "24A435", "24A437",
+    # 27.2 betas 1-2
+    "24B5084k", "24B5089g",
 })
 
 # Builds after iOS 26.2 beta 1 — MobileGestalt stays locked on these.
 _POST_262B1_BUILDS = frozenset({
-    "23C5035e", "23C5042d",      # 26.2 beta 2+
-    "23C89",                     # 26.2
-    "23D57", "23E215", "23F72",  # 26.3 - 26.5
-    "24A5264w", "24A5279h", "24A5288g", "24A5299d",
-    "24A5315a", "24A5320a", "24A5309f",
-    "24A335",                    # 27.0
+    "23C54", "23C55",            # 26.2 final
+    "23C71",                     # 26.2.1
+    "23D127", "23D8133",         # 26.3 - 26.3.1
+    "23E246", "23E254", "23E261",  # 26.4 - 26.4.2
+    "23F77", "23F81", "23F84",   # 26.5 - 26.5.2
+    "23G71", "23G82", "23G83",   # 26.6 - 26.6.1
+    "23G90",                     # 26.6.2
+    "23H24",                     # 26.7
+    "24A5355q", "24A5370h", "24A5380h", "24A5390f",
+    "24A5408d", "24A5418b", "24A5424a", "24A5430a",
+    "24A435", "24A437",          # 27.0
+    "24B5084k", "24B5089g",      # 27.2 betas
 })
 
-# MobileGestalt: iOS 16.0 -> iOS 26.2 beta 1 (35 builds).
+# MobileGestalt: iOS 16.0 -> iOS 26.2 beta 1 (inclusive).
 MOBILEGESTALT_BUILDS = SUPPORTED_BUILDS - _POST_262B1_BUILDS

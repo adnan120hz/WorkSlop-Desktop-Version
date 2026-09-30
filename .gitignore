@@ -30,3 +30,7 @@ docs/IOS27_RESTORE_RISK_AUDIT.md
 
 # release changelog (kept in GitHub release body, not the repo)
 CHANGELOG.md
+
+# zsign binary (built from source via tools/build_zsign.py, bundled by compile.py)
+vendor/zsign
+vendor/zsign.exe

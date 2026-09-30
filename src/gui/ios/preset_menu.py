@@ -177,7 +177,7 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str) -> bool:
     QMessageBox.information(
         parent, _T("Nugget", "Load Preset"),
         _T("Nugget",
-           "Preset \"{0}\" loaded.\n\nGoldenNugget will now restart to "
+           "Preset \"{0}\" loaded.\n\nWorkSlop Desktop will now restart to "
            "apply the changes.").format(name))
     restart_app()
     return True

@@ -366,7 +366,7 @@ class IOSDaemonsContent(QWidget):
                 QCoreApplication.translate("Nugget", "Daemon Locked by Safety Rules"),
                 QCoreApplication.translate(
                     "Nugget",
-                    "GoldenNugget safety rules force-disable this daemon on your "
+                    "WorkSlop Desktop safety rules force-disable this daemon on your "
                     "setup, so it cannot be re-enabled.\n\n{0}").format(reason or ""))
             self._set_switch(daemon, True)
             return

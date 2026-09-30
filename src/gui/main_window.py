@@ -168,8 +168,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_gestalt = IOSMobileGestaltPage(self)
         from src.gui.ios.backup import IOSBackupPage
         from src.gui.ios.themes_hub import IOSThemesHubPage
+        from src.gui.ios.sideload import IOSSideloadPage
         self.ios_backup = IOSBackupPage(self)
         self.ios_themes_hub = IOSThemesHubPage(self)
+        self.ios_sideload = IOSSideloadPage(self)
         self.ios_pages.addWidget(self.ios_home)
         self.ios_pages.addWidget(self.ios_tweaks)
         self.ios_pages.addWidget(self.ios_posterboard)
@@ -184,9 +186,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.addWidget(self.ios_passthemes)
         self.ios_pages.addWidget(self.ios_gestalt)
         # WorkSlop menus: appended at the end so no existing page index shifts.
-        # 13 = backup, 14 = themes hub.
+        # 13 = backup, 14 = themes hub, 15 = sideload.
         self.ios_pages.addWidget(self.ios_backup)
         self.ios_pages.addWidget(self.ios_themes_hub)
+        self.ios_pages.addWidget(self.ios_sideload)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -208,6 +211,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             12: QCoreApplication.translate("Nugget", "MobileGestalt"),
             13: QCoreApplication.translate("Nugget", "Backup"),
             14: QCoreApplication.translate("Nugget", "Themes"),
+            15: QCoreApplication.translate("Nugget", "Sideload"),
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
@@ -252,7 +256,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.body_row = QtWidgets.QHBoxLayout()
         self.body_row.setContentsMargins(0, 0, 0, 0)
         self.body_row.setSpacing(0)
-        # WorkSlop sidebar: 7 glass pills (photo target). The generated-UI
+        # WorkSlop sidebar: white terminal rail. The generated-UI
         # sidebar is parked hidden — old flows still touch its buttons, but
         # navigation now goes through the new rail.
         from src.gui.ios.sidebar import WorkSlopSidebar
@@ -269,12 +273,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # overriding here keeps mainwindow_ui.py untouched).
         self.setWindowTitle("WorkSlop Desktop")
 
-        # Cobalt Flow bubble backdrop: painted behind every page, under the
-        # transparent page backgrounds so the gradient + bubbles show through.
-        from src.gui.theme.backdrop import CobaltBackdrop
-        self._backdrop = CobaltBackdrop(shell)
-        _c = self._color_theme.colors
-        self._backdrop.set_colors(_c.bubble, "rgba(180, 205, 255, 40)")
+        # Terminal theme: solid black shell, no painted backdrop. The
+        # CobaltBackdrop is retired — keeping it would repaint bubbles every
+        # frame for no visible effect on an opaque background.
+        self._backdrop = None
 
         self.apply_theme(self.theme_manager.current_theme)
 
@@ -340,14 +342,14 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self._retheme_classic()
 
     def _style_device_pill(self):
-        """Restyle the top device bar as a floating glass pill (photo target).
+        """Restyle the top device bar as a terminal status line.
 
-        The picker group moves to the right; the old "GoldenNugget" title
-        text becomes a plain expanding spacer.
+        The picker group moves to the right; the old title text becomes a
+        plain expanding spacer.
         """
         c = self._color_theme.colors
         bar = self.ui.deviceBar
-        bar.setStyleSheet("background-color: transparent;")
+        bar.setStyleSheet(f"background-color: {c.bg_primary};")
         layout = self.ui.horizontalLayout_4
         # title spacer first (expanding), device pill last (right-aligned)
         layout.insertWidget(0, self.ui.titleBar)
@@ -356,8 +358,8 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         pill = self.ui.horizontalWidget_2
         pill.setStyleSheet(f"""
             QWidget#horizontalWidget_2 {{
-                background-color: rgba(255, 255, 255, 0.07);
-                border: 1px solid rgba(255, 255, 255, 0.14);
+                background-color: {c.bg_secondary};
+                border: 1px solid {c.border};
                 border-radius: 19px;
             }}
         """)

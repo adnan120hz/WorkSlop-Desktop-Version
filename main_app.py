@@ -45,8 +45,8 @@ def _show_kill_message(kill) -> None:
     from PySide6.QtWidgets import QMessageBox
     box = QMessageBox()
     box.setIcon(QMessageBox.Icon.Critical)
-    box.setWindowTitle(tr("GoldenNugget Disabled"))
-    box.setText(tr("GoldenNugget has been disabled by its safety rules."))
+    box.setWindowTitle(tr("WorkSlop Desktop Disabled"))
+    box.setText(tr("WorkSlop Desktop has been disabled by its safety rules."))
     box.setInformativeText(reason)
     box.setStandardButtons(QMessageBox.StandardButton.Ok)
     box.exec()
@@ -99,7 +99,7 @@ def main() -> int:
             sys.exit()
 
     # 3. GUI STARTUP
-    print("Starting GoldenNugget...")
+    print("Starting WorkSlop Desktop...")
 
     if "--test-mode" in sys.argv:
         print("TEST MODE ENABLED: Mock device will be created")
@@ -113,7 +113,7 @@ def main() -> int:
         setup_logging(log_file)
 
     logger = get_logger(__name__)
-    logger.info("Starting GoldenNugget")
+    logger.info("Starting WorkSlop Desktop")
 
     from src.controllers.nugget_logger import init_logging, log_banner
     init_logging()
@@ -184,7 +184,7 @@ def main() -> int:
     print(f"[init] Qt style: {app.style().objectName()}")
 
     QCoreApplication.setOrganizationDomain("com.leemin")
-    QCoreApplication.setApplicationName("GoldenNugget")
+    QCoreApplication.setApplicationName("WorkSlopDesktop")
     from src.controllers.settings import Settings
     settings = Settings("settings")
 
@@ -267,7 +267,7 @@ def main() -> int:
     # the app refuses to start.
     kill = _hotload_kill_or_none(dm, hotload)
     if kill:
-        logger.warning("GoldenNugget disabled by HotLoad rules: %s", kill.get("reason"))
+        logger.warning("WorkSlop Desktop disabled by HotLoad rules: %s", kill.get("reason"))
         _show_kill_message(kill)
         return 0
     print("[init] HotLoad ok")
@@ -331,7 +331,7 @@ def main() -> int:
             kill = _hotload_kill_or_none(dm, hotload)
             if kill:
                 reason = kill.get("reason")
-                logger.critical("GoldenNugget killed by HotLoad rules while running: %s", reason)
+                logger.critical("WorkSlop Desktop killed by HotLoad rules while running: %s", reason)
                 print(f"[watchdog] HotLoad: KILLED - {reason}", flush=True)
                 if not quiet:
                     _show_kill_message(kill)
@@ -366,7 +366,7 @@ def main() -> int:
         elif arg.endswith('.batter'):
             tweaks[TweakID.Templates].add_template(arg)
 
-    logger.info("GoldenNugget launched.")
+    logger.info("WorkSlop Desktop launched.")
     sys.exit(app.exec())
 
 
