@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/workslop-icon.jpg" width="180" alt="WorkSlop Desktop icon">
+</p>
+
 # WorkSlop Desktop
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
