@@ -1621,6 +1621,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     ## the GP files (same files the Internal Options reset
                     ## covers, but scoped to this page's checkbox).
                     files_to_null.append(FileLocation.globalPreferences.value)
+                    # 2026-10-01: the "Tinted Glass (official iOS setting)"
+                    # tweak writes UIViewGlassLegibilitySetting to the managed
+                    # com.apple.UIKit.plist, so the Liquid Glass reset must
+                    # clear that file too (it is otherwise only nulled by the
+                    # SpringBoard page reset).
+                    files_to_null.append(FileLocation.uikit.value)
                     dev_version = self.get_current_device_version()
                     if dev_version and Version(dev_version) >= Version("27.0"):
                         # Same B10 rule as InternalOptions above: the iOS 27

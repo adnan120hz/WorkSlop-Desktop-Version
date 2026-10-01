@@ -25,6 +25,9 @@ class FileLocation(Enum):
     pasteboard = "/var/Managed Preferences/mobile/com.apple.Pasteboard.plist"
     notes = "/var/Managed Preferences/mobile/com.apple.mobilenotes.plist"
     uikit = "/var/Managed Preferences/mobile/com.apple.UIKit.plist"
+    # Accessibility (managed). Used by the Liquid Glass "Increase Contrast"
+    # mitigation tweak — managed prefs override the HomeDomain copy.
+    accessibility = "/var/Managed Preferences/mobile/com.apple.Accessibility.plist"
 
     # Daemons
     disabledDaemons = "/var/db/com.apple.xpc.launchd/disabled.plist"

@@ -192,19 +192,46 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.ForceSolariumFallback, Section.LIQUID_GLASS, "Force Solarium Fallback (use with Disable Liquid Glass)", GP, "SolariumForceFallback",
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the older Solarium rendering path instead of the newer one. Useful for troubleshooting or for devices where the current Solarium engine misbehaves on iOS 26."),
        min_version="26.0", max_version="26.99"),
-    # Restored 2026-10-01: the master Liquid Glass kill switch from upstream
-    # Nugget's load_liquidglass()
-    # (BasicPlistTweak(FileLocation.globalPreferences,
-    # "com.apple.SwiftUI.DisableSolarium")). Its spec was lost in the
-    # declarative-registry migration and its enum member was then removed as
-    # dead code by audit B28. Unlike the SolariumFF* feature-flag switches,
-    # this writes to .GlobalPreferences.plist via the standard backup domain,
-    # so it does not depend on the exploit-based
-    # /var/preferences/FeatureFlags/Global.plist route that community tools
-    # report working only up to iOS 26.1. Effect on iOS 26.6.1 is unverified
-    # on real devices.
-    _t(TweakID.DisableSolarium, Section.LIQUID_GLASS, "Disable Liquid Glass (Recommended for iOS 26.6.1)", GP, "com.apple.SwiftUI.DisableSolarium",
-       description=QT_TRANSLATE_NOOP("Nugget", "Master switch: disables the Solarium (Liquid Glass) renderer entirely. Uses the GlobalPreferences route instead of feature flags, so it is the intended path on iOS 26.2+ where the feature-flags file can no longer be written. Effect on iOS 26.6.1 is unverified on real devices."),
+    # 2026-10-01 BINARY CORRECTION (blacktop/ipsw-diffs, verified against
+    # SwiftUICore 26.0 vs 26.1): Apple REMOVED the
+    # com.apple.SwiftUI.DisableSolarium reader in iOS 26.1 — the key string
+    # and its implementation are gone from the binary, so writing it on
+    # iOS 26.1+ is a proven no-op. It only ever worked on iOS 26.0–26.0.1.
+    # Gated accordingly; the label no longer claims 26.6.1 support.
+    _t(TweakID.DisableSolarium, Section.LIQUID_GLASS, "Disable Liquid Glass (iOS 26.0–26.0.1 only)", GP, "com.apple.SwiftUI.DisableSolarium",
+       description=QT_TRANSLATE_NOOP("Nugget", "Master switch that disabled the Solarium (Liquid Glass) renderer entirely — but ONLY on iOS 26.0 to 26.0.1. Binary analysis confirms Apple removed this key's reader from SwiftUICore in iOS 26.1, so it does nothing on iOS 26.1 and later, including 26.6.1. For 26.1+, try 'Fail Solarium Hardware Check' or the official 'Tinted Glass' setting below."),
+       min_version="26.0", max_version="26.0.1"),
+    # E0 (2026-10-01 binary research): the ONLY disable-direction Solarium
+    # key confirmed present in the iOS 26.6.1 SwiftUICore binary
+    # (SolariumV.Fail.HardwareCheckUserDefault). Present since the 26.0
+    # betas, never removed. No tweak tool uses it yet; effect on 26.6.1
+    # is UNVERIFIED on real devices — test alone, reboot, compare.
+    _t(TweakID.FailSolariumHardwareCheck, Section.LIQUID_GLASS, "Fail Solarium Hardware Check (iOS 26 experiment)", GP, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Forces the Solarium hardware-capability check to FAIL, pushing the renderer into its hardware fallback path (reduced/frosted glass instead of full Liquid Glass). This is the only disable-direction Solarium key confirmed present in the iOS 26.6.1 binary — the classic DisableSolarium key was removed in iOS 26.1. Effect on iOS 26.6.1 is unverified on real devices: enable alone, reboot, compare screenshots against an untouched app."),
+       min_version="26.0"),
+    # E1' (2026-10-01 binary research): the OFFICIAL Tinted/Clear glass
+    # legibility setting. Added to UIKitCore between iOS 26.1 beta 2 and
+    # beta 3 (UIViewGlassLegibilitySetting, notification
+    # UIViewGlassLegibilityUpdateNotification), still present in 26.6.1.
+    # Integer: 0 = Clear, 1 = Tinted. Same setting as Settings >
+    # Display & Brightness > Liquid Glass on iOS 26.1+. Tones the glass
+    # down but does not remove it. Written to the managed com.apple.UIKit
+    # plist (managed preferences override the HomeDomain copy).
+    _t(TweakID.GlassLegibilityTinted, Section.LIQUID_GLASS, "Tinted Glass (official iOS setting)", FileLocation.uikit, "UIViewGlassLegibilitySetting", value=1,
+       description=QT_TRANSLATE_NOOP("Nugget", "Sets the official iOS glass legibility mode to Tinted (1 = Tinted, 0 = Clear). This is the same setting behind the Clear/Tinted control in Settings on iOS 26.1+. It tones Liquid Glass down but does not remove it. Confirmed in the iOS 26.1+ UIKitCore binary. Effect on iOS 26.6.1 is unverified on real devices."),
+       min_version="26.1"),
+    # Official Accessibility mitigation (2026-10-01 research): user reports
+    # say Reduce Transparency + Increase Contrast makes Liquid Glass "almost
+    # completely gone". This writes the confirmed Increase Contrast key
+    # (EnhancedBackgroundContrastEnabled); pair it with Reduce Transparency
+    # in Settings > Accessibility > Display & Text Size. It deglazes/
+    # opaquifies the glass but does NOT restore the old control geometry.
+    # Delivery of managed Accessibility prefs on 26.6.1 is unverified
+    # on-device. NOTE: the Liquid Glass page reset does NOT null this file
+    # (it holds many other user Accessibility settings) — turn the switch
+    # off and re-apply to remove the key.
+    _t(TweakID.IncreaseContrast, Section.LIQUID_GLASS, "Increase Contrast (official mitigation)", FileLocation.accessibility, "EnhancedBackgroundContrastEnabled",
+       description=QT_TRANSLATE_NOOP("Nugget", "Enables the official iOS Increase Contrast accessibility setting. Combined with Reduce Transparency (Settings > Accessibility > Display & Text Size), user reports describe Liquid Glass as 'almost completely gone'. It opaquifies glass materials but does not restore old toolbar/control shapes. Delivery on iOS 26.6.1 is unverified on real devices."),
        min_version="26.0"),
     _t(TweakID.IgnoreSolariumLinkedOnCheck, Section.LIQUID_GLASS, "Ignore Solarium Linked-On Check", GP, "com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck",
        description=QT_TRANSLATE_NOOP("Nugget", "Ignores the compile-time (linked-on) SDK version check for Solarium, allowing Liquid Glass features to run that would otherwise be gated by the SDK an app was built with."),
@@ -219,20 +246,20 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Forces UIKit to use the fallback Solarium path when rendering UI. Can fix broken or glitchy system UI on some iOS 27 devices."),
        min_version="27.0"),
     _t(TweakID.IgnoreSolariumHardwareCheck, Section.LIQUID_GLASS, "Ignore Solarium Hardware Check", GP, "com.apple.SwiftUI.IgnoreSolariumHardwareCheck",
-       description=QT_TRANSLATE_NOOP("Nugget", "Disables the hardware capability check for Solarium, enabling Liquid Glass effects on devices officially considered too weak."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Disables the hardware capability check for Solarium, enabling Liquid Glass effects on devices officially considered too weak. NOTE: this is the ENABLE direction — it forces glass ON, not off."),
+       min_version="26.0"),
     _t(TweakID.IgnoreSolariumOptOut, Section.LIQUID_GLASS, "Ignore Solarium Opt-Out", GP, "com.apple.SwiftUI.IgnoreSolariumOptOut",
-       description=QT_TRANSLATE_NOOP("Nugget", "Ignores the system opt-out flag for Solarium, re-enabling Liquid Glass on devices or firmware that have it switched off."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Ignores the system opt-out flag for Solarium, re-enabling Liquid Glass on devices or firmware that have it switched off. NOTE: this is the ENABLE direction — it forces glass ON, not off."),
+       min_version="26.1"),
     _t(TweakID.DisallowGlassButtons, Section.LIQUID_GLASS, "Disallow Glass Buttons", GP, "SBDisallowGlassButtons",
-       description=QT_TRANSLATE_NOOP("Nugget", "Prevents the Liquid Glass material from being applied to system buttons, keeping the old solid button style."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Prevents the Liquid Glass material from being applied to system buttons, keeping the old solid button style. Confirmed in the iOS 26.x CoverSheetKit binary."),
+       min_version="26.0"),
     _t(TweakID.DisallowGlassLockScreen, Section.LIQUID_GLASS, "Disallow Glass Lock Screen", GP, "SBDisallowGlassLockScreen",
        description=QT_TRANSLATE_NOOP("Nugget", "Prevents the Liquid Glass material from being applied to the Lock Screen, keeping the old lock screen look."),
        min_version="27.0"),
     _t(TweakID.DisableSpecularEverywhere, Section.LIQUID_GLASS, "Disable Specular Everywhere", GP, "SBDisableSpecularEverywhere",
-       description=QT_TRANSLATE_NOOP("Nugget", "Disables the specular (glossy reflection) rendering everywhere, removing the shiny glass highlight from Liquid Glass surfaces."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Disables the specular (glossy reflection) rendering everywhere, removing the shiny glass highlight from Liquid Glass surfaces. Confirmed in the iOS 26.x SpringBoardFoundation binary."),
+       min_version="26.0"),
     _t(TweakID.NoLiquidClock, Section.LIQUID_GLASS, "Disable Liquid Glass on LS Clock (use with Disable Liquid Glass)", GP, "SBDisallowGlassTime",
        description=QT_TRANSLATE_NOOP("Nugget", "Renders the Lock Screen clock in the old solid style instead of with the Liquid Glass / dew effect."),
        min_version="26.0"),
@@ -246,7 +273,7 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Disables the outer refraction (the liquid bending of content at the glass edge) for a cleaner, less distorted look."),
        min_version="26.0"),
     _t(TweakID.DisableSolariumHDR, Section.LIQUID_GLASS, "Disable Solarium HDR", GP, "SolariumAllowHDR", value=False,
-       description=QT_TRANSLATE_NOOP("Nugget", "Disables HDR tone-mapping in the Solarium renderer. Can fix washed-out or over-bright Liquid Glass areas. Enabled when the switch is OFF."),
+       description=QT_TRANSLATE_NOOP("Nugget", "Disables HDR tone-mapping in the Solarium renderer. Can fix washed-out or over-bright Liquid Glass areas. Enabled when the switch is OFF. PROVENANCE NOTE: this key was NOT found in Apple binary diffs — it comes from community tools (Nugget/Lara) only, so treat it as unverified."),
        min_version="26.0"),
     # Home Screen glass family. These sit in the same accessor/key table as the
     # SB* keys above — the one SpringBoard itself persists into
@@ -263,6 +290,10 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.DisableFolderSpecular, Section.LIQUID_GLASS, "Disable Folder Specular",
        GP, "SBDisableFolderSpecular",
        description=QT_TRANSLATE_NOOP("Nugget", "Removes the specular highlight from Home Screen folder backgrounds."),
+       min_version="26.0"),
+    _t(TweakID.DisableParallaxOnPageControl, Section.LIQUID_GLASS, "Disable Parallax on Page Control",
+       GP, "SBDisableParallaxOnPageControl",
+       description=QT_TRANSLATE_NOOP("Nugget", "Stops the Home Screen page-control dots from shifting with device tilt. Confirmed in the iOS 26.x SpringBoardFoundation binary."),
        min_version="26.0"),
     _t(TweakID.ExcludeClearGlassShadows, Section.LIQUID_GLASS, "Exclude All Clear Glass Shadows",
        GP, "SBExcludeAllClearGlassShadows",
@@ -291,8 +322,8 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.GlassContainerLogging, Section.LIQUID_GLASS,
        "Glass Container Logging", GP,
        "com.apple.SwiftUI.GlassContainerLogging",
-       description=QT_TRANSLATE_NOOP("Nugget", "Enables glass container debug logging (com.apple.SwiftUI UserDefaults key)."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Enables glass container debug logging (com.apple.SwiftUI UserDefaults key). Added in iOS 26.1; debug key, unverified on-device."),
+       min_version="26.1"),
     # NOTE (audit B27): the com.apple.SwiftUI FlexiGlass keys are macOS-side
     # UserDefaults paths with no effect on iOS. They used to live here on the
     # iOS tweaks page as near-certain no-ops, so they were removed instead of
@@ -360,13 +391,17 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="27.0"),
     _t(TweakID.SolariumLiveTuning, Section.LIQUID_GLASS,
        "Live Tuning", GP, "SolariumLiveTuning",
-       description=QT_TRANSLATE_NOOP("Nugget", "Enables the Solarium live tuning switch — allows real-time glass parameter changes."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Enables the Solarium live tuning switch — allows real-time glass parameter changes. Confirmed in the iOS 26.x DesignLibrary binary; unverified on-device."),
+       min_version="26.0"),
     _t(TweakID.SolariumHierarchicalStyle, Section.LIQUID_GLASS,
        "Solarium Hierarchical Style", GP, "SolariumHierarchicalStyle",
        value=1, kind=Kind.NUMBER, min_value=0, max_value=10, step=1,
-       description=QT_TRANSLATE_NOOP("Nugget", "Sets the Solarium hierarchical glass style level (integer 0–10). Type inferred; unverified on-device."),
-       min_version="27.0"),
+       description=QT_TRANSLATE_NOOP("Nugget", "Sets the Solarium hierarchical glass style level (integer 0–10). Confirmed in the iOS 26.x DesignLibrary binary; type inferred, unverified on-device."),
+       min_version="26.0"),
+    _t(TweakID.SolariumNoBlurReducedFrost, Section.LIQUID_GLASS,
+       "Solarium No-Blur Reduced Frost", GP, "SolariumNoBlurReducedFrost",
+       description=QT_TRANSLATE_NOOP("Nugget", "DesignLibrary glass recipe flag for a reduced-frost, no-blur glass look. Confirmed in the iOS 26.x DesignLibrary binary; unverified on-device."),
+       min_version="26.0"),
     _t(TweakID.GlassHierarchicalStyle, Section.LIQUID_GLASS,
        "Glass Hierarchical Style", GP, "GlassHierarchicalStyle",
        value=1, kind=Kind.NUMBER, min_value=0, max_value=10, step=1,
@@ -655,8 +690,12 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SBShowAuthenticationEngineeringUI, Section.SPRINGBOARD, "Show Red/Green Authentication Line on Lock Screen",
        FileLocation.springboard, "SBShowAuthenticationEngineeringUI",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a red/green authentication progress indicator on the Lock Screen while Face ID or passcode checks are running (engineering debug UI).")),
+    # DEAD 2026-10-01 (binary research): Apple removed the floating tab bar
+    # (and this preference) in iPadOS 26.4 — the key is a stale no-op on
+    # 26.6.1. Kept in the enum for history; never loaded, never applied,
+    # never rendered.
     _t(TweakID.UseFloatingTabBar, Section.SPRINGBOARD, "Disable Floating Tab Bar",
-       FileLocation.uikit, "UseFloatingTabBar", value=False, ipad_only=True,
+       FileLocation.uikit, "UseFloatingTabBar", value=False, ipad_only=True, disabled=True,
        description=QT_TRANSLATE_NOOP("Nugget", "Uses the old fixed tab bar style instead of the floating tab bar on iPad. Enabled when the switch is OFF.")),
     _t(TweakID.SBDisableIconParallax, Section.SPRINGBOARD, "Disable Icon Parallax",
        FileLocation.springboard, "SBDisableParallax",

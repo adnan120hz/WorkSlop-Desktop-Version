@@ -110,13 +110,26 @@ class TweakID(Enum):
     # liquid glass
     ForceSolariumFallback = auto()
     DisableSolarium = auto()
+    # NEW 2026-10-01 (binary research): E0 experiment — the only
+    # disable-direction Solarium key confirmed present in iOS 26.6.1.
+    FailSolariumHardwareCheck = auto()
+    # NEW 2026-10-01 (binary research): E1' experiment — official Tinted
+    # glass legibility setting (com.apple.UIKit, integer 0/1).
+    GlassLegibilityTinted = auto()
+    # NEW 2026-10-01: official Accessibility mitigation — Increase Contrast
+    # (EnhancedBackgroundContrastEnabled). Reports say Reduce Transparency +
+    # Increase Contrast makes Liquid Glass "almost completely gone".
+    IncreaseContrast = auto()
     IgnoreSolariumLinkedOnCheck = auto()
     NoLiquidClock = auto()
     NoLiquidDock = auto()
     DisableSpecularMotion = auto()
     DisableOuterRefraction = auto()
     DisableSolariumHDR = auto()
-    # iOS 27 additions
+    # Formerly (wrongly) gated to iOS 27.0; binary research 2026-10-01
+    # confirms the underlying keys in iOS 26.x binaries, so they are
+    # reachable on 26.x now. (SBDisallowGlassLockScreen itself was not
+    # individually confirmed — kept as unverified, not proven no-op.)
     DisallowGlassButtons = auto()
     DisallowGlassLockScreen = auto()
     ForceEnhancedSpeculars = auto()
@@ -130,6 +143,10 @@ class TweakID(Enum):
     DisableWidgetSpecular = auto()
     DisableDockSpecular = auto()
     DisableFolderSpecular = auto()
+    # NEW 2026-10-01 (binary research): confirmed in SpringBoardFoundation
+    # diffs, iOS 26.0+. (SBDisableParallax itself already lives in the
+    # SPRINGBOARD section as SBDisableIconParallax.)
+    DisableParallaxOnPageControl = auto()
     ExcludeClearGlassShadows = auto()
     ExcludeDockShadow = auto()
     ExcludeSearchShadow = auto()
@@ -156,6 +173,9 @@ class TweakID(Enum):
     SolariumHighlightWhite = auto()
     SolariumLiveTuning = auto()
     SolariumHierarchicalStyle = auto()
+    # NEW 2026-10-01 (binary research): confirmed in DesignLibrary diffs,
+    # iOS 26.0+.
+    SolariumNoBlurReducedFrost = auto()
     GlassHierarchicalStyle = auto()
     GlassVisualDebug = auto()
     GlassVisualWarnings = auto()
