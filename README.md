@@ -17,9 +17,15 @@ on Windows, Linux and macOS.
 
 WorkSlop Desktop is a fresh fork of
 [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) with a
-redesigned Sky interface and a safer backup system: when the protective device
-backup reaches 100%, the file manager opens with the finished backup selected
-so you can copy it somewhere safe before the apply continues.
+redesigned Sky interface, **extra features and wider iOS support**: tweak
+modules ported from [Nugget](https://github.com/leminlimez/Nugget)
+(MobileGestalt, eligibility, RDAR fix, risky tweaks), a Liquid Glass section
+for iOS 26, iMazing-style read-only App Data browsing, real full backups,
+Indonesian translations, and per-iOS support gating — unsupported tweaks are
+shown locked with the reason, never hidden. It also has a safer backup
+system: when the protective device backup reaches 100%, the file manager
+opens with the finished backup selected so you can copy it somewhere safe
+before the apply continues.
 
 > [!WARNING]
 > Always back up your data before applying tweaks. WorkSlop Desktop tries to
