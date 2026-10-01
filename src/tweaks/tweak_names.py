@@ -120,6 +120,18 @@ class TweakID(Enum):
     # (EnhancedBackgroundContrastEnabled). Reports say Reduce Transparency +
     # Increase Contrast makes Liquid Glass "almost completely gone".
     IncreaseContrast = auto()
+    # NEW 2026-10-01 — per-app ("apps") focus: FailSolariumHardwareCheck
+    # delivered to individual app bundle domains. Per-app lookup for the
+    # com.apple.SwiftUI.* family is proven real (IgnoreSolariumLinkedOnCheck
+    # / IgnoreSolariumOptOut); whether THIS key is honored per-app on
+    # 26.6.1 is UNVERIFIED — test each in isolation.
+    FailSolariumHardwareCheckMessages = auto()
+    FailSolariumHardwareCheckSafari = auto()
+    FailSolariumHardwareCheckSettings = auto()
+    FailSolariumHardwareCheckMail = auto()
+    FailSolariumHardwareCheckPhotos = auto()
+    FailSolariumHardwareCheckCamera = auto()
+    FailSolariumHardwareCheckPhone = auto()
     IgnoreSolariumLinkedOnCheck = auto()
     NoLiquidClock = auto()
     NoLiquidDock = auto()

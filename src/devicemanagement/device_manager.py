@@ -1627,6 +1627,17 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     # clear that file too (it is otherwise only nulled by the
                     # SpringBoard page reset).
                     files_to_null.append(FileLocation.uikit.value)
+                    # 2026-10-01: the per-app E0 experiments write
+                    # FailSolariumHardwareCheck to per-bundle managed plists,
+                    # so the Liquid Glass reset must clear those files too.
+                    for _app_loc in (FileLocation.appMessages,
+                                     FileLocation.appSafari,
+                                     FileLocation.appSettings,
+                                     FileLocation.appMail,
+                                     FileLocation.appPhotos,
+                                     FileLocation.appCamera,
+                                     FileLocation.appPhone):
+                        files_to_null.append(_app_loc.value)
                     dev_version = self.get_current_device_version()
                     if dev_version and Version(dev_version) >= Version("27.0"):
                         # Same B10 rule as InternalOptions above: the iOS 27

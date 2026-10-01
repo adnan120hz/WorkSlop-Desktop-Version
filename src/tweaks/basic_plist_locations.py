@@ -28,6 +28,18 @@ class FileLocation(Enum):
     # Accessibility (managed). Used by the Liquid Glass "Increase Contrast"
     # mitigation tweak — managed prefs override the HomeDomain copy.
     accessibility = "/var/Managed Preferences/mobile/com.apple.Accessibility.plist"
+    # Per-app managed preferences — Liquid Glass per-app ("apps") focus
+    # (2026-10-01). Each app reads its own bundle domain first, so a
+    # per-app UserDefaults key can override the global
+    # .GlobalPreferences.plist value. Delivered via ManagedPreferencesDomain,
+    # the same channel as every other managed tweak on this page.
+    appMessages = "/var/Managed Preferences/mobile/com.apple.MobileSMS.plist"
+    appSafari = "/var/Managed Preferences/mobile/com.apple.mobilesafari.plist"
+    appSettings = "/var/Managed Preferences/mobile/com.apple.Preferences.plist"
+    appMail = "/var/Managed Preferences/mobile/com.apple.mobilemail.plist"
+    appPhotos = "/var/Managed Preferences/mobile/com.apple.mobileslideshow.plist"
+    appCamera = "/var/Managed Preferences/mobile/com.apple.camera.plist"
+    appPhone = "/var/Managed Preferences/mobile/com.apple.mobilephone.plist"
 
     # Daemons
     disabledDaemons = "/var/db/com.apple.xpc.launchd/disabled.plist"

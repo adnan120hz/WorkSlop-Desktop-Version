@@ -209,6 +209,34 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.FailSolariumHardwareCheck, Section.LIQUID_GLASS, "Fail Solarium Hardware Check (iOS 26 experiment)", GP, "com.apple.SwiftUI.FailSolariumHardwareCheck",
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the Solarium hardware-capability check to FAIL, pushing the renderer into its hardware fallback path (reduced/frosted glass instead of full Liquid Glass). This is the only disable-direction Solarium key confirmed present in the iOS 26.6.1 binary — the classic DisableSolarium key was removed in iOS 26.1. Effect on iOS 26.6.1 is unverified on real devices: enable alone, reboot, compare screenshots against an untouched app."),
        min_version="26.0"),
+    # Per-app ("apps") focus (2026-10-01): the same E0 experiment, delivered
+    # to individual app bundle domains instead of system-wide. Per-app
+    # lookup for the com.apple.SwiftUI.* family is proven real (see
+    # IgnoreSolariumLinkedOnCheck / IgnoreSolariumOptOut), but whether each
+    # app honors FailSolariumHardwareCheck on iOS 26.6.1 is UNVERIFIED.
+    # Test ONE at a time, reboot, compare screenshots — do not combine
+    # until isolated results exist.
+    _t(TweakID.FailSolariumHardwareCheckMessages, Section.LIQUID_GLASS, "Fail Solarium HW Check — Messages (per-app experiment)", FileLocation.appMessages, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Messages app only, via its own managed preferences. Whether Messages honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckSafari, Section.LIQUID_GLASS, "Fail Solarium HW Check — Safari (per-app experiment)", FileLocation.appSafari, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Safari app only, via its own managed preferences. Whether Safari honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckSettings, Section.LIQUID_GLASS, "Fail Solarium HW Check — Settings (per-app experiment)", FileLocation.appSettings, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Settings app only, via its own managed preferences. Whether Settings honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckMail, Section.LIQUID_GLASS, "Fail Solarium HW Check — Mail (per-app experiment)", FileLocation.appMail, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Mail app only, via its own managed preferences. Whether Mail honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckPhotos, Section.LIQUID_GLASS, "Fail Solarium HW Check — Photos (per-app experiment)", FileLocation.appPhotos, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Photos app only, via its own managed preferences. Whether Photos honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckCamera, Section.LIQUID_GLASS, "Fail Solarium HW Check — Camera (per-app experiment)", FileLocation.appCamera, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Camera app only, via its own managed preferences. Whether Camera honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
+    _t(TweakID.FailSolariumHardwareCheckPhone, Section.LIQUID_GLASS, "Fail Solarium HW Check — Phone (per-app experiment)", FileLocation.appPhone, "com.apple.SwiftUI.FailSolariumHardwareCheck",
+       description=QT_TRANSLATE_NOOP("Nugget", "Per-app experiment: forces the Solarium hardware check to fail for the Phone app only, via its own managed preferences. Whether Phone honors this key on iOS 26.6.1 is unverified — test alone, reboot, compare. Does not affect other apps or the system."),
+       min_version="26.0"),
     # E1' (2026-10-01 binary research): the OFFICIAL Tinted/Clear glass
     # legibility setting. Added to UIKitCore between iOS 26.1 beta 2 and
     # beta 3 (UIViewGlassLegibilitySetting, notification
