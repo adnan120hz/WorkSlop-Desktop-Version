@@ -126,8 +126,10 @@ def _ff(id_: TweakID, title: str, flag_category: str, flag_names: list,
     (sole path read by FeatureFlags.framework; no Global.plist fallback),
     and as of late Sep 2026 no working delivery channel for either path
     is publicly confirmed on iOS 27 — so these switches are experimental
-    there and may silently do nothing. They remain fully supported on
-    iOS 26 and lower.
+    there and may silently do nothing. Community reports put the last
+    writable iOS for the exploit-based Global.plist route at 26.1, so the
+    specs are capped at ``max_version="26.1"``: fully supported on
+    iOS 26.1 and lower, locked above.
     """
     from .tweak_classes import FeatureFlagTweak
     return TweakSpec(
@@ -137,6 +139,9 @@ def _ff(id_: TweakID, title: str, flag_category: str, flag_names: list,
         location=FileLocation.featureflags, key="",
         factory=lambda: FeatureFlagTweak(
             flag_category=flag_category, flag_names=flag_names, **kwargs),
+        # Exploit-based Global.plist route: last writable iOS is 26.1
+        # (community reports). Above that the switches lock in the UI.
+        max_version="26.1",
     )
 
 
@@ -184,7 +189,7 @@ _FF_SPECS: tuple[TweakSpec, ...] = (
 
 SPECS: tuple[TweakSpec, ...] = (
     # --- Liquid Glass ---
-    _t(TweakID.ForceSolariumFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
+    _t(TweakID.ForceSolariumFallback, Section.LIQUID_GLASS, "Force Solarium Fallback (use with Disable Liquid Glass)", GP, "SolariumForceFallback",
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the older Solarium rendering path instead of the newer one. Useful for troubleshooting or for devices where the current Solarium engine misbehaves on iOS 26."),
        min_version="26.0", max_version="26.99"),
     # Restored 2026-10-01: the master Liquid Glass kill switch from upstream
@@ -198,7 +203,7 @@ SPECS: tuple[TweakSpec, ...] = (
     # /var/preferences/FeatureFlags/Global.plist route that community tools
     # report working only up to iOS 26.1. Effect on iOS 26.6.1 is unverified
     # on real devices.
-    _t(TweakID.DisableSolarium, Section.LIQUID_GLASS, "Disable Solarium (Liquid Glass)", GP, "com.apple.SwiftUI.DisableSolarium",
+    _t(TweakID.DisableSolarium, Section.LIQUID_GLASS, "Disable Liquid Glass (Recommended for iOS 26.6.1)", GP, "com.apple.SwiftUI.DisableSolarium",
        description=QT_TRANSLATE_NOOP("Nugget", "Master switch: disables the Solarium (Liquid Glass) renderer entirely. Uses the GlobalPreferences route instead of feature flags, so it is the intended path on iOS 26.2+ where the feature-flags file can no longer be written. Effect on iOS 26.6.1 is unverified on real devices."),
        min_version="26.0"),
     _t(TweakID.IgnoreSolariumLinkedOnCheck, Section.LIQUID_GLASS, "Ignore Solarium Linked-On Check", GP, "com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck",
@@ -228,10 +233,10 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.DisableSpecularEverywhere, Section.LIQUID_GLASS, "Disable Specular Everywhere", GP, "SBDisableSpecularEverywhere",
        description=QT_TRANSLATE_NOOP("Nugget", "Disables the specular (glossy reflection) rendering everywhere, removing the shiny glass highlight from Liquid Glass surfaces."),
        min_version="27.0"),
-    _t(TweakID.NoLiquidClock, Section.LIQUID_GLASS, "Disable Liquid Glass on LS Clock", GP, "SBDisallowGlassTime",
+    _t(TweakID.NoLiquidClock, Section.LIQUID_GLASS, "Disable Liquid Glass on LS Clock (use with Disable Liquid Glass)", GP, "SBDisallowGlassTime",
        description=QT_TRANSLATE_NOOP("Nugget", "Renders the Lock Screen clock in the old solid style instead of with the Liquid Glass / dew effect."),
        min_version="26.0"),
-    _t(TweakID.NoLiquidDock, Section.LIQUID_GLASS, "Disable Liquid Glass on Dock", GP, "SBDisableGlassDock",
+    _t(TweakID.NoLiquidDock, Section.LIQUID_GLASS, "Disable Liquid Glass on Dock (use with Disable Liquid Glass)", GP, "SBDisableGlassDock",
        description=QT_TRANSLATE_NOOP("Nugget", "Renders the Home Screen dock in the old solid style instead of with the Liquid Glass material."),
        min_version="26.0"),
     _t(TweakID.DisableSpecularMotion, Section.LIQUID_GLASS, "Disable Specular Motion", GP, "SBDisableSpecularEverywhereUsingLSSAssertion",

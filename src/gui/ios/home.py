@@ -17,7 +17,7 @@ _FEATURE_ICONS = {
     "Custom Icon": ":/icon/brush.svg",
     "Passcode Theme": ":/icon/lock.svg",
     "MobileGestalt": ":/icon/flag.svg",
-    "Sideload": ":/icon/import.svg",
+    "Liquid Glass": ":/icon/liquid-glass.svg",
     "App Data": ":/icon/folder.svg",
 }
 
@@ -207,9 +207,9 @@ class IOSHomePage(QWidget):
         cards_row = [self._make_card(
             "Tweaks", "Customize system settings", 1),
             self._make_card(
-            "Sideload", "Install IPA files over USB", 15),
+            "Liquid Glass", "Disable the glass look", 9),
             self._make_card(
-            "App Data", "Browse app containers", 16),
+            "App Data", "Browse app containers", 15),
             self._make_card(
             "MobileGestalt", "Device feature flags (iOS 26.1-)", 12),
             self._make_card(
@@ -222,7 +222,7 @@ class IOSHomePage(QWidget):
             "Custom Icon", "Themed app icons & labels", 10),
             self._make_card(
             "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
-        (self.tweaks_card, self.sideload_card, self.appdata_card,
+        (self.tweaks_card, self.liquidglass_card, self.appdata_card,
          self.mobilegestalt_card, self.posterboard_card, self.daemons_card,
          self.statusbar_card, self.icon_themes_card,
          self.passcode_theme_card) = cards_row

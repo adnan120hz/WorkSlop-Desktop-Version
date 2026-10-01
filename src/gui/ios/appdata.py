@@ -11,16 +11,6 @@ Real implementation, no facade:
 Honest limits (same as iMazing):
 - App Store apps without File Sharing: container not accessible (Apple restriction).
 - The UI clearly shows which access level each app grants.
-
-Backup-mode write (iMazing-style, for apps that deny direct access):
-- Data is read from a targeted per-app backup (AppDomain-<bundle_id>).
-- Uploaded files and new folders are staged locally, then written to the
-  device through a sparse restore of ONLY AppDomain-<bundle_id> — the same
-  channel the tweak engine uses for AppDomain files. No wipe, no reboot.
-- iOS restores can add or replace files but never rename or delete them;
-  rename/delete stay unavailable in backup mode and say so honestly.
-- On iOS 27 Apple tightened AppDomain restores; the device may reject the
-  write — the real device error is shown, never faked.
 """
 
 import os
@@ -127,9 +117,8 @@ class _BrowseThread(QThread):
 
 class _BackupBrowseThread(QThread):
     """iMazing-style fallback: back up ONLY AppDomain-<bundle_id>, then list
-    its files from Manifest.db. Browsing and downloading are free; uploads
-    and new folders are staged locally and written back through a sparse
-    restore of the same domain (_BackupApplyThread)."""
+    its files from Manifest.db. Read-only — writing back would need a restore
+    pass, which is a different (destructive) operation."""
     done = Signal(str, object, str)  # bundle_id, _AppDomainTree, backup_dir
     error = Signal(str, str)  # bundle_id, error
     progress = Signal(int)  # 0-100
@@ -251,104 +240,6 @@ class _FileOpThread(QThread):
                 raise ValueError(f"Unknown op: {self.op}")
 
 
-class _BackupApplyThread(QThread):
-    """Write staged backup-mode changes to the device.
-
-    Builds FileToRestore entries for ONLY AppDomain-<bundle_id> and runs
-    them through restore_files() with skip_protective_backup=True and
-    reboot=False — the same direct sparse-restore channel the gestalt tweak
-    flow uses. No wipe, no reboot, no other domain touched.
-
-    Every staged path is validated before it becomes a restore entry:
-    relative, no ".." segments, no backslashes — a crafted device backup
-    must never turn this into a path-traversal restore.
-    """
-    done = Signal(str)    # human-readable result message
-    error = Signal(str)
-    progress = Signal(int)  # 0-100
-    status = Signal(str)    # string progress messages from the restore
-
-    def __init__(self, udid: str, bundle_id: str,
-                 uploads: list, new_dirs: list):
-        super().__init__()
-        self.udid = udid
-        self.bundle_id = bundle_id
-        # uploads: [(relative_path, local_path)], new_dirs: [relative_path]
-        self.uploads = list(uploads)
-        self.new_dirs = list(new_dirs)
-        self.applied_files = 0
-        self.applied_dirs = 0
-
-    @staticmethod
-    def _check_rel(rel: str) -> str:
-        if not rel or rel.startswith("/") or "\\" in rel:
-            raise ValueError(f"Refusing unsafe restore path: {rel!r}")
-        parts = rel.split("/")
-        if any(p in ("", ".", "..") for p in parts):
-            raise ValueError(f"Refusing unsafe restore path: {rel!r}")
-        return rel
-
-    def run(self):
-        import asyncio
-        try:
-            asyncio.run(self._apply())
-            self.done.emit(tr(
-                f"Applied {self.applied_files} file(s) and "
-                f"{self.applied_dirs} folder(s) to the device."))
-        except Exception as e:
-            self.error.emit(f"{type(e).__name__}: {e}")
-
-    async def _apply(self):
-        from src.devicemanagement.session import lockdown_session
-        from src.restore.restore import restore_files
-        from src.utils.file_to_restore import FileToRestore
-
-        domain = f"AppDomain-{self.bundle_id}"
-        files: list = []
-        for rel, local in self.uploads:
-            rel = self._check_rel(rel)
-            if not os.path.isfile(local):
-                raise FileNotFoundError(f"Staged file is gone: {local}")
-            files.append(FileToRestore(
-                contents=None, restore_path=rel, contents_path=local,
-                domain=domain, owner=501, group=501))
-        self.applied_files = len(files)
-        # Folders that only exist to hold staged files are redundant: the
-        # restore creates parent directories automatically.
-        file_rels = {rel for rel, _ in self.uploads}
-        self.applied_dirs = 0
-        for rel in self.new_dirs:
-            rel = self._check_rel(rel)
-            prefix = rel.rstrip("/") + "/"
-            if any(f.startswith(prefix) for f in file_rels):
-                continue
-            files.append(FileToRestore(
-                contents=None, restore_path=rel,
-                domain=domain, owner=501, group=501, is_dir=True))
-            self.applied_dirs += 1
-        if not files:
-            raise ValueError("Nothing to apply.")
-
-        def _on_progress(value):
-            if isinstance(value, str):
-                self.status.emit(value)
-                return
-            try:
-                pct = int(float(value))
-            except (TypeError, ValueError):
-                return
-            if 0 <= pct <= 100:
-                self.progress.emit(pct)
-
-        async with lockdown_session(self.udid) as ld:
-            await restore_files(
-                files=files, reboot=False, lockdown_client=ld,
-                progress_callback=_on_progress,
-                backup_password="",
-                skip_protective_backup=True,
-            )
-
-
 class IOSAppDataPage(QWidget):
     """iMazing-style app data browser."""
 
@@ -459,27 +350,6 @@ class IOSAppDataPage(QWidget):
         btn_row.addWidget(self.delete_btn)
         right_layout.addLayout(btn_row)
 
-        # Pending changes row (backup mode only): staged uploads and new
-        # folders are written to the device in one restore pass.
-        self.pending_row = QWidget()
-        pending_layout = QHBoxLayout(self.pending_row)
-        pending_layout.setContentsMargins(0, 0, 0, 0)
-        self.pending_lbl = QLabel("")
-        self.pending_lbl.setWordWrap(True)
-        self.pending_lbl.setStyleSheet(
-            f"color: {self._c.text_secondary}; font-size: 12px; "
-            "background-color: transparent;")
-        pending_layout.addWidget(self.pending_lbl, 1)
-        self.discard_btn = QPushButton(tr("Discard"))
-        self.discard_btn.setStyleSheet(t("mini_button"))
-        self.discard_btn.clicked.connect(self._discard_staged)
-        pending_layout.addWidget(self.discard_btn)
-        self.apply_btn = IOSPrimaryButton(tr("Apply to iPhone"))
-        self.apply_btn.clicked.connect(self._apply_staged)
-        pending_layout.addWidget(self.apply_btn)
-        self.pending_row.hide()
-        right_layout.addWidget(self.pending_row)
-
         self.progress = QProgressBar()
         self.progress.hide()
         right_layout.addWidget(self.progress)
@@ -491,9 +361,6 @@ class IOSAppDataPage(QWidget):
         self._threads = []
         self._backup_cache: dict = {}  # bundle_id -> (tree, backup_dir)
         self._backup_mode = False
-        # Staged backup-mode writes, per app:
-        # bundle_id -> {"uploads": {rel_path: local_path}, "dirs": set(rel_path)}
-        self._staged: dict = {}
         self._retheme()
 
     def _retheme(self):
@@ -544,7 +411,6 @@ class IOSAppDataPage(QWidget):
         self._current_path = ""
         self._backup_mode = False
         self._access_level = ""
-        self.pending_row.hide()
         self._browse(app["bundle_id"], "")
 
     def _browse(self, bundle_id: str, path: str):
@@ -583,8 +449,7 @@ class IOSAppDataPage(QWidget):
                "This app does not allow direct container access (Apple restriction).\n\n"
                "Read its data via a device backup instead (like iMazing)?\n"
                "Only this app's data is backed up — nothing else is copied.\n"
-               "(Browse + download free; uploads and new folders are applied\n"
-               "to the iPhone through a restore of this app's data only.)").replace("%1", bundle_id).replace("%2", error),
+               "(Read-only: files can be downloaded, not modified.)").replace("%1", bundle_id).replace("%2", error),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes)
         if ask == QMessageBox.StandardButton.Yes:
@@ -638,59 +503,16 @@ class IOSAppDataPage(QWidget):
         self._backup_tree = tree
         self._current_path = ""
         self._access_level = "backup"
-        self.access_lbl.setText(self._backup_access_text())
+        self.access_lbl.setText(tr("Via device backup (read-only, like iMazing)"))
         self._show_backup_entries("")
-        self._refresh_pending_row()
 
     def _show_backup_entries(self, path: str):
         self.path_lbl.setText(f"{self._current_app['bundle_id']}:{path or '/'}")
         self.file_tree.clear()
-        shown = set()
         for e in self._backup_tree.children(path):
-            # Copy: rows may be marked "staged" without touching the cached tree.
-            e = dict(e)
-            shown.add(e["name"])
             item = QTreeWidgetItem([e["name"], tr("Folder") if e["is_dir"] else tr("File")])
             item.setData(0, Qt.UserRole, e)
             self.file_tree.addTopLevelItem(item)
-        # Merge staged (not yet applied) uploads and folders into the view.
-        staged = self._staged.get(self._current_app["bundle_id"])
-        if staged:
-            norm_path = path.strip("/")
-            pending = tr("pending")
-            for rel in sorted(staged["dirs"]):
-                parent, _, name = rel.rpartition("/")
-                if parent.strip("/") != norm_path or name in shown:
-                    continue
-                shown.add(name)
-                e = {"name": name, "is_dir": True,
-                     "relativePath": rel, "staged": "mkdir"}
-                item = QTreeWidgetItem([name, f"{tr('Folder')} ({pending})"])
-                item.setData(0, Qt.UserRole, e)
-                self.file_tree.addTopLevelItem(item)
-            for rel in sorted(staged["uploads"]):
-                parent, _, name = rel.rpartition("/")
-                if parent.strip("/") != norm_path:
-                    continue
-                label = f"{tr('File')} ({pending})"
-                if name in shown:
-                    # Replacing an existing file: mark its row instead of
-                    # adding a duplicate.
-                    for i in range(self.file_tree.topLevelItemCount()):
-                        it = self.file_tree.topLevelItem(i)
-                        d = it.data(0, Qt.UserRole)
-                        if (d and d.get("name") == name
-                                and not d.get("is_dir") and not d.get("staged")):
-                            it.setText(1, label)
-                            d["staged"] = "upload"
-                            break
-                    continue
-                shown.add(name)
-                e = {"name": name, "is_dir": False,
-                     "relativePath": rel, "staged": "upload"}
-                item = QTreeWidgetItem([name, label])
-                item.setData(0, Qt.UserRole, e)
-                self.file_tree.addTopLevelItem(item)
 
     def _backup_mode_active(self) -> bool:
         return self._backup_mode and self._current_app is not None
@@ -714,24 +536,14 @@ class IOSAppDataPage(QWidget):
         else:
             self._browse(self._current_app["bundle_id"], parent)
 
-    def _backup_edit_blocked(self, op: str) -> bool:
-        """Backup-mode edit gating.
-
-        Uploads and new folders are staged locally and applied through a
-        restore pass. Rename and delete are impossible through a restore —
-        iOS restores can only add or replace files — so they stay blocked
-        with an honest explanation instead of a fake button.
-        """
-        if not self._backup_mode_active():
-            return False
-        if op in ("upload", "mkdir"):
-            return False
-        QMessageBox.information(
-            self, tr("App Data"),
-            tr("iOS restores can only add or replace files — this operation "
-               "is not available in backup mode. Renaming and deleting need "
-               "direct container access, which iOS denies for this app."))
-        return True
+    def _backup_write_blocked(self) -> bool:
+        if self._backup_mode_active():
+            QMessageBox.information(
+                self, tr("App Data"),
+                tr("This view is read-only (data comes from a device backup, "
+                   "like iMazing). Downloads work; modifying files does not."))
+            return True
+        return False
 
     def _download_selected(self):
         item = self.file_tree.currentItem()
@@ -763,12 +575,6 @@ class IOSAppDataPage(QWidget):
 
     def _download_from_backup(self, entry: dict, local: str):
         import shutil
-        if entry.get("staged"):
-            QMessageBox.information(
-                self, tr("App Data"),
-                tr("This entry has staged changes that are not on the iPhone "
-                   "yet. Apply or discard them first."))
-            return
         cached = self._backup_cache.get(self._current_app["bundle_id"])
         if not cached or not entry.get("fileID"):
             QMessageBox.warning(self, tr("App Data"), tr("Backup data not available."))
@@ -783,7 +589,7 @@ class IOSAppDataPage(QWidget):
             QMessageBox.warning(self, tr("App Data"), tr("Could not save file: %1").replace("%1", str(exc)))
 
     def _upload_file(self):
-        if self._backup_edit_blocked("upload"):
+        if self._backup_write_blocked():
             return
         if not self._current_app:
             QMessageBox.information(self, tr("App Data"), tr("Select an app first."))
@@ -792,11 +598,6 @@ class IOSAppDataPage(QWidget):
         if not local:
             return
         name = os.path.basename(local)
-        if self._backup_mode_active():
-            # Stage locally; applied to the device in one restore pass.
-            rel = f"{self._current_path}/{name}".replace("//", "/").lstrip("/")
-            self._stage_upload(rel, local)
-            return
         remote = f"{self._current_path}/{name}".replace("//", "/")
         self.progress.show()
         th = _TransferThread(
@@ -809,56 +610,6 @@ class IOSAppDataPage(QWidget):
                                       QMessageBox.warning(self, tr("App Data"), err)))
         th.start()
         self._threads.append(th)
-
-    def _staged_for_current_app(self) -> dict:
-        bundle_id = self._current_app["bundle_id"]
-        return self._staged.setdefault(
-            bundle_id, {"uploads": {}, "dirs": set()})
-
-    def _stage_upload(self, rel: str, local: str):
-        name = rel.rpartition("/")[2]
-        staged = self._staged_for_current_app()
-        # A staged folder at the same path loses to the file.
-        staged["dirs"].discard(rel)
-        # Replacing an existing device file needs confirmation.
-        replacing = False
-        for i in range(self.file_tree.topLevelItemCount()):
-            d = self.file_tree.topLevelItem(i).data(0, Qt.UserRole)
-            if (d and d.get("name") == name and not d.get("is_dir")
-                    and not d.get("staged")):
-                replacing = True
-                break
-        if replacing:
-            confirm = QMessageBox.question(
-                self, tr("App Data"),
-                tr("'%1' already exists. Replace it on the iPhone when applied?").replace("%1", name),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No)
-            if confirm != QMessageBox.StandardButton.Yes:
-                return
-        staged["uploads"][rel] = local
-        self._show_backup_entries(self._current_path)
-        self._refresh_pending_row()
-
-    def _stage_mkdir(self, rel: str):
-        name = rel.rpartition("/")[2]
-        staged = self._staged_for_current_app()
-        if rel in staged["uploads"]:
-            QMessageBox.information(
-                self, tr("App Data"),
-                tr("A file is already staged at that location."))
-            return
-        # Refuse clashes with existing device entries (the restore would
-        # deliver a directory over an existing file, or a duplicate).
-        for i in range(self.file_tree.topLevelItemCount()):
-            d = self.file_tree.topLevelItem(i).data(0, Qt.UserRole)
-            if d and d.get("name") == name and not d.get("staged"):
-                QMessageBox.information(
-                    self, tr("App Data"), tr("'%1' already exists.").replace("%1", name))
-                return
-        staged["dirs"].add(rel)
-        self._show_backup_entries(self._current_path)
-        self._refresh_pending_row()
 
     def _selected_entry(self):
         """Return the currently selected file entry dict, or None."""
@@ -881,7 +632,7 @@ class IOSAppDataPage(QWidget):
         self._threads.append(th)
 
     def _new_folder(self):
-        if self._backup_edit_blocked("mkdir"):
+        if self._backup_write_blocked():
             return
         if not self._current_app:
             QMessageBox.information(self, tr("App Data"), tr("Select an app first."))
@@ -891,15 +642,11 @@ class IOSAppDataPage(QWidget):
         if not ok or not name.strip():
             return
         name = name.strip().replace("/", "_")
-        if self._backup_mode_active():
-            rel = f"{self._current_path}/{name}".replace("//", "/").lstrip("/")
-            self._stage_mkdir(rel)
-            return
         remote = f"{self._current_path}/{name}".replace("//", "/")
         self._run_file_op("mkdir", remote)
 
     def _rename_selected(self):
-        if self._backup_edit_blocked("rename"):
+        if self._backup_write_blocked():
             return
         e = self._selected_entry()
         if not e:
@@ -913,7 +660,7 @@ class IOSAppDataPage(QWidget):
         self._run_file_op("rename", e["path"], new_name)
 
     def _delete_selected(self):
-        if self._backup_edit_blocked("delete"):
+        if self._backup_write_blocked():
             return
         e = self._selected_entry()
         if not e:
@@ -928,118 +675,3 @@ class IOSAppDataPage(QWidget):
         if confirm != QMessageBox.StandardButton.Yes:
             return
         self._run_file_op("delete", e["path"])
-
-    # ---- backup-mode staged writes ----
-
-    def _backup_access_text(self) -> str:
-        return tr(
-            "Via device backup (like iMazing) — uploads and new folders "
-            "are applied to the iPhone through a restore of this app's data")
-
-    def _refresh_pending_row(self):
-        """Show/hide the pending-changes row for the current app."""
-        if not self._backup_mode_active():
-            self.pending_row.hide()
-            return
-        staged = self._staged.get(
-            self._current_app["bundle_id"], {"uploads": {}, "dirs": set()})
-        n_files = len(staged["uploads"])
-        n_dirs = len(staged["dirs"])
-        if n_files == 0 and n_dirs == 0:
-            self.pending_row.hide()
-            return
-        parts = []
-        if n_files:
-            parts.append(f"{n_files} file(s)")
-        if n_dirs:
-            parts.append(f"{n_dirs} folder(s)")
-        self.pending_lbl.setText(
-            tr("Staged (not on the iPhone yet): ") + ", ".join(parts))
-        self.pending_row.show()
-
-    def _discard_staged(self):
-        if not self._backup_mode_active():
-            return
-        bundle_id = self._current_app["bundle_id"]
-        staged = self._staged.get(bundle_id)
-        if not staged or (not staged["uploads"] and not staged["dirs"]):
-            return
-        confirm = QMessageBox.question(
-            self, tr("App Data"),
-            tr("Discard all staged changes for this app?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No)
-        if confirm != QMessageBox.StandardButton.Yes:
-            return
-        self._staged.pop(bundle_id, None)
-        self._show_backup_entries(self._current_path)
-        self._refresh_pending_row()
-
-    def _apply_staged(self):
-        if not self._backup_mode_active():
-            return
-        udid = self._udid()
-        bundle_id = self._current_app["bundle_id"]
-        staged = self._staged.get(bundle_id, {"uploads": {}, "dirs": set()})
-        uploads = list(staged["uploads"].items())
-        new_dirs = sorted(staged["dirs"])
-        if not uploads and not new_dirs:
-            return
-        # Every staged local file must still exist at apply time.
-        missing = [local for _, local in uploads
-                   if not os.path.isfile(local)]
-        if missing:
-            QMessageBox.warning(
-                self, tr("App Data"),
-                tr("A staged file is gone:\n%1\n\n"
-                   "Discard the staged changes and stage it again.").replace("%1", missing[0]))
-            return
-        confirm = QMessageBox.question(
-            self, tr("Apply to iPhone"),
-            tr("Write %1 file(s) and %2 folder(s) "
-               "into '%3' on the iPhone?\n\n"
-               "This uses a restore of this app's data only — no wipe, "
-               "no reboot, no other app touched. Keep the iPhone unlocked.").replace("%1", str(len(uploads))).replace("%2", str(len(new_dirs))).replace("%3", bundle_id),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No)
-        if confirm != QMessageBox.StandardButton.Yes:
-            return
-        self.progress.setRange(0, 100)
-        self.progress.setValue(0)
-        self.progress.show()
-        self.apply_btn.setEnabled(False)
-        th = _BackupApplyThread(udid, bundle_id, uploads, new_dirs)
-        th.progress.connect(self.progress.setValue)
-        th.status.connect(self.access_lbl.setText)
-        th.done.connect(lambda msg: self._on_apply_done(bundle_id, msg))
-        th.error.connect(lambda err: self._on_apply_error(bundle_id, err))
-        th.start()
-        self._threads.append(th)
-
-    def _on_apply_done(self, bundle_id: str, message: str):
-        self.progress.hide()
-        self.apply_btn.setEnabled(True)
-        # The device data changed — the cached backup is stale. Drop it so
-        # the next browse re-reads from the device.
-        import shutil
-        cached = self._backup_cache.pop(bundle_id, None)
-        if cached:
-            shutil.rmtree(cached[1], ignore_errors=True)
-        self._staged.pop(bundle_id, None)
-        QMessageBox.information(self, tr("App Data"), message)
-        if self._current_app and self._current_app["bundle_id"] == bundle_id:
-            self._browse_via_backup(bundle_id)
-
-    def _on_apply_error(self, bundle_id: str, error: str):
-        self.progress.hide()
-        self.apply_btn.setEnabled(True)
-        self.access_lbl.setText(self._backup_access_text())
-        hint = ""
-        lowered = error.lower()
-        if any(k in lowered for k in
-               ("terminated", "connection", "eof", "reset", "abort")):
-            hint = tr("\n\nNote: on iOS 27 Apple tightened AppDomain restores — "
-                      "the device may reject this write. That is an Apple "
-                      "restriction, not a bug in the file data.")
-        QMessageBox.warning(
-            self, tr("App Data"), tr("Apply failed: %1").replace("%1", error) + hint)

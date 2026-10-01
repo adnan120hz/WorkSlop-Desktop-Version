@@ -36,6 +36,33 @@ def _fmt_number(value) -> str:
         return str(value)
 
 
+def _lock_reason(tweak_id: TweakID) -> str:
+    """Why this tweak's control is locked on the current device.
+
+    Returns "" when the tweak is supported (control stays enabled).
+    User decision 2026-10-01: unsupported tweaks stay visible but locked
+    instead of being hidden or toggleable.
+    """
+    spec = SPECS_BY_ID.get(tweak_id)
+    if spec is None:
+        return ""
+    bits = []
+    if spec.min_version:
+        bits.append(QCoreApplication.translate(
+            "Nugget", "Requires iOS %1 or later").replace("%1", spec.min_version))
+    if spec.max_version:
+        bits.append(QCoreApplication.translate(
+            "Nugget", "Requires iOS %1 or earlier").replace("%1", spec.max_version))
+    if spec.iphone_only:
+        bits.append(QCoreApplication.translate("Nugget", "iPhone only"))
+    if spec.ipad_only:
+        bits.append(QCoreApplication.translate("Nugget", "iPad only"))
+    if not bits:
+        return ""
+    return (QCoreApplication.translate("Nugget", "Locked: ")
+            + "; ".join(bits))
+
+
 def _hidden_tweak_names() -> set:
     """Names of the tweaks that belong to HotLoad-hidden features for the
     current setup. Used by the preset loader to strip them during load."""
@@ -192,8 +219,11 @@ class IOSSectionContent(QWidget):
             card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
             if tweak_id == TweakID.ForceSolariumFallback:
                 self.force_solarium_fallback_card = card
-            if not is_compatible(tweak_id):
-                card.hide()
+            # Unsupported on this iOS: visible but locked (user decision
+            # 2026-10-01) instead of hidden — the switch cannot be toggled.
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
+            if lock_reason:
+                card.setEnabled(False)
             row_layout = QHBoxLayout(card)
             row_layout.setContentsMargins(
                 ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
@@ -214,10 +244,13 @@ class IOSSectionContent(QWidget):
                 lambda checked, tid=tweak_id: self._on_registry_switch(tid, checked))
             row_layout.addWidget(make_switch_column(card, switch))
 
-            if description:
-                label.setToolTip(description)
-                switch.setToolTip(description)
-                card.setToolTip(description)
+            tip = description
+            if lock_reason:
+                tip = (tip + "\n\n" + lock_reason) if tip else lock_reason
+            if tip:
+                label.setToolTip(tip)
+                switch.setToolTip(tip)
+                card.setToolTip(tip)
 
             (target or layout).addWidget(card)
 
@@ -227,19 +260,25 @@ class IOSSectionContent(QWidget):
                             target: QVBoxLayout = None):
             if tweak_id not in tweaks:
                 return
-            if not is_compatible(tweak_id):
-                return
+            # Unsupported on this iOS: visible but locked (user decision
+            # 2026-10-01) instead of skipped — the dialog cannot be opened.
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
+            if lock_reason:
+                card.setEnabled(False)
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(
                 ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
             card_layout.setSpacing(0)
             row = IOSSettingsRow(title)
             row.setMinimumHeight(ROW_CARD_MIN_HEIGHT - 2 * ROW_CARD_VMARGIN)
-            if description:
-                row.setToolTip(description)
+            tip = description
+            if lock_reason:
+                tip = (tip + "\n\n" + lock_reason) if tip else lock_reason
+            if tip:
+                row.setToolTip(tip)
             current = ""
             if hasattr(tweak, 'value') and tweak.value:
                 current = str(tweak.value)
@@ -254,21 +293,29 @@ class IOSSectionContent(QWidget):
                               target: QVBoxLayout = None):
             if tweak_id not in tweaks:
                 return
-            if not is_compatible(tweak_id):
-                return
+            # Unsupported on this iOS: visible but locked (user decision
+            # 2026-10-01) instead of skipped — the dialog cannot be opened.
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
+            if lock_reason:
+                card.setEnabled(False)
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(
                 ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
             card_layout.setSpacing(0)
             row = IOSSettingsRow(title)
             row.setMinimumHeight(ROW_CARD_MIN_HEIGHT - 2 * ROW_CARD_VMARGIN)
-            if description:
-                row.setToolTip(f"{description}\n\n"
-                               + QCoreApplication.translate("Nugget", "Range: {0} – {1}")
-                               .format(_fmt_number(min_val), _fmt_number(max_val)))
+            tip = description
+            if tip:
+                tip = (tip + "\n\n"
+                       + QCoreApplication.translate("Nugget", "Range: {0} – {1}")
+                       .format(_fmt_number(min_val), _fmt_number(max_val)))
+            if lock_reason:
+                tip = (tip + "\n\n" + lock_reason) if tip else lock_reason
+            if tip:
+                row.setToolTip(tip)
             decimals = decimals_for_step(step)
             current = 0
             if hasattr(tweak, 'value') and tweak.value:
@@ -314,20 +361,19 @@ class IOSSectionContent(QWidget):
                 lambda expanded, name=section.value: _save_collapsed_section(
                     name, not expanded))
             layout.addWidget(collapsible)
-            # iOS 27 experimental notice, shown ONLY on iOS 27+. Nothing is
-            # added on iOS 26 and lower, so the stable path renders exactly
-            # as before. Rebuilt with the page, so it tracks device changes.
+            # iOS 27 notice, shown ONLY on iOS 27+. Nothing is added on iOS 26
+            # and lower, so the stable path renders exactly as before.
+            # Rebuilt with the page, so it tracks device changes.
             if section == Section.FEATURE_FLAGS and is_ios27:
                 ff_warn = QLabel(QCoreApplication.translate(
                     "Nugget",
-                    "Experimental on iOS 27: Apple moved the feature-flag "
+                    "Locked on iOS 27: Apple moved the feature-flag "
                     "store to /var/preferences/FeatureFlags/Settings.plist, "
-                    "which this section does not write — these switches still "
+                    "which this section does not write — these switches "
                     "target the iOS 26 location "
                     "(/var/preferences/FeatureFlags/Global.plist) that iOS 27 "
                     "no longer reads, and no working delivery channel is "
-                    "known. They may silently do nothing. Fully supported on "
-                    "iOS 26 and lower."
+                    "known. Fully supported on iOS 26.1 and lower."
                 ))
                 ff_warn.setWordWrap(True)
                 c_warn = ColorThemeManager.instance().colors

@@ -474,11 +474,8 @@ class NavigationMixin:
         elif menu_id == "backup":
             self.ios_backup.refresh()
             self.show_ios_page(13)
-        elif menu_id == "sideload":
-            self.ios_sideload.refresh()
-            self.show_ios_page(15)
         elif menu_id == "appdata":
-            self.show_ios_page(16)
+            self.show_ios_page(15)
         elif menu_id == "themes":
             self.show_ios_page(14)
         elif menu_id == "settings":
@@ -495,7 +492,7 @@ class NavigationMixin:
             12: "gestalt",
             2: "wallpaper",
             13: "backup",
-            15: "sideload",
+            15: "appdata",
             10: "themes", 11: "themes", 14: "themes",
             4: "settings",
         }

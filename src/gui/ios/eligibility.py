@@ -20,6 +20,7 @@ from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSSwitch,
 )
 from src.gui.theme import t
+from src.devicemanagement.constants import is_gestalt_supported
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_eligibility
 
@@ -70,6 +71,7 @@ class EligibilitySection(QWidget):
         super().__init__(parent)
         self.window = window
         self._switches = {}
+        self._cards = {}
         self._built = False
 
         self._layout = QVBoxLayout(self)
@@ -113,6 +115,7 @@ class EligibilitySection(QWidget):
         lay.addWidget(self._make_switch_column(card, sw))
         self._layout.addWidget(card)
         self._switches[tweak_id] = sw
+        self._cards[tweak_id] = card
         return sw
 
     def _lineedit_style(self):
@@ -126,6 +129,23 @@ class EligibilitySection(QWidget):
         if self._built:
             return
         self._built = True
+
+        # MobileGestalt-family controls (AIGestalt + spoofing) follow the same
+        # support range as the MobileGestalt page: iOS 16.0 – 26.2 beta 1.
+        # User decision 2026-10-01: locked (not hidden, not toggleable) when
+        # the connected iOS is outside that range.
+        version = ""
+        build = ""
+        try:
+            if device is not None:
+                version = device.version or ""
+                build = device.build or ""
+        except Exception:
+            pass
+        # No device yet: support is unknown, so keep the controls open —
+        # same as the registry sections, which treat "no version" as
+        # compatible.
+        gestalt_ok = is_gestalt_supported(build, version) if (build and version) else True
 
         # EU Enabler (Nugget: euEnablerEnabledChk / regionCodeTxt).
         # B17 honesty fix: Nugget's "Method 1 / Method 2" dropdown only chose
@@ -175,6 +195,7 @@ class EligibilitySection(QWidget):
         # Spoofing (Nugget: spoofedModelDrp / spoofHardwareChk / spoofCPUChk)
         self._layout.addWidget(IOSSectionHeader(tr("Spoofing")))
         spoof_card, spoof_lay = self._row_card()
+        self._spoof_card = spoof_card
         spoof_lbl = QLabel(tr("Spoofed Model"))
         spoof_lbl.setStyleSheet("font-size: 15px; background-color: transparent;")
         spoof_lay.addWidget(spoof_lbl, 1)
@@ -189,6 +210,25 @@ class EligibilitySection(QWidget):
 
         self._add_switch("Spoof Hardware Model", TweakID.SpoofHardware)
         self._add_switch("Spoof CPU Model", TweakID.SpoofCPU)
+
+        self._apply_gestalt_locks(gestalt_ok)
+
+    def _apply_gestalt_locks(self, gestalt_ok: bool):
+        """Lock the MobileGestalt-family controls when the connected iOS is
+        outside the supported range. Visible but disabled, with the reason
+        as tooltip — never silently toggleable."""
+        if gestalt_ok:
+            return
+        reason = tr("Locked: MobileGestalt tweaks are not supported on this iOS version")
+        for tweak_id in (TweakID.AIGestalt, TweakID.SpoofHardware, TweakID.SpoofCPU):
+            card = self._cards.get(tweak_id)
+            if card is not None:
+                card.setEnabled(False)
+                card.setToolTip(reason)
+        spoof_card = getattr(self, "_spoof_card", None)
+        if spoof_card is not None:
+            spoof_card.setEnabled(False)
+            spoof_card.setToolTip(reason)
 
     def _setup_spoof_models(self, device):
         """Fill the spoof dropdown like Nugget's setup_spoofedModelDrp_models.
