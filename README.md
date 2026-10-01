@@ -49,10 +49,12 @@ but locked** (disabled, with the reason in a tooltip) instead of being hidden
 or silently toggleable.
 
 - **Liquid Glass** — ~25 toggles for iOS 26's glass renderer: the master
-  switch **"Disable Liquid Glass (Recommended for iOS 26.6.1)"**, Force
-  Solarium Fallback, per-surface disables (Lock Screen clock, Dock, buttons,
-  widgets, folders), specular/reflection controls and flat-icon options.
-  iOS 26.0 and newer only.
+  switch **"Disable Liquid Glass (Recommended for iOS 26.6.1)"** combined
+  with **"Force Solarium Fallback (use with Disable Liquid Glass)"** — a new
+  method (untested on a real device) that forces the Solarium fallback,
+  restoring the flat iOS 18-style UI on iOS 26.6.1. Per-surface disables
+  (Lock Screen clock, Dock, buttons, widgets, folders), specular/reflection
+  controls and flat-icon options. iOS 26.0 and newer only.
 - **SpringBoard** — SpringBoard system options (ported from GoldenNugget).
 - **Feature Flags** — SpringBoard / Photos / SwiftUI / IconServices / Mail /
   Sharing / DocumentCamera / AppleMediaServices feature flags. Writes to
