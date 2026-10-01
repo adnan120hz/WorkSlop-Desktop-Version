@@ -46,6 +46,10 @@ class TemplateFile(TendieFile):
         super().__init__(path=path)
         self.options = []
         self.json_path = None
+        # instance state (never share the class-level mutable defaults:
+        # previews written here would leak across TemplateFile instances)
+        self.resources = []
+        self.previews = {}
 
         # find the config.json file
         with zipfile.ZipFile(path, mode="r") as archive:
@@ -128,7 +132,13 @@ class TemplateFile(TendieFile):
                                     self.previews[clean_path] = rc_full_path
 
                 for option in data['options']:
-                    opt_type = OptionType[option['type']]
+                    # OptionType[...] raises KeyError on unknown types before
+                    # the else below could fire — translate it into the
+                    # template error the callers expect
+                    try:
+                        opt_type = OptionType[option['type']]
+                    except KeyError:
+                        raise PBTemplateException(path, QtCore.QCoreApplication.tr("Invalid option type in template"))
                     if opt_type == OptionType.replace:
                         self.options.append(ReplaceOption(data=option))
                     elif opt_type == OptionType.remove:

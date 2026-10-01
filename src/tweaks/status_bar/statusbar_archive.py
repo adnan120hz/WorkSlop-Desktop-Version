@@ -17,13 +17,14 @@ writes, so it is delivered by the normal backup restore -- no exploit and no
 out-of-band channel is involved.
 
 Scope: only the carrier **names** are user-settable. Everything else in the
-cellular entry is written with the fixed values that were verified to
-deserialize and render; exposing more of the record without hardware
-verification would risk shipping a status bar that fails to draw at all.
+cellular entry is written with fixed values chosen to form a structurally
+valid record (round-trip verified offline only -- on-device rendering is
+UNVERIFIED, like every other tweak in this repo until a real-device test).
 
-Failure mode is safe by design: when the record decodes empty SpringBoard
-removes the file itself and the stock carrier names come back, so a rejected
-archive degrades to "no override" instead of a broken status bar.
+Intended failure mode (also UNVERIFIED on-device): when the record decodes
+empty SpringBoard is expected to remove the file itself and the stock carrier
+names come back, so a rejected archive should degrade to "no override"
+instead of a broken status bar.
 
 Pure stdlib on purpose -- ``src.tweaks`` is imported by the tweak loader and
 must not drag in the pymobiledevice3-backed ``src.restore`` package.

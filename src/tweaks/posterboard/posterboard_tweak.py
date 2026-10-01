@@ -1,6 +1,5 @@
 import os
 import uuid
-import traceback
 import plistlib
 from random import randint
 from shutil import copytree
@@ -18,7 +17,6 @@ from src.controllers.files_handler import get_bundle_files
 from src.controllers import video_handler
 from src.controllers.aar.aar import wrap_in_aar
 from src.exceptions.nugget_exception import NuggetException
-from src.exceptions.posterboard_exceptions import PBTemplateException
 from src.devicemanagement.constants import Version
 
 class PosterboardTweak(Tweak):
@@ -30,7 +28,6 @@ class PosterboardTweak(Tweak):
         self.loop_video = True
         self.reverse_video = False
         self.use_foreground = False
-        self.use_configs = True  # descriptors apply method is gone (broken on iOS 26+)
         self.calculationMode = 'linear'
         self.bundle_id = "com.apple.PosterBoard"
         self.resetModes = []
@@ -51,12 +48,9 @@ class PosterboardTweak(Tweak):
     def is_empty(self) -> bool:
         return not self.uses_domains()
 
-    def verify_tendie(self, new_tendie: TendieFile, is_template: bool = False) -> bool:
+    def verify_tendie(self, new_tendie: TendieFile) -> bool:
         if new_tendie.descriptor_cnt + self.get_descriptor_count() <= 10:
-            if is_template:
-                raise Exception(QCoreApplication.tr("Wrong type of file"))
-            else:
-                self.tendies.append(new_tendie)
+            self.tendies.append(new_tendie)
             # alert if prb reset is needed
             if new_tendie.unsafe_container:
                 detailsBox = QtWidgets.QMessageBox()
@@ -70,20 +64,6 @@ class PosterboardTweak(Tweak):
     def add_tendie(self, file: str):
         new_tendie = TendieFile(path=file)
         return self.verify_tendie(new_tendie)
-    def add_template(self, file: str, version: str = None):
-        try:
-            new_template = TemplateFile(path=file, device_version=version)
-            if new_template.domain != "com.apple.PosterBoard":
-                raise PBTemplateException(file=file, message="This is not a PosterBoard template. Please import it on the Templates page.")
-        except Exception as e:
-            print(traceback.format_exc())
-            detailsBox = QtWidgets.QMessageBox()
-            detailsBox.setIcon(QtWidgets.QMessageBox.Critical)
-            detailsBox.setWindowTitle(QCoreApplication.tr("Error"))
-            detailsBox.setText(QCoreApplication.tr("Failed to load template") + f" {file}\n\n{str(e)}")
-            detailsBox.exec()
-            return True
-        return self.verify_tendie(new_template, is_template=True)
 
     def get_descriptor_count(self):
         cnt = 0

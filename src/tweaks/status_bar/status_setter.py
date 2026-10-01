@@ -133,26 +133,28 @@ _RAW_LAYOUT = [
 ]
 
 _OVERRIDE_BITFIELDS = [
-    ("overrideTimeString", 44, 16), ("overrideDateString", 44, 17),
-    ("overrideGSMSignalStrengthRaw", 44, 18), ("overrideSecondaryGSMSignalStrengthRaw", 44, 19),
-    ("overrideGSMSignalStrengthBars", 44, 20), ("overrideSecondaryGSMSignalStrengthBars", 44, 21),
-    ("overrideServiceString", 44, 22), ("overrideSecondaryServiceString", 44, 23),
-    ("overrideServiceImages", 44, 24), ("overrideOperatorDirectory", 44, 26),
-    ("overrideServiceContentType", 44, 27), ("overrideSecondaryServiceContentType", 44, 28),
-    ("overrideWifiSignalStrengthRaw", 44, 29), ("overrideWifiSignalStrengthBars", 44, 30),
-    ("overrideDataNetworkType", 44, 31),
-    ("overrideSecondaryDataNetworkType", 48, 0), ("disallowsCellularDataNetworkTypes", 48, 1),
-    ("overrideBatteryCapacity", 48, 2), ("overrideBatteryState", 48, 3),
-    ("overrideBatteryDetailString", 48, 4), ("overrideBluetoothBatteryCapacity", 48, 5),
-    ("overrideThermalColor", 48, 6), ("overrideSlowActivity", 48, 7),
-    ("overrideActivityDisplayId", 48, 8), ("overrideBluetoothConnected", 48, 9),
-    ("overrideBreadcrumb", 48, 10),
-    ("overrideDisplayRawGSMSignal", 56, 0), ("overrideDisplayRawWifiSignal", 56, 1),
-    ("overridePersonName", 56, 2), ("overrideWifiLinkWarning", 56, 3),
-    ("overrideSecondaryCellularConfigured", 56, 4),
-    ("overridePrimaryServiceBadgeString", 56, 5), ("overrideSecondaryServiceBadgeString", 56, 6),
-    ("overrideQuietModeImage", 56, 7), ("overrideQuietModeName", 56, 8),
-    ("overrideExtra1", 56, 9),
+    # (name, region byte offset, bit index within region, width). Widths match
+    # the cffi struct: every override flag is 1 bit except overrideServiceImages.
+    ("overrideTimeString", 44, 16, 1), ("overrideDateString", 44, 17, 1),
+    ("overrideGSMSignalStrengthRaw", 44, 18, 1), ("overrideSecondaryGSMSignalStrengthRaw", 44, 19, 1),
+    ("overrideGSMSignalStrengthBars", 44, 20, 1), ("overrideSecondaryGSMSignalStrengthBars", 44, 21, 1),
+    ("overrideServiceString", 44, 22, 1), ("overrideSecondaryServiceString", 44, 23, 1),
+    ("overrideServiceImages", 44, 24, 2), ("overrideOperatorDirectory", 44, 26, 1),
+    ("overrideServiceContentType", 44, 27, 1), ("overrideSecondaryServiceContentType", 44, 28, 1),
+    ("overrideWifiSignalStrengthRaw", 44, 29, 1), ("overrideWifiSignalStrengthBars", 44, 30, 1),
+    ("overrideDataNetworkType", 44, 31, 1),
+    ("overrideSecondaryDataNetworkType", 48, 0, 1), ("disallowsCellularDataNetworkTypes", 48, 1, 1),
+    ("overrideBatteryCapacity", 48, 2, 1), ("overrideBatteryState", 48, 3, 1),
+    ("overrideBatteryDetailString", 48, 4, 1), ("overrideBluetoothBatteryCapacity", 48, 5, 1),
+    ("overrideThermalColor", 48, 6, 1), ("overrideSlowActivity", 48, 7, 1),
+    ("overrideActivityDisplayId", 48, 8, 1), ("overrideBluetoothConnected", 48, 9, 1),
+    ("overrideBreadcrumb", 48, 10, 1),
+    ("overrideDisplayRawGSMSignal", 56, 0, 1), ("overrideDisplayRawWifiSignal", 56, 1, 1),
+    ("overridePersonName", 56, 2, 1), ("overrideWifiLinkWarning", 56, 3, 1),
+    ("overrideSecondaryCellularConfigured", 56, 4, 1),
+    ("overridePrimaryServiceBadgeString", 56, 5, 1), ("overrideSecondaryServiceBadgeString", 56, 6, 1),
+    ("overrideQuietModeImage", 56, 7, 1), ("overrideQuietModeName", 56, 8, 1),
+    ("overrideExtra1", 56, 9, 1),
 ]
 
 
@@ -181,7 +183,7 @@ def _serialize_override(overrides) -> bytes:
     buf = bytearray(3944)
     for i in range(46):
         buf[i] = 1 if overrides.overrideItemIsEnabled[i] else 0
-    for name, off, bit in _OVERRIDE_BITFIELDS:
+    for name, off, bit, _width in _OVERRIDE_BITFIELDS:
         val = int(getattr(overrides, name))
         if val:
             bpos, sh = divmod(off * 8 + bit, 8)
@@ -189,6 +191,54 @@ def _serialize_override(overrides) -> bytes:
     struct.pack_into("<I", buf, 52, int(overrides.overrideLock))
     buf[64:64 + 3880] = _serialize_raw(overrides.values)
     return bytes(buf)
+
+
+def _deserialize_override(raw: bytes):
+    """Rebuild a StatusBarOverrideData struct from a serialized blob.
+
+    The blob always uses the fixed clang/gcc layout (the tables above), but
+    cffi models the *host* compiler's layout — on Windows MSVC packs bitfields
+    differently, so memmove()ing the blob into the struct decodes bitfields at
+    the wrong offsets. Parsing field-by-field through cffi's own attribute
+    setters keeps every platform correct: the struct is only ever consumed via
+    attribute access and re-serialized with _serialize_override().
+    """
+    if len(raw) < 3944:
+        raise ValueError(
+            f"status bar override blob too short: {len(raw)} bytes, need 3944")
+    overrides = ffi.new("StatusBarOverrideData *")
+    for i in range(46):
+        overrides.overrideItemIsEnabled[i] = 1 if raw[i] else 0
+    for name, off, bit, width in _OVERRIDE_BITFIELDS:
+        bpos, sh = divmod(off * 8 + bit, 8)
+        mask = (1 << width) - 1
+        val = (raw[bpos] >> sh) & mask
+        if sh + width > 8:  # field straddles into the next byte
+            val |= (raw[bpos + 1] << (8 - sh)) & mask
+        setattr(overrides, name, val)
+    overrides.overrideLock = struct.unpack_from("<I", raw, 52)[0]
+    values = overrides.values
+    base = 64  # StatusBarRawData starts after the 64-byte override header
+    for name, kind, off, bit, width in _RAW_LAYOUT:
+        if kind == "bool46":
+            for i in range(46):
+                values.itemIsEnabled[i] = 1 if raw[base + off + i] else 0
+        elif kind.startswith("str"):
+            n = _STRING_LEN[kind]
+            ffi.buffer(getattr(values, name))[:] = raw[base + off:base + off + n]
+        elif kind in ("int", "uint"):
+            fmt = "<i" if kind == "int" else "<I"
+            setattr(values, name, struct.unpack_from(fmt, raw, base + off)[0])
+        elif kind == "double":
+            setattr(values, name, struct.unpack_from("<d", raw, base + off)[0])
+        elif kind == "bit":
+            bpos, sh = divmod((base + off) * 8 + bit, 8)
+            mask = (1 << width) - 1
+            val = (raw[bpos] >> sh) & mask
+            if sh + width > 8:  # field straddles into the next byte
+                val |= (raw[bpos + 1] << (8 - sh)) & mask
+            setattr(values, name, val)
+    return overrides
 
 
 class Setter:
@@ -210,8 +260,13 @@ class Setter:
             return self.current_overrides
         # create a copy so that it doesn't change the original data
         overrides = ffi.new("StatusBarOverrideData *")
-        # since it doesn't contain pointers, can just copy directly
-        ffi.memmove(overrides, self.current_overrides, ffi.sizeof(self.current_overrides))
+        # since it doesn't contain pointers, can just copy directly.
+        # NOTE: ffi.sizeof() on the *pointer* cdata is 8 (the pointer size),
+        # which used to copy only the first 8 bytes and silently zero out
+        # every other override (carrier/time/battery/...). Size the struct
+        # itself instead.
+        ffi.memmove(overrides, self.current_overrides,
+                    ffi.sizeof("StatusBarOverrideData"))
         # now turn on everything funny
         for i in range(46):
             if overrides.overrideItemIsEnabled[i] == 1:

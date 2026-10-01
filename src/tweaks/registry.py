@@ -109,13 +109,25 @@ GP = FileLocation.globalPreferences
 
 def _ff(id_: TweakID, title: str, flag_category: str, flag_names: list,
         description: str = "", **kwargs) -> TweakSpec:
-    """Feature-flag tweak (ported verbatim from leminlimez/Nugget's
-    ``load_featureflags()``).
+    """Feature-flag tweak.
 
-    GoldenNugget removed the whole feature-flags system; the flag
-    definitions below are Nugget's originals. The ``factory`` builds a
-    ``FeatureFlagTweak`` which writes into
+    GoldenNugget removed the whole feature-flags system; the definitions
+    below (ClockAnim, Lockscreen, PhotoUI, AI, KioskMode AND the
+    ``SolariumFF*`` Liquid Glass entries) are ported verbatim from
+    leminlimez/Nugget's ``load_featureflags()`` (verified against upstream
+    main 2026-10-01: the Solarium pairs live at lines 203-213 there).
+    Correction 2026-10-01: an earlier audit note wrongly claimed the
+    ``SolariumFF*`` entries were fork additions not present upstream —
+    that was false provenance and is corrected here.
+    The ``factory`` builds a ``FeatureFlagTweak`` which writes into
     ``/var/preferences/FeatureFlags/Global.plist`` during apply.
+    That is the iOS 26-and-lower store. On iOS 27 Apple moved the
+    feature-flag store to ``/var/preferences/FeatureFlags/Settings.plist``
+    (sole path read by FeatureFlags.framework; no Global.plist fallback),
+    and as of late Sep 2026 no working delivery channel for either path
+    is publicly confirmed on iOS 27 — so these switches are experimental
+    there and may silently do nothing. They remain fully supported on
+    iOS 26 and lower.
     """
     from .tweak_classes import FeatureFlagTweak
     return TweakSpec(
@@ -146,28 +158,28 @@ _FF_SPECS: tuple[TweakSpec, ...] = (
         description="Forces retail kiosk mode."),
     _ff(TweakID.SolariumFFSwiftUI, "Disable Solarium (Liquid Glass) — SwiftUI",
         'SwiftUI', ['Solarium'], inverted=True,
-        description="Disables the Solarium (Liquid Glass) look in SwiftUI via feature flags."),
+        description="Disables the Solarium (Liquid Glass) look in SwiftUI via feature flags. Unverified on-device."),
     _ff(TweakID.SolariumFFSpringBoard, "Disable Solarium (Liquid Glass) — SpringBoard",
         'SpringBoard', ['SolariumElasticHUD'], inverted=True,
-        description="Disables the Solarium elastic HUD in SpringBoard via feature flags."),
+        description="Disables the Solarium elastic HUD in SpringBoard via feature flags. Unverified on-device."),
     _ff(TweakID.SolariumFFIconServices, "Disable Solarium (Liquid Glass) — Icon Services",
         'IconServices', ['EnhancedGlass', 'SolariumCornerRadius'], inverted=True,
-        description="Disables enhanced glass and the Solarium corner radius in IconServices."),
+        description="Disables enhanced glass and the Solarium corner radius in IconServices. Unverified on-device."),
     _ff(TweakID.SolariumFFDocumentCamera, "Disable Liquid Glass in Documents Camera",
         'DocumentCamera', ['CaptureLiquidGlass'], inverted=True,
-        description="Disables the Liquid Glass capture UI in DocumentCamera."),
+        description="Disables the Liquid Glass capture UI in DocumentCamera. Unverified on-device."),
     _ff(TweakID.SolariumFFPhotos, "Disable Liquid Glass in Photos",
         'Photos', ['SolariumGridMagicPocket'], inverted=True,
-        description="Disables the Liquid Glass grid magic pocket in Photos."),
+        description="Disables the Liquid Glass grid magic pocket in Photos. Unverified on-device."),
     _ff(TweakID.SolariumFFAppleMediaServices, "Disable Liquid Glass in Apple Media Services",
         'AppleMediaServices', ['Solarium'], inverted=True,
-        description="Disables Solarium (Liquid Glass) in Apple Media Services."),
+        description="Disables Solarium (Liquid Glass) in Apple Media Services. Unverified on-device."),
     _ff(TweakID.SolariumFFSharing, "Disable Liquid Glass in Share Sheet",
         'Sharing', ['ShareSheetSolarium'], inverted=True,
-        description="Disables the Solarium share sheet."),
+        description="Disables the Solarium share sheet. Unverified on-device."),
     _ff(TweakID.SolariumFFMail, "Disable Liquid Glass in Mail",
         'Mail', ['SolariumSearch'], inverted=True,
-        description="Disables Solarium search in Mail."),
+        description="Disables Solarium search in Mail. Unverified on-device."),
 )
 
 SPECS: tuple[TweakSpec, ...] = (
@@ -175,6 +187,20 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.ForceSolariumFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the older Solarium rendering path instead of the newer one. Useful for troubleshooting or for devices where the current Solarium engine misbehaves on iOS 26."),
        min_version="26.0", max_version="26.99"),
+    # Restored 2026-10-01: the master Liquid Glass kill switch from upstream
+    # Nugget's load_liquidglass()
+    # (BasicPlistTweak(FileLocation.globalPreferences,
+    # "com.apple.SwiftUI.DisableSolarium")). Its spec was lost in the
+    # declarative-registry migration and its enum member was then removed as
+    # dead code by audit B28. Unlike the SolariumFF* feature-flag switches,
+    # this writes to .GlobalPreferences.plist via the standard backup domain,
+    # so it does not depend on the exploit-based
+    # /var/preferences/FeatureFlags/Global.plist route that community tools
+    # report working only up to iOS 26.1. Effect on iOS 26.6.1 is unverified
+    # on real devices.
+    _t(TweakID.DisableSolarium, Section.LIQUID_GLASS, "Disable Solarium (Liquid Glass)", GP, "com.apple.SwiftUI.DisableSolarium",
+       description=QT_TRANSLATE_NOOP("Nugget", "Master switch: disables the Solarium (Liquid Glass) renderer entirely. Uses the GlobalPreferences route instead of feature flags, so it is the intended path on iOS 26.2+ where the feature-flags file can no longer be written. Effect on iOS 26.6.1 is unverified on real devices."),
+       min_version="26.0"),
     _t(TweakID.IgnoreSolariumLinkedOnCheck, Section.LIQUID_GLASS, "Ignore Solarium Linked-On Check", GP, "com.apple.SwiftUI.IgnoreSolariumLinkedOnCheck",
        description=QT_TRANSLATE_NOOP("Nugget", "Ignores the compile-time (linked-on) SDK version check for Solarium, allowing Liquid Glass features to run that would otherwise be gated by the SDK an app was built with."),
        min_version="26.0"),
@@ -251,6 +277,12 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="26.0"),
 
     # --- Tier 3: SwiftUI / UIKit debug switches (UserDefaults -> GP) ---
+    # KEEP (audit T17): fork-original iOS 27 debug keys, unverified on-device.
+    # Kept because unverified != proven no-op. The bar for cutting is the B27
+    # precedent: the FlexiGlass macOS-side keys were removed only after being
+    # shown to be certain iOS no-ops. Unknown GP keys are ignored by iOS, so
+    # the worst case is a switch that does nothing; every description carries
+    # its caveat and it shows in the UI tooltip. Gated to iOS 27+.
     _t(TweakID.GlassContainerLogging, Section.LIQUID_GLASS,
        "Glass Container Logging", GP,
        "com.apple.SwiftUI.GlassContainerLogging",
@@ -297,6 +329,9 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="27.0", excludes=(TweakID.EnableSolariumCompactChrome,)),
 
     # --- Tier 4: DesignLibrary glass recipes (GP) ---
+    # KEEP (audit T17): same rationale as Tier 3 — unverified, not proven
+    # no-ops; caveats ("Type inferred; unverified on-device") are in every
+    # description and visible in UI tooltips; gated to iOS 27+.
     _t(TweakID.SolariumIncreasedDiffusion, Section.LIQUID_GLASS,
        "Increased Diffusion", GP, "SolariumIncreasedDiffusion",
        description=QT_TRANSLATE_NOOP("Nugget", "Increases the diffusion / legibility axis of the glass recipe, orthogonal to the tint amount."),
@@ -394,6 +429,9 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="27.0"),
 
     # --- Tier 5: UISolarium* floating content / stacked icon motion ---
+    # KEEP (audit T17): same rationale as Tier 3. Keys are derived from the
+    # TweakID name ("UISolarium" + name) so enum and written key cannot drift;
+    # unverified caveats live in the UI tooltips; gated to iOS 27+.
     # Floating content view
     _usol(TweakID.FloatingContentViewSpecularHighlightOpacity,
           "Floating Specular Highlight Opacity",

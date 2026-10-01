@@ -260,7 +260,10 @@ class SetOption(TemplateOption):
         if self.value_type != "float":
             return value
         if isinstance(value, list):
-            new_list = value
+            # copy: this runs on every slider movement, and mutating the
+            # caller's list in place would multiply the values by 1000 again
+            # on each call
+            new_list = list(value)
             for i in range(len(new_list)):
                 new_list[i] = self.convert_float(new_list[i])
             return new_list

@@ -87,7 +87,8 @@ class TweakID(Enum):
     RTL = auto()
     LTR = auto()
     SBIconVisibility = auto()
-    MetalForceHudEnabled = auto()
+    # NOTE: MetalForceHudEnabled was removed (audit B28) — upstream Nugget's
+    # load_internal() defines it, but this fork carries no spec for it.
     iMessageDiagnosticsEnabled = auto()
     IDSDiagnosticsEnabled = auto()
     VCDiagnosticsEnabled = auto()
@@ -136,8 +137,9 @@ class TweakID(Enum):
 
     # Tier 3: SwiftUI / UIKit debug switches (UserDefaults, read via GP)
     GlassContainerLogging = auto()
-    FlexiGlassMacOS = auto()
-    FlexiGlassMacOSPointer = auto()
+    # NOTE: FlexiGlassMacOS / FlexiGlassMacOSPointer were removed (audit B27)
+    # — the com.apple.SwiftUI FlexiGlass keys are macOS-side UserDefaults
+    # paths with no effect on iOS, so their specs were deleted.
     InvisibilitySuppressesGlass = auto()
     EnableGlassEffectBridgeLayers = auto()
     EnableGaussianGlassEffectBridgeLayers = auto()

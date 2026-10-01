@@ -209,6 +209,34 @@ plist location, key, default value, UI kind (switch/text/number).
   spec (`min_version` / `iphone_only` / `ipad_only`);
   `src/gui/ios/compat.py` only evaluates it.
 
+## i18n / Translations (src/qt/translations/)
+
+- Source of truth for the *fork's own* strings is the `.ts`/`.qm` files in
+  this repo. The `sync-translations.yml` workflow pulls upstream
+  gNugget-i18n `.ts` files (which lack fork-specific strings) and bakes them
+  into `resources_rc.py`; at runtime the **on-disk** `.qm`
+  (`src/controllers/translator.py`, disk first) shadows the embedded copy, so
+  always recompile the `.qm` after editing a `.ts`.
+- Compile: `compile_languages.sh` (sh: macOS/Linux/Git Bash) or
+  `compile_languages.py` (cross-platform, incl. cmd/PowerShell). Both resolve
+  `pyside6-lrelease` via `$LRELEASE` → `$VIRTUAL_ENV` → repo `.env` → PATH,
+  keep going past per-file failures, and exit non-zero on any failure.
+- Extract: `python update_translations.py [lang …]` (default: all) runs
+  `pyside6-lupdate` over every `src/**/*.py` + `main_app.py` (this IS the file
+  list — there is no `.pro`; `registry.py` is asserted present) and then
+  post-processes: bare `tr("…")` calls land in a *nameless* context in
+  lupdate output but the runtime looks them up in `"Nugget"`, so verified
+  static literals are moved there; `_tr("…")` (`translate(_NUGGET, …)`,
+  variable context) is invisible to lupdate and is added by the ast fallback
+  pass. f-string ghosts (`tr(f"…")`) are dropped — they can never match at
+  runtime, so user-visible text must stay a static literal (use `%1`-style
+  placeholders, never `tr(…) % x`).
+- Runtime: `Translator` (`src/controllers/translator.py`) loads
+  `Nugget_<locale>.qm` from disk, falling back to `:/translations`; locale
+  from Settings or `QLocale.system()`. `QTranslator.load(QLocale(), …)`
+  falls back `id_ID` → `id`, so `QLocale("id").name() == "id_ID"` still finds
+  `Nugget_id.qm` (verified).
+
 ## Lockdown Sessions (src/devicemanagement/session.py)
 
 `lockdown_session(serial)` is the one way to open a lockdown connection:

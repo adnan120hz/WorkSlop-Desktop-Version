@@ -75,7 +75,22 @@ def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], la
                 mode=mode
             ))
             last_path = full_path
-    # finally, append the file
+    # finally, append the file — or, when this entry is a placeholder for an
+    # empty folder (is_dir=True), append only the directory record itself.
+    # iOS restores deliver files, never empty folders, so a bare Directory
+    # record is the only way to create one on-device.
+    if file.is_dir:
+        dir_path = f"{full_path}/{name}".strip("/")
+        if dir_path and not last_path.startswith(dir_path):
+            files_list.append(backup.Directory(
+                dir_path,
+                file.domain,
+                owner=file.owner,
+                group=file.group,
+                mode=mode
+            ))
+            last_path = dir_path
+        return new_last_domain, last_path
     files_list.append(backup.ConcreteFile(
         f"{full_path}/{name}",
         file.domain,

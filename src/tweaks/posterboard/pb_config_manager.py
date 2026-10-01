@@ -319,9 +319,15 @@ class PBConfigManager:
                 curr_role_sort_key = max((key[0] for key in sort_keys), default=seq)
             except Exception:
                 curr_role_sort_key = seq
-            # remove the currently selected wallpaper
-            cursor.execute("DELETE FROM posterAttributes WHERE roleId = ? AND attributeIdentifier = ? AND attributePayload = ?",
-                           ("PRPosterRoleLockScreen", "SELECTED", 1))
+            # remove the currently selected wallpaper. Deselect matches on
+            # (roleId, attributeIdentifier) only: the SELECTED payload is
+            # written as integer 1 by this tool, but iOS itself may store it
+            # as a bplist blob, and a payload-typed comparison would then
+            # silently match zero rows, leaving the old wallpaper selected
+            # next to the new one. Deselecting means "no SELECTED marker for
+            # this role", whatever the stored payload looks like.
+            cursor.execute("DELETE FROM posterAttributes WHERE roleId = ? AND attributeIdentifier = ?",
+                           ("PRPosterRoleLockScreen", "SELECTED"))
             # combine the saved items
             self.staged_items = self.saved_items + self.staged_items
             for wallpaper in self.staged_items:

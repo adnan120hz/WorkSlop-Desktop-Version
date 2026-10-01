@@ -195,17 +195,19 @@ class IconThemesTweak(Tweak):
             if os.path.isdir(named):
                 return named
         best = extract_root
-        best_len = float("inf")
+        best_len = 0
         for root, dirs, files in os.walk(extract_root):
             # prefer a directory literally named IconBundles
             if os.path.basename(root) == "IconBundles":
                 return root
+            # otherwise the icon folder is the one holding the MOST files.
+            # (Picking the fewest -- e.g. a Docs/ or Preview/ sidecar folder --
+            # silently imported nothing from zips that ship sidecars next to
+            # the icons.)
             n = len(files)
-            if n and n < best_len:
+            if n > best_len:
                 best, best_len = root, n
-        if best != extract_root:
-            return best
-        return extract_root
+        return best
 
     def store_icon(self, theme: IconTheme):
         """Copy a theme's icon into the persistent store and point it there.

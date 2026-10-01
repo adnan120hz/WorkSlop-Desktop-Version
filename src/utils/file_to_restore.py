@@ -38,7 +38,8 @@ class _FileMode(IntFlag):
 class FileToRestore:
     def __init__(self,
                  contents: str, restore_path: str, contents_path: str = None, domain: str = "",
-                 owner: int = 501, group: int = 501, mode: _FileMode = None
+                 owner: int = 501, group: int = 501, mode: _FileMode = None,
+                 is_dir: bool = False,
                 ):
         self.contents = contents
         self.contents_path = contents_path
@@ -47,3 +48,7 @@ class FileToRestore:
         self.owner = owner
         self.group = group
         self.mode = mode
+        # is_dir=True: restore only the directory itself (a bare Directory
+        # record), without delivering a file payload. iOS restores can only
+        # deliver files, so this is how an empty folder is created on-device.
+        self.is_dir = is_dir

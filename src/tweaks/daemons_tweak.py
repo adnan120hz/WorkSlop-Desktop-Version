@@ -1,14 +1,6 @@
 from enum import Enum
 
 
-# Daemons that must never be disabled — disabling them bootloops the device.
-# REAUDIT FIX: the old comment claimed this was "filled below, after the
-# class definition" — it is not; the set is INTENTIONALLY empty (see the
-# HONESTY-AUDIT NOTE at its definition below). The Daemon enum only holds
-# non-critical daemons and the real guard is the allowed_keys whitelist.
-DANGEROUS_DAEMONS: set["Daemon"] = set()  # intentionally empty; see note below
-DANGEROUS_KEYS = frozenset()
-
 class Daemon(Enum):
     thermalmonitord = ["com.apple.thermalmonitord"]
     OTA = [

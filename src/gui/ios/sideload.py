@@ -327,10 +327,10 @@ class IOSSideloadPage(QWidget):
         try:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self._log_view.toPlainText())
-            self._log_line(tr("Log saved to %1") % path)
+            self._log_line(tr("Log saved to %1").replace("%1", str(path)))
         except OSError as exc:
             QMessageBox.warning(self.window, tr("Save Log"),
-                                tr("Could not save log: %1") % str(exc))
+                                tr("Could not save log: %1").replace("%1", str(exc)))
 
     # -- Apple ID -------------------------------------------------------
     def refresh_account(self):
@@ -367,7 +367,7 @@ class IOSSideloadPage(QWidget):
         self._pass_edit.clear()
         self._signin_btn.setEnabled(False)
         self._account_status.setText(tr("Signing in..."))
-        self._log_line(tr("Signing in as %1...") % email)
+        self._log_line(tr("Signing in as %1...").replace("%1", str(email)))
         thread = LoginThread(email, password, self)
         thread.twofa_required.connect(self._on_2fa_required)
         thread.progress.connect(self._on_login_progress)
@@ -388,7 +388,7 @@ class IOSSideloadPage(QWidget):
 
     def _on_2fa_required(self, method):
         self._log_line(tr("Apple requires two-factor authentication (%1).")
-                       % ("SMS" if method == "sms" else tr("trusted device")))
+                       .replace("%1", "SMS" if method == "sms" else tr("trusted device")))
         if method == "sms":
             prompt = tr("Apple sent a verification code by SMS. Enter it:")
         else:
@@ -409,7 +409,7 @@ class IOSSideloadPage(QWidget):
         self._login_thread = None
         self._last_login_stage = None
         self._log_line((tr("Signed in: %1") if ok
-                        else tr("Sign in failed: %1")) % message)
+                        else tr("Sign in failed: %1")).replace("%1", str(message)))
         if ok:
             QMessageBox.information(self.window, tr("Apple ID"), message)
         else:
@@ -476,7 +476,7 @@ class IOSSideloadPage(QWidget):
             warns.append(tr("Contains a watch app; it will be stripped."))
         platform = info.get("platform")
         if platform and platform != "ios":
-            warns.append(tr("This IPA targets %1, not iPhone.") % platform)
+            warns.append(tr("This IPA targets %1, not iPhone.").replace("%1", str(platform)))
         if warns:
             self._ipa_warn.setText("\n".join("⚠ " + w for w in warns))
             self._ipa_warn.setVisible(True)
@@ -513,7 +513,7 @@ class IOSSideloadPage(QWidget):
                 report = apple_support.status()
                 state = report.get("state")
                 detail = report.get("detail", "")
-                self._log_line(tr("Windows device-stack check: %1") % detail)
+                self._log_line(tr("Windows device-stack check: %1").replace("%1", str(detail)))
                 if state == apple_support.STOPPED:
                     self._offer_service_start(detail)
                     return None
@@ -524,10 +524,10 @@ class IOSSideloadPage(QWidget):
                            "driver is not installed on this PC.\n\n%1\n\n"
                            "Install iTunes from apple.com or the "
                            "\"Apple Devices\" app from the Microsoft Store, "
-                           "then reconnect the iPhone.") % detail)
+                           "then reconnect the iPhone.").replace("%1", str(detail)))
                     return None
             except Exception as exc:
-                self._log_line(tr("Device-stack check failed: %1") % str(exc))
+                self._log_line(tr("Device-stack check failed: %1").replace("%1", str(exc)))
         QMessageBox.warning(
             self.window, action,
             tr("No iPhone connected. Connect it over USB, unlock it and "
@@ -553,7 +553,7 @@ class IOSSideloadPage(QWidget):
         self._threads = [t for t in self._threads
                          if not isinstance(t, ServiceStartThread)]
         self._log_line((tr("Service started: %1") if ok
-                        else tr("Service start failed: %1")) % message)
+                        else tr("Service start failed: %1")).replace("%1", str(message)))
         if ok:
             QMessageBox.information(
                 self.window, tr("Apple Service"),
@@ -581,7 +581,7 @@ class IOSSideloadPage(QWidget):
         except Exception as exc:
             QMessageBox.warning(self.window, tr("Sideload"), str(exc))
             return
-        self._log_line(tr("Sideloading %1...") % os.path.basename(self._ipa_path))
+        self._log_line(tr("Sideloading %1...").replace("%1", str(os.path.basename(self._ipa_path))))
         self._sideload_btn.setEnabled(False)
         self._progress.setVisible(True)
         self._progress.setValue(0)
@@ -616,7 +616,7 @@ class IOSSideloadPage(QWidget):
         self._progress_lbl.setVisible(False)
         self._last_sideload_stage = None
         self._log_line((tr("Sideload finished: %1") if ok
-                        else tr("Sideload failed: %1")) % message)
+                        else tr("Sideload failed: %1")).replace("%1", str(message)))
         if ok:
             QMessageBox.information(self.window, tr("Sideload"), message)
             self._on_refresh_apps()
@@ -644,7 +644,7 @@ class IOSSideloadPage(QWidget):
                          if not isinstance(t, InstalledAppsThread)]
         self._apps_list.clear()
         if not ok:
-            self._log_line(tr("Failed to list apps: %1") % str(payload))
+            self._log_line(tr("Failed to list apps: %1").replace("%1", str(payload)))
             item = QListWidgetItem(tr("Failed: ") + str(payload))
             item.setFlags(Qt.NoItemFlags)
             self._apps_list.addItem(item)
@@ -669,13 +669,13 @@ class IOSSideloadPage(QWidget):
             return
         reply = QMessageBox.question(
             self.window, tr("Uninstall"),
-            tr("Uninstall %1 from the iPhone?") % bundle_id)
+            tr("Uninstall %1 from the iPhone?").replace("%1", str(bundle_id)))
         if reply != QMessageBox.StandardButton.Yes:
             return
         udid = self._device_or_diagnose(tr("Uninstall"))
         if not udid:
             return
-        self._log_line(tr("Uninstalling %1...") % str(bundle_id))
+        self._log_line(tr("Uninstalling %1...").replace("%1", str(bundle_id)))
         thread = UninstallThread(bundle_id, udid, self)
         thread.finished_with_result.connect(self._on_uninstall_done)
         thread.finished.connect(thread.deleteLater)
@@ -686,7 +686,7 @@ class IOSSideloadPage(QWidget):
         self._threads = [t for t in self._threads
                          if not isinstance(t, UninstallThread)]
         self._log_line((tr("Uninstalled: %1") if ok
-                        else tr("Uninstall failed: %1")) % str(payload))
+                        else tr("Uninstall failed: %1")).replace("%1", str(payload)))
         if ok:
             self._on_refresh_apps()
         else:
@@ -746,7 +746,7 @@ class IOSSideloadPage(QWidget):
         # Sign off the UI thread so the page stays responsive while zsign
         # works (signing an IPA can take a while on large apps).
         self._log_line(tr("Signing %1 with manual certificate...")
-                       % os.path.basename(self._ipa_path))
+                       .replace("%1", str(os.path.basename(self._ipa_path))))
         thread = SignOnlyThread(
             self._ipa_path, out, self._p12_path, password,
             self._prov_path, self)
@@ -775,7 +775,7 @@ class IOSSideloadPage(QWidget):
         if self._sign_btn is not None:
             self._sign_btn.setEnabled(True)
         self._log_line((tr("Signed IPA saved: %1") if ok
-                        else tr("Sign failed: %1")) % message)
+                        else tr("Sign failed: %1")).replace("%1", str(message)))
         if ok:
             QMessageBox.information(
                 self.window, tr("Signed"),

@@ -6,6 +6,20 @@ from src.utils.file_to_restore import FileToRestore
 from cffi import FFI
 ffi = FFI()
 
+def _truncate_utf8(text: str, max_bytes: int) -> bytes:
+    """Encode *text* as UTF-8, cutting at a character boundary so the result
+    is at most *max_bytes* bytes.
+
+    Char-count slicing (``text[:N].encode()``) is not enough here: N characters
+    can encode to up to 4*N bytes, which overflows the fixed ``char[N]`` arrays
+    and made cffi raise ``IndexError`` (crash) on emoji/CJK input.
+    """
+    data = text.encode("utf-8")
+    while len(data) > max_bytes:
+        text = text[:-1]
+        data = text.encode("utf-8")
+    return data
+
 class StatusBarTweak(Tweak):
     def __init__(self):
         super().__init__(key=None)
@@ -74,8 +88,14 @@ class StatusBarTweak(Tweak):
         overrides = self._overrides()
         setattr(overrides, flag, 1)
         if field is not None:
-            data = value[:max_len] if max_len is not None else value
-            setattr(overrides.values, field, data.encode() if isinstance(data, str) else data)
+            if isinstance(value, str):
+                # NOTE: truncate by encoded bytes, not characters -- the
+                # destination is a fixed char[max_len] array and multibyte
+                # input would otherwise overflow it (IndexError).
+                data = _truncate_utf8(value, max_len) if max_len is not None else value.encode()
+            else:
+                data = value
+            setattr(overrides.values, field, data)
         self._apply_changes(overrides)
 
     def _unset_flag(self, flag: str) -> None:
@@ -101,7 +121,7 @@ class StatusBarTweak(Tweak):
         return self._get_str("serviceString")
     def set_carrier_override(self, text: str) -> None:
         overrides = self._overrides()
-        truncated = text[:100].encode()
+        truncated = _truncate_utf8(text, 100)
         overrides.values.serviceString = truncated
         overrides.values.serviceCrossfadeString = truncated
         self._set_flag("overrideServiceString")
@@ -169,7 +189,7 @@ class StatusBarTweak(Tweak):
         return self._get_str("secondaryServiceString")
     def set_secondary_carrier_override(self, text: str) -> None:
         overrides = self._overrides()
-        truncated = text[:100].encode()
+        truncated = _truncate_utf8(text, 100)
         overrides.values.secondaryServiceString = truncated
         overrides.values.secondaryServiceCrossfadeString = truncated
         self._set_flag("overrideSecondaryServiceString")
@@ -234,14 +254,18 @@ class StatusBarTweak(Tweak):
         return self._is_flag_overridden("overrideBreadcrumb")
     def get_crumb_override(self) -> str:
         text = self._get_str("breadcrumbTitle")
+        # NOTE (audit): set_crumb() appends the 2-character suffix " ▶"
+        # (4 bytes in UTF-8, 2 Python chars after decoding). Stripping 4
+        # chars ate 2 characters of the user's own text on every read,
+        # compounding on each re-save.
         if len(text) > 1:
-            return text[:len(text) - 4]
+            return text[:len(text) - 2]
         return ""
     def set_crumb(self, text: str) -> None:
         overrides = self._overrides()
         overrides.overrideBreadcrumb = 1
         new_crumb = text[:254] + " ▶" if text != "" else ""
-        overrides.values.breadcrumbTitle = new_crumb.encode()
+        overrides.values.breadcrumbTitle = _truncate_utf8(new_crumb, 256)
         self._apply_changes(overrides)
     def unset_crumb(self) -> None:
         overrides = self._overrides()

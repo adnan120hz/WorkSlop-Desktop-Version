@@ -6,12 +6,9 @@
 from .tweak_classes import Tweak
 from src.controllers.files_handler import get_bundle_files
 from src.utils.file_to_restore import FileToRestore
-from src.devicemanagement.constants import Version
 
 import plistlib
-import sys
-from pathlib import Path
-from os import path, getcwd
+from os import path
 
 class InvalidRegionCodeException(Exception):
     "Region code must be exactly 2 characters long!"

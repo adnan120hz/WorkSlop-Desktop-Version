@@ -216,10 +216,14 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Explains the trimmed page on iOS 27; hidden everywhere else.
+        # The archive mechanism itself is unverified on-device (audit T19),
+        # so the note says so outright instead of implying it works.
         self._ios27_note = QLabel(QCoreApplication.translate(
             "Nugget",
             "iOS 27 replaced the status bar override file, so only the carrier "
-            "name can be changed here. The other options need iOS 26 or lower."
+            "name can be changed here. The other options need iOS 26 or lower. "
+            "Note: the iOS 27 carrier-name path is experimental and unverified "
+            "on real devices — it may silently do nothing."
         ))
         self._ios27_note.setWordWrap(True)
         self.content_layout.addWidget(self._ios27_note)

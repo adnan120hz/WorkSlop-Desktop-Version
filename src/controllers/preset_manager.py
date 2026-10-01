@@ -14,7 +14,7 @@ from src.tweaks.tweak_classes import (
 )
 from src.tweaks.posterboard.template_options.templates_tweak import TemplatesTweak
 from src.tweaks.status_bar.status_bar_tweak import StatusBarTweak
-from src.tweaks.status_bar.status_bar_c.status_setter import ffi as status_ffi
+from src.tweaks.status_bar.status_setter import _deserialize_override, _serialize_override
 from src.tweaks.icon_themes.icon_themes_tweak import IconThemesTweak
 from src.tweaks.icon_themes.icon_theme import IconTheme
 from src.controllers.hotload import HotLoad
@@ -338,7 +338,13 @@ class PresetManager:
         elif isinstance(tweak, StatusBarTweak):
             data["enabled"] = tweak.enabled
             data["silly_mode"] = tweak.setter.silly_mode
-            data["override_data"] = base64.b64encode(status_ffi.buffer(tweak.setter.current_overrides)).decode("ascii")
+            # Fixed-table serialization (clang/gcc layout, 3944 bytes), not a
+            # raw ffi.buffer() dump: the host compiler's bitfield layout
+            # differs on Windows (MSVC), which would corrupt presets there and
+            # break cross-platform preset sharing. Pairs with
+            # _deserialize_override() on load.
+            data["override_data"] = base64.b64encode(
+                _serialize_override(tweak.setter.current_overrides)).decode("ascii")
         elif isinstance(tweak, IconThemesTweak):
             # Icons live in the persistent IconThemes store (see
             # icon_themes_tweak.store_icon), so paths are stable across loads.
@@ -427,9 +433,11 @@ class PresetManager:
         if "override_data" in data:
             try:
                 raw = base64.b64decode(data["override_data"])
-                new_overrides = status_ffi.new("StatusBarOverrideData *")
-                struct_size = status_ffi.sizeof(new_overrides[0])
-                status_ffi.memmove(new_overrides, raw, min(len(raw), struct_size))
+                # Parse through the fixed offset table, not memmove(): the blob
+                # uses the clang/gcc layout, but cffi models the host compiler's
+                # layout, so on Windows (MSVC) a raw copy decodes bitfields at
+                # the wrong offsets. See _deserialize_override().
+                new_overrides = _deserialize_override(raw)
                 tweak.setter.apply_changes(new_overrides)
             except Exception as e:
                 print(f"Failed to restore status bar: {e}")

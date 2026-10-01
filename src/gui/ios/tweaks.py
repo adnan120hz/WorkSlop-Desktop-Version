@@ -1,4 +1,5 @@
 from PySide6.QtCore import QCoreApplication, Qt
+from packaging.version import Version, InvalidVersion
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout
 )
@@ -159,6 +160,16 @@ class IOSSectionContent(QWidget):
             device_ver = self.window.device_manager.get_current_device_version()
         except Exception:
             device_ver = ""
+        # iOS 27 moved the feature-flag store from
+        # /var/preferences/FeatureFlags/Global.plist to
+        # /var/preferences/FeatureFlags/Settings.plist (sole path read by the
+        # framework; no fallback), and no working delivery channel is publicly
+        # confirmed on iOS 27 — so the Feature Flags section is experimental
+        # there. iOS 26 and lower keep the old, working behavior unchanged.
+        try:
+            is_ios27 = bool(device_ver) and Version(device_ver) >= Version("27.0")
+        except InvalidVersion:
+            is_ios27 = False
         try:
             model = self.window.device_manager.get_current_device_model() or ""
         except Exception:
@@ -303,6 +314,27 @@ class IOSSectionContent(QWidget):
                 lambda expanded, name=section.value: _save_collapsed_section(
                     name, not expanded))
             layout.addWidget(collapsible)
+            # iOS 27 experimental notice, shown ONLY on iOS 27+. Nothing is
+            # added on iOS 26 and lower, so the stable path renders exactly
+            # as before. Rebuilt with the page, so it tracks device changes.
+            if section == Section.FEATURE_FLAGS and is_ios27:
+                ff_warn = QLabel(QCoreApplication.translate(
+                    "Nugget",
+                    "Experimental on iOS 27: Apple moved the feature-flag "
+                    "store to /var/preferences/FeatureFlags/Settings.plist, "
+                    "which this section does not write — these switches still "
+                    "target the iOS 26 location "
+                    "(/var/preferences/FeatureFlags/Global.plist) that iOS 27 "
+                    "no longer reads, and no working delivery channel is "
+                    "known. They may silently do nothing. Fully supported on "
+                    "iOS 26 and lower."
+                ))
+                ff_warn.setWordWrap(True)
+                c_warn = ColorThemeManager.instance().colors
+                ff_warn.setStyleSheet(
+                    f"color: {c_warn.text_secondary}; font-size: 13px;"
+                    " background-color: transparent;")
+                collapsible.body_layout.addWidget(ff_warn)
             for spec in SPECS_BY_SECTION[section]:
                 renderers[spec.kind](spec, collapsible.body_layout)
 

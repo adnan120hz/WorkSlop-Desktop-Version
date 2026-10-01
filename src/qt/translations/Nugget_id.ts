@@ -8,7 +8,7 @@
 Are you sure you want to use this one?</source>
       <translation>File gestalt ini tampaknya dibuat untuk perangkat lain. Apakah anda yakin untuk menggunakannya?</translation>
     </message>
-  <message><source>App Data</source><translation type="unfinished">App Data</translation></message><message><source>Backing up app data only — keep the iPhone unlocked.</source><translation type="unfinished">Backing up app data only — keep the iPhone unlocked.</translation></message><message><source>Backup data not available.</source><translation type="unfinished">Backup data not available.</translation></message><message><source>Browse app containers like iMazing. Select an app to see its data. </source><translation type="unfinished">Browse app containers like iMazing. Select an app to see its data. </translation></message><message><source>Choose file to upload</source><translation type="unfinished">Choose file to upload</translation></message><message><source>Delete</source><translation type="unfinished">Delete</translation></message><message><source>Documents only (File Sharing)</source><translation type="unfinished">Documents only (File Sharing)</translation></message><message><source>Download</source><translation type="unfinished">Download</translation></message><message><source>File</source><translation type="unfinished">File</translation></message><message><source>File Sharing enabled — Documents accessible</source><translation type="unfinished">File Sharing enabled — Documents accessible</translation></message><message><source>Folder</source><translation type="unfinished">Folder</translation></message><message><source>Folder name:</source><translation type="unfinished">Folder name:</translation></message><message><source>Full container access</source><translation type="unfinished">Full container access</translation></message><message><source>Installed Apps</source><translation type="unfinished">Installed Apps</translation></message><message><source>Loading apps...</source><translation type="unfinished">Loading apps...</translation></message><message><source>Name</source><translation type="unfinished">Name</translation></message><message><source>New Folder</source><translation type="unfinished">New Folder</translation></message><message><source>New name:</source><translation type="unfinished">New name:</translation></message><message><source>No device connected.</source><translation type="unfinished">No device connected.</translation></message><message><source>Refresh Apps</source><translation type="unfinished">Refresh Apps</translation></message><message><source>Rename</source><translation type="unfinished">Rename</translation></message><message><source>Save file</source><translation type="unfinished">Save file</translation></message><message><source>Select a file first.</source><translation type="unfinished">Select a file first.</translation></message><message><source>Select a file or folder first.</source><translation type="unfinished">Select a file or folder first.</translation></message><message><source>Select a file, not a folder.</source><translation type="unfinished">Select a file, not a folder.</translation></message><message><source>Select an app first.</source><translation type="unfinished">Select an app first.</translation></message><message><source>Select an app to browse its data</source><translation type="unfinished">Select an app to browse its data</translation></message><message><source>This view is read-only (data comes from a device backup, </source><translation type="unfinished">This view is read-only (data comes from a device backup, </translation></message><message><source>Type</source><translation type="unfinished">Type</translation></message><message><source>Upload</source><translation type="unfinished">Upload</translation></message><message><source>Via device backup (read-only, like iMazing)</source><translation type="unfinished">Via device backup (read-only, like iMazing)</translation></message><message><source>file</source><translation type="unfinished">file</translation></message><message><source>folder</source><translation type="unfinished">folder</translation></message><message><source>↑ Up</source><translation type="unfinished">↑ Up</translation></message><message><source>Browse app containers like iMazing. Select an app to see its data. Full container access works for sideloaded/development apps; App Store apps only expose Documents if they enable File Sharing.</source><translation type="unfinished">Browse app containers like iMazing. Select an app to see its data. Full container access works for sideloaded/development apps; App Store apps only expose Documents if they enable File Sharing.</translation></message><message><source>This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</source><translation type="unfinished">This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</translation></message></context>
+  </context>
   <context>
     <name>Nugget</name>
     <message>
@@ -2219,7 +2219,244 @@ Sambungkan ulang iPhone jika belum terdeteksi.</translation>
         <numerusform>Ditemukan %n aplikasi terinstal.</numerusform>
       </translation>
     </message>
-  </context>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>App Data</source>
+      <translation>Data Aplikasi</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Backing up app data only — keep the iPhone unlocked.</source>
+      <translation>Mencadangkan data aplikasi saja — biarkan iPhone tetap menyala.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Backup data not available.</source>
+      <translation>Data backup tidak tersedia.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Choose file to upload</source>
+      <translation>Pilih file untuk diunggah</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Delete</source>
+      <translation>Hapus</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Documents only (File Sharing)</source>
+      <translation>Hanya Dokumen (Berbagi File)</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Download</source>
+      <translation>Unduh</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>File</source>
+      <translation>File</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>File Sharing enabled — Documents accessible</source>
+      <translation>Berbagi File aktif — Dokumen dapat diakses</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Folder</source>
+      <translation>Folder</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Folder name:</source>
+      <translation>Nama folder:</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Full container access</source>
+      <translation>Akses container penuh</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Installed Apps</source>
+      <translation>Aplikasi Terinstal</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Loading apps...</source>
+      <translation>Memuat aplikasi...</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Name</source>
+      <translation>Nama</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>New Folder</source>
+      <translation>Folder Baru</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>New name:</source>
+      <translation>Nama baru:</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>No device connected.</source>
+      <translation>Tidak ada perangkat yang terhubung.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Refresh Apps</source>
+      <translation>Muat Ulang Aplikasi</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Rename</source>
+      <translation>Ganti Nama</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Save file</source>
+      <translation>Simpan file</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Select a file first.</source>
+      <translation>Pilih file terlebih dahulu.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Select a file or folder first.</source>
+      <translation>Pilih file atau folder terlebih dahulu.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Select a file, not a folder.</source>
+      <translation>Pilih file, bukan folder.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Select an app first.</source>
+      <translation>Pilih aplikasi terlebih dahulu.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Select an app to browse its data</source>
+      <translation>Pilih aplikasi untuk melihat datanya</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Type</source>
+      <translation>Tipe</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Upload</source>
+      <translation>Unggah</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>file</source>
+      <translation>file</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>folder</source>
+      <translation>folder</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>↑ Up</source>
+      <translation>↑ Naik</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Browse app containers like iMazing. Select an app to see its data. Full container access works for sideloaded/development apps; App Store apps only expose Documents if they enable File Sharing.</source>
+      <translation>Jelajahi container aplikasi seperti iMazing. Pilih aplikasi untuk melihat datanya. Akses container penuh berfungsi untuk aplikasi sideload/pengembang; aplikasi App Store hanya menampilkan Dokumen jika mengaktifkan Berbagi File.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Discard</source>
+      <translation>Buang</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Apply to iPhone</source>
+      <translation>Terapkan ke iPhone</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>pending</source>
+      <translation>tertunda</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>This entry has staged changes that are not on the iPhone yet. Apply or discard them first.</source>
+      <translation>Entri ini memiliki perubahan tertunda yang belum ada di iPhone. Terapkan atau buang terlebih dahulu.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>A file is already staged at that location.</source>
+      <translation>Sudah ada file tertunda di lokasi tersebut.</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Via device backup (like iMazing) — uploads and new folders are applied to the iPhone through a restore of this app's data</source>
+      <translation>Via backup perangkat (seperti iMazing) — file yang diunggah dan folder baru diterapkan ke iPhone melalui restore data aplikasi ini</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Staged (not on the iPhone yet): </source>
+      <translation>Tertunda (belum ada di iPhone): </translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>Discard all staged changes for this app?</source>
+      <translation>Buang semua perubahan tertunda untuk aplikasi ini?</translation>
+    </message>
+    <message>
+      <location filename="../gui/ios/appdata.py" />
+      <source>
+
+Note: on iOS 27 Apple tightened AppDomain restores — the device may reject this write. That is an Apple restriction, not a bug in the file data.</source>
+      <translation>
+
+Catatan: di iOS 27 Apple memperketat restore AppDomain — perangkat mungkin menolak penulisan ini. Itu batasan dari Apple, bukan kesalahan pada data file.</translation>
+    </message>
+  <message><location filename="../gui/ios/appdata.py" /><source>Deleted %1</source><translation>Dihapus: %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Renamed to %1</source><translation>Diganti nama menjadi: %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Created folder %1</source><translation>Folder dibuat: %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Cannot access %1 directly:
+%2
+
+This app does not allow direct container access (Apple restriction).
+
+Read its data via a device backup instead (like iMazing)?
+Only this app's data is backed up — nothing else is copied.
+(Browse + download free; uploads and new folders are applied
+to the iPhone through a restore of this app's data only.)</source><translation>Tidak dapat mengakses %1 secara langsung:
+%2
+
+Aplikasi ini tidak mengizinkan akses container langsung (batasan Apple).
+
+Baca datanya via backup perangkat saja (seperti iMazing)?
+Hanya data aplikasi ini yang dicadangkan — tidak ada yang lain disalin.
+(Jelajah + unduh gratis; unggahan dan folder baru diterapkan
+ke iPhone melalui restore data aplikasi ini saja.)</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Reading %1 via device backup...</source><translation>Membaca %1 via backup perangkat...</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Backup read failed: %1</source><translation>Gagal membaca backup: %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>iOS restores can only add or replace files — this operation is not available in backup mode. Renaming and deleting need direct container access, which iOS denies for this app.</source><translation>Restore iOS hanya bisa menambah atau mengganti file — operasi ini tidak tersedia dalam mode backup. Mengganti nama dan menghapus butuh akses container langsung, yang ditolak iOS untuk aplikasi ini.</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Saved to %1</source><translation>Disimpan ke %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Could not save file: %1</source><translation>Tidak dapat menyimpan file: %1</translation></message><message><location filename="../gui/ios/appdata.py" /><source>'%1' already exists. Replace it on the iPhone when applied?</source><translation>'%1' sudah ada. Ganti di iPhone saat diterapkan?</translation></message><message><location filename="../gui/ios/appdata.py" /><source>'%1' already exists.</source><translation>'%1' sudah ada.</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Delete %1 '%2' from the device?
+This cannot be undone.</source><translation>Hapus %1 '%2' dari perangkat?
+Ini tidak dapat dibatalkan.</translation></message><message><location filename="../gui/ios/appdata.py" /><source>A staged file is gone:
+%1
+
+Discard the staged changes and stage it again.</source><translation>File tertunda hilang:
+%1
+
+Buang perubahan tertunda lalu stage ulang.</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Write %1 file(s) and %2 folder(s) into '%3' on the iPhone?
+
+This uses a restore of this app's data only — no wipe, no reboot, no other app touched. Keep the iPhone unlocked.</source><translation>Tulis %1 file dan %2 folder ke '%3' di iPhone?
+
+Ini memakai restore data aplikasi ini saja — tanpa wipe, tanpa reboot, tanpa menyentuh aplikasi lain. Biarkan iPhone tetap menyala.</translation></message><message><location filename="../gui/ios/appdata.py" /><source>Apply failed: %1</source><translation>Gagal menerapkan: %1</translation></message></context>
   <context>
     <name>PBHelpDialog</name>
     <message>
