@@ -1,39 +1,131 @@
 # WorkSlop Desktop
 
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
+[![Version](https://img.shields.io/badge/version-v3.4%20stable-green.svg)]()
+
 **Owner & Developer: [@Adnan.120hz](https://github.com/adnan120hz)**
 
-Customize your iPhone without jailbreak — tweaks, MobileGestalt flags, wallpapers,
-themes and backups in one app, with the same Cobalt Flow look on Windows, Linux and macOS.
+Customize your iPhone without jailbreak — system tweaks, Liquid Glass controls,
+MobileGestalt flags, feature flags, eligibility, wallpapers, icon & passcode
+themes, app-data browsing and full backups in one app, with the same Sky look
+on Windows, Linux and macOS.
 
-WorkSlop Desktop is a fork of [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget)
-with a redesigned interface and a safer backup system: when the protective device
-backup reaches 100%, the file manager opens with the finished backup selected so
-you can copy it somewhere safe before the apply continues.
+WorkSlop Desktop is a fresh fork of
+[GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) with a
+redesigned Sky interface and a safer backup system: when the protective device
+backup reaches 100%, the file manager opens with the finished backup selected
+so you can copy it somewhere safe before the apply continues.
 
 > [!WARNING]
 > Always back up your data before applying tweaks. WorkSlop Desktop tries to
 > protect your data, but unexpected problems can still happen — we are not
 > responsible for any data loss or bootloops. Use at your own risk.
+> **Effectiveness on real iPhones is still unverified** — please report what
+> you find in [Issues](https://github.com/adnan120hz/desk/issues).
 
 ## Features
 
-- **Home** — device overview, quick actions and status
-- **Tweaks** — SpringBoard options, internal options, status bar, daemons and more
-- **MobileGestalt** — device feature flags ported from Nugget (see version support below)
-- **Feature Flags** — SpringBoard/Photos/SwiftUI feature flags ported from Nugget
-  (Lockscreen Clock Animation, Old Photo UI, Apple Intelligence, Solarium/Liquid
-  Glass toggles, Kiosk Mode); writes to `/var/preferences/FeatureFlags/Global.plist`
-- **Eligibility** — Nugget's eligibility module, ported verbatim (EU Enabler with
-  region code + Method 1/2, Apple Intelligence for unsupported devices,
-  eligibility file + Siri feature flags, model/hardware/CPU spoofing with the
-  original 27-model list). The EU Enabler's `/var/MobileAsset/...` Config.plist
-  cannot be delivered by this fork: Nugget sends it via BookRestore, which this
-  fork does not have, so that file is skipped with a warning while the
-  `/var/db/...` files go through the normal sparse restore. Not device-tested.
-- **Wallpaper** — PosterBoard animated wallpapers, descriptors and templates
-- **Backup** — full iTunes-style backup, protective backup, and restore
-- **Themes** — icon themes and passcode themes
-- **Settings** — appearance, language, safety options and about
+### Home
+- Device overview: model, iOS version, build, UDID, connection status.
+- Quick-action cards: **Tweaks**, **Liquid Glass**, **App Data**,
+  **MobileGestalt**, **PosterBoard**, **Daemons**, **Status Bar**,
+  **Custom Icon**, **Passcode Theme** — each jumps straight to its page.
+
+### Tweaks
+The main customization page, organized in sections. Every control shows its
+support range; **anything your connected iOS does not support stays visible
+but locked** (disabled, with the reason in a tooltip) instead of being hidden
+or silently toggleable.
+
+- **Liquid Glass** — ~25 toggles for iOS 26's glass renderer: the master
+  switch **"Disable Liquid Glass (Recommended for iOS 26.6.1)"**, Force
+  Solarium Fallback, per-surface disables (Lock Screen clock, Dock, buttons,
+  widgets, folders), specular/reflection controls and flat-icon options.
+  iOS 26.0 and newer only.
+- **SpringBoard** — SpringBoard system options (ported from GoldenNugget).
+- **Feature Flags** — SpringBoard / Photos / SwiftUI / IconServices / Mail /
+  Sharing / DocumentCamera / AppleMediaServices feature flags. Writes to
+  `/var/preferences/FeatureFlags/Global.plist` via the exploit-based route,
+  which community tooling reports working **up to iOS 26.1** — the switches
+  lock automatically above that. On iOS 27 they are shown as experimental:
+  research found no confirmed working delivery channel there yet.
+- **Internal Options** — internal/debug-style options including KeyFlick.
+- **Eligibility** — Nugget's eligibility module ported verbatim: EU Enabler
+  with region code, Apple Intelligence for unsupported devices, eligibility
+  file + Siri feature flags, model/hardware/CPU spoofing with the original
+  model list. MobileGestalt-family controls (AIGestalt, spoofing) lock
+  outside the supported range. Honest limit: the EU Enabler's
+  `/var/MobileAsset/...` Config.plist cannot be delivered by this fork
+  (Nugget sends it via BookRestore, which this fork does not have), so that
+  file is skipped with a warning while the `/var/db/...` files go through
+  the normal sparse restore.
+- **Risky** — Disable OTA updates file and custom resolution (ported from
+  Nugget's risky module).
+
+### MobileGestalt
+- 23 device feature-flag tweaks ported **verbatim** from
+  [Nugget](https://github.com/leminlimez/Nugget) by leminlimez, plus the
+  RDAR fix switch and Dynamic Island type control.
+- **Open on iOS 16.0 → iOS 26.2 beta 1**, locked on 26.2 beta 2 and newer —
+  the menu stays visible with the reason, per Apple's closure of the restore
+  route on newer builds.
+
+### Liquid Glass (Home menu)
+- One-tap shortcut from Home straight to the Liquid Glass tweak section.
+
+### PosterBoard / Wallpaper
+- Animated wallpapers, PosterBoard descriptors and templates, including
+  video wallpapers (ffmpeg + OpenCV).
+
+### Daemons
+- Disable system daemons. No iOS build gating — available on all supported
+  builds.
+
+### Status Bar
+- Status bar customization. **Locked on any iOS 27 build**, open on
+  iOS 26 and below.
+
+### App Data — read-only
+- **iMazing-style per-app backup browsing**: for apps that deny direct
+  container access, the app takes a targeted backup of only
+  `AppDomain-<bundle_id>` and lets you browse and download files from it.
+- Apps that allow direct access can still be browsed over the normal
+  channel. Honest limits (same as iMazing): App Store apps without File
+  Sharing simply do not expose their container — an Apple restriction,
+  and the UI shows which access level each app grants.
+- **No write support**: this page never modifies app data.
+
+### Themes
+- **Custom Icon** — themed app icons & labels.
+- **Passcode Theme** — custom keypad themes (`.passthm` files).
+
+### Backup
+- **Full Backup** — real full iTunes/Finder-style backup (`mb.backup`
+  without filters) to a folder you choose, in the standard `<folder>/<UDID>/`
+  layout, with real 0–100% progress from mobilebackup2.
+- **Protective backup** — automatic device backup before tweaks are applied
+  on the iOS 27 flow; the file manager opens with the finished backup
+  highlighted at 100% so you can copy it somewhere safe.
+- **Restore Backup** — restore a previously taken backup.
+
+### Settings
+- Appearance: Sky theme, accent color picker.
+- Language: English / Indonesian (in-app translations, `.qm`).
+- Safety options and update checker (checks **adnan120hz/desk** releases,
+  not upstream).
+- **About → Credits**: full contributor list (upstream developers,
+  PosterRestore team, translators, library authors).
+
+### How Apply works per iOS version
+| iOS | Apply method |
+|---|---|
+| 26.x and below | Partial sparse restore, **no wipe** (GoldenNugget's built-in method, unchanged). |
+| 27.x | Classic protective flow: backup → apply tweaks → **reboot** → wipe → reconnect → restore backup. The device reboots on Apply, like the original GoldenNugget. |
+
+> Standalone backup actions (**Full Backup**) do **not** reboot the device —
+> they just export the backup file to the folder you choose. Only **Restore
+> Backup** and **Apply** reboot the device.
 
 ### Version support
 
@@ -65,18 +157,12 @@ Feature gating per build:
 
 | Feature | Rule |
 |---|---|
-| Tweaks (Apply) | All 49 builds. iOS 26.x and below: partial sparse restore (no wipe). iOS 27: classic protective flow (backup → tweak → **reboot** → wipe → reconnect → restore). The device reboots on Apply, like the original GoldenNugget. |
+| Tweaks (Apply) | All 49 builds. iOS 26.x and below: partial sparse restore (no wipe). iOS 27: protective flow (backup → tweak → **reboot** → wipe → reconnect → restore). |
+| Feature Flags | Fully supported on **iOS 26.1 and lower**; locked above (the exploit-based `Global.plist` route stops working past 26.1 per community tooling). Experimental on iOS 27 — may silently do nothing. |
 | MobileGestalt | **Open on iOS 16.0 → iOS 26.2 beta 1** (builds `20A362`–`23C5027f`). Locked on 26.2 beta 2 and newer — menu stays visible with the reason. |
 | Status Bar | **Locked on any iOS 27 build** (`24A…`). Open on iOS 26 and below. |
 | Daemons | No build gating — available on all 49 builds. |
 | Liquid Glass | iOS 26.0 and newer only (hidden on older versions); no upper lock. |
-
-> Standalone backup actions (**Full Backup**) do **not** reboot the device —
-> they just export the backup file to the folder you choose, like saving it
-> for later. Only **Restore Backup** and **Apply** reboot the device.
-
-The MobileGestalt menu stays visible on all versions but locks itself automatically
-on iOS 26.2 beta 2 and newer.
 
 ## Requirements
 
@@ -130,7 +216,9 @@ python main_app.py
 ## Building
 
 Prebuilt binaries for Windows, macOS and Linux are produced by the
-[build workflow](.github/workflows/build.yml) on every push to `main`.
+[build workflow](.github/workflows/build.yml) on every push to `main`
+(6 artifacts: Windows, macOS Apple Silicon, macOS Intel, macOS Intel Legacy,
+Linux x64, Linux aarch64).
 
 To build locally you need the pinned dependencies above, then:
 ```sh
@@ -144,12 +232,14 @@ python compile.py
 |---|---|
 | Owner & Developer | [@Adnan.120hz](https://github.com/adnan120hz) |
 | Main upstream (this is a fork of) | [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) |
-| MobileGestalt module port | [Nugget](https://github.com/leminlimez/Nugget) by leminlimez |
+| MobileGestalt / eligibility / RDAR / risky ports | [Nugget](https://github.com/leminlimez/Nugget) by leminlimez |
 
 The full contributor list (upstream developers, PosterRestore team, translators and
 library authors) is shown in the app under **Settings → About → Credits**.
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**,
-following the upstream GoldenNugget license. See [LICENSE](LICENSE) for the full text.
+This project is licensed under the **GNU Affero General Public License v3.0
+(AGPL-3.0)** — this is required and cannot be changed, because WorkSlop
+Desktop is a fork of GoldenNugget which is itself AGPL-3.0. See
+[LICENSE](LICENSE) for the full text.
