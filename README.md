@@ -111,13 +111,27 @@ or silently toggleable.
 - **Passcode Theme** — custom keypad themes (`.passthm` files).
 
 ### Backup
-- **Full Backup** — real full iTunes/Finder-style backup (`mb.backup`
-  without filters) to a folder you choose, in the standard `<folder>/<UDID>/`
-  layout, with real 0–100% progress from mobilebackup2.
-- **Protective backup** — automatic device backup before tweaks are applied
-  on the iOS 27 flow; the file manager opens with the finished backup
-  highlighted at 100% so you can copy it somewhere safe.
-- **Restore Backup** — restore a previously taken backup.
+Data safety is a first-class feature, not an afterthought:
+
+- **Full Backup** — a real, complete iTunes/Finder-style backup
+  (`mb.backup` without filters) saved to a folder you choose, in the
+  standard `<folder>/<UDID>/` layout. Real 0–100% progress straight from
+  mobilebackup2, a warning to make sure you have enough free disk space
+  (full backups are large and take a long time), and when it hits 100% the
+  file manager opens with the finished backup folder highlighted. It never
+  reboots your device — it only exports the backup file, like saving it
+  for later.
+- **Protective backup** — before any tweak apply on the iOS 27 flow, the
+  app automatically takes a selective protective backup (settings,
+  contacts, photos, messages, system preferences — app containers and
+  keychain are skipped). At 100% the file manager opens with the finished
+  backup highlighted so you can copy it somewhere safe before the apply
+  continues. An experimental per-device backup cache with incremental
+  refresh makes repeat applies faster, and encrypted backups are supported
+  (you'll be asked for the password).
+- **Restore Backup** — restore a backup you took earlier, with automatic
+  retries on transient errors and support for encrypted backups (password
+  prompt). Only **Restore Backup** and **Apply** reboot the device.
 
 ### Settings
 - Appearance: Sky theme, accent color picker.
