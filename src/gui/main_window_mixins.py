@@ -94,14 +94,92 @@ class DeviceBarMixin:
 
     @QtCore.Slot()
     def refresh_devices(self):
-        if not self.refresh_in_progress:
-            self.refresh_in_progress = True
+        # Refresh must ALWAYS re-run enumeration (user report 2026-10-03:
+        # "Refresh doesn't work"). The old guard silently swallowed clicks
+        # forever when a previous thread died without emitting finished
+        # (flag stuck True). Self-heal: a dead/not-running thread no longer
+        # counts as "in progress".
+        existing = getattr(self, "refresh_worker_thread", None)
+        if getattr(self, "refresh_in_progress", False):
+            alive = False
+            try:
+                alive = existing is not None and existing.isRunning()
+            except Exception:
+                alive = False
+            if alive:
+                return  # a scan is genuinely running; ignore the click
+            self.refresh_in_progress = False  # stale flag from a dead thread
+            self.refresh_worker_thread = None
+        self.refresh_in_progress = True
+        try:
             self.ui.refreshBtn.setDisabled(True)
-            self.refresh_worker_thread = RefreshDevicesThread(manager=self.device_manager, settings=self.settings)
-            self.refresh_worker_thread.alert.connect(self.alert_message)
-            self.refresh_worker_thread.finished.connect(self.refresh_devices_finished)
-            self.refresh_worker_thread.finished.connect(self.refresh_worker_thread.deleteLater)
-            self.refresh_worker_thread.start()
+        except Exception:
+            pass
+        # Visual feedback: searching state on the footer + device panel.
+        if hasattr(self, "footer_status_lbl"):
+            try:
+                self.footer_status_lbl.setText(
+                    self.tr("Searching for devices…"))
+            except Exception:
+                pass
+        if hasattr(self, "device_panel"):
+            try:
+                self.device_panel.set_searching(True)
+            except Exception:
+                pass
+        self.refresh_worker_thread = RefreshDevicesThread(manager=self.device_manager, settings=self.settings)
+        self.refresh_worker_thread.alert.connect(self.alert_message)
+        self.refresh_worker_thread.device_found.connect(self._on_device_found_partial)
+        self.refresh_worker_thread.finished.connect(self.refresh_devices_finished)
+        self.refresh_worker_thread.finished.connect(self.refresh_worker_thread.deleteLater)
+        self.refresh_worker_thread.start()
+        # Safety net: if the worker ever hangs past the manager's own 60s
+        # enumeration ceiling, release the UI instead of wedging Refresh.
+        QtCore.QTimer.singleShot(75_000, self._refresh_watchdog)
+
+    def _refresh_watchdog(self):
+        """Release a wedged refresh (thread alive past every timeout)."""
+        thread = getattr(self, "refresh_worker_thread", None)
+        if not getattr(self, "refresh_in_progress", False):
+            return
+        try:
+            alive = thread is not None and thread.isRunning()
+        except Exception:
+            alive = False
+        if alive:
+            import logging
+            logging.getLogger("WorkSlop.refresh").error(
+                "refresh watchdog: worker still running after 75s; "
+                "releasing the refresh lock (thread left to finish)")
+            # Do not kill the thread (unsafe); just unlock the UI. Its
+            # finished signal will still refresh the UI when it lands.
+            self.refresh_in_progress = False
+            if hasattr(self, "device_panel"):
+                try:
+                    self.device_panel.set_searching(False)
+                except Exception:
+                    pass
+
+    @QtCore.Slot()
+    def _on_device_found_partial(self):
+        """A device was appended mid-scan: show it right away (the full
+        finished handler still runs at the end for the final state)."""
+        try:
+            self.ios_home.refresh_device_combo()
+            self.ios_home.update_device_info()
+            self.ios_home.update_status()
+        except Exception:
+            pass
+        if hasattr(self, "device_panel"):
+            try:
+                self.device_panel.refresh_devices()
+            except Exception:
+                pass
+        if hasattr(self, "footer_status_lbl"):
+            try:
+                self.footer_status_lbl.setText(self.tr("Device found…"))
+            except Exception:
+                pass
 
 
     def warn_for_dev_beta(self):
@@ -190,6 +268,7 @@ class DeviceBarMixin:
         # keep the left device panel tree in sync too
         if hasattr(self, "device_panel"):
             try:
+                self.device_panel.set_searching(False)
                 self.device_panel.refresh_devices()
             except Exception:
                 pass
@@ -201,6 +280,15 @@ class DeviceBarMixin:
                     else "No device connected")
             except Exception:
                 pass
+        # Honest no-device state: surface the detection diagnostic (cable /
+        # Trust / driver) on Home instead of a bare "No Device".
+        if not (self.device_manager.devices or []):
+            notes = getattr(self.device_manager, "detection_notes", None) or []
+            if notes and hasattr(self, "ios_home"):
+                try:
+                    self.ios_home.show_detection_guidance(notes[0])
+                except Exception:
+                    pass
 
 
     def change_selected_device(self, index):

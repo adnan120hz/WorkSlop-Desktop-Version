@@ -118,7 +118,14 @@ class AdvancedPlistTweak(BasicPlistTweak):
     def apply_tweak(self, other_tweaks: dict) -> dict:
         if not self.enabled:
             return other_tweaks
-        other_tweaks[self.file_location] = self._filter_keys(self.value)
+        # Merge into any existing payload for this file (e.g. the registry
+        # "Disable Thermal" BasicPlistTweak writes one key into the same
+        # launchd disabled.plist). Replacing the dict used to silently
+        # erase the other writer's keys depending on apply order.
+        existing = other_tweaks.get(self.file_location)
+        merged = dict(existing) if isinstance(existing, dict) else {}
+        merged.update(self._filter_keys(self.value))
+        other_tweaks[self.file_location] = merged
         return other_tweaks
 
 

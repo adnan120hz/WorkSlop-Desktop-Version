@@ -114,7 +114,17 @@ def run(args) -> int:
             "Re-run with --password <your iCloud backup password>.")
 
     if args.continue_anyway:
+        _auto_resumes = {"count": 0}
+
         def prompt_choice(title, text):
+            # Bounded auto-resume (84% hang fix): --continue-anyway used to
+            # answer "resume" forever, making CLI applies literally
+            # unbounded. One automatic resume keeps the convenience
+            # without the infinite loop.
+            _auto_resumes["count"] += 1
+            if _auto_resumes["count"] > 1:
+                print(f"[warning] {title}: auto-resume limit reached; aborting.")
+                return "abort"
             print(f"[warning] {title}: {text}")
             print("[warning] continuing WITHOUT data protection (--continue-anyway)")
             return "resume"

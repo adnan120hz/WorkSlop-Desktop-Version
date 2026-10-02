@@ -209,9 +209,9 @@ def test_ship_candidates_remain_but_research_is_contained():
     for tid in REGISTRY_RESEARCH_IDS:
         check(f"{tid.name} retains a research spec", tid in SPECS_BY_ID)
         check(f"{tid.name} is audit research-only", is_audit_research_only(tid))
-        ok, code, _ = tweak_deliverability(tid, **TARGET)
-        check(f"{tid.name} cannot deliver on target",
-              not ok and code == "AUDIT_RESEARCH_ONLY", code)
+        ok, code, _msg = tweak_deliverability(tid, **TARGET)
+        check(f"{tid.name} delivers only as UNPROVEN device test",
+              ok and code == "DEVICE_TEST_OK", code)
     for tid in (TweakID.EUEnabler, TweakID.AIEligibility,
                 TweakID.CreateBRFolders, TweakID.DisableOTAFile,
                 TweakID.CustomResolution, TweakID.StatusBar, TweakID.Daemons,
@@ -257,9 +257,9 @@ def test_device_test_candidates_are_open_but_labelled():
         tweaks_dict={TweakID.SolariumForceFallback: dummy})
     check("device-test state survives the research clear",
           cleared == [] and dummy.enabled)
-    # ...while a genuine research-only row is still cleared/locked.
-    ok, code, _ = tweak_deliverability(TweakID.AnimDragCoeff, **TARGET)
-    check("other research-only rows stay locked",
+    # ...while a genuine non-registry research family stays locked.
+    ok, code, _ = tweak_deliverability(TweakID.StatusBar, **TARGET)
+    check("non-registry research family stays locked",
               not ok and code == "AUDIT_RESEARCH_ONLY", code)
     # Removed/killed stays locked with REMOVED_TWEAK.
     ok, code, _ = tweak_deliverability(TweakID.GlassLegibility2, **TARGET)
@@ -279,9 +279,13 @@ def test_stale_state_and_loader_cleanup():
     dummy = _DummyTweak()
     cleared = clear_audit_research_only_state(
         "26.6.1", "23G83", tweaks_dict={TweakID.AnimDragCoeff: dummy})
-    check("target clear reports the research row",
-          cleared == ["AnimDragCoeff"], str(cleared))
-    check("target clear forces research state off", dummy.enabled is False)
+    check("registry research rows are NOT force-cleared (device-testable)",
+          cleared == [] and dummy.enabled, str(cleared))
+    dummy2 = _DummyTweak()
+    cleared = clear_audit_research_only_state(
+        "26.6.1", "23G83", tweaks_dict={TweakID.StatusBar: dummy2})
+    check("non-registry research family is still force-cleared",
+          cleared == ["StatusBar"] and dummy2.enabled is False, str(cleared))
     dummy.enabled = True
     cleared = clear_audit_research_only_state(
         "26.1", "", tweaks_dict={TweakID.AnimDragCoeff: dummy})

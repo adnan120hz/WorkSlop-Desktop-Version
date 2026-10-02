@@ -168,6 +168,11 @@ class DeviceManager:
 
         # Test mode
         self._test_mode = "--test-mode" in sys.argv
+
+        # Human-readable detection diagnostics from the last enumeration
+        # (empty on success). Home shows these when no device is found so
+        # "No Device" always comes with the reason (cable/Trust/driver).
+        self.detection_notes: list = []
     
     def _get_backup_password(self) -> str:
         """Get backup password from settings or return empty string."""
@@ -181,25 +186,39 @@ class DeviceManager:
                 return pwd
         return ""
     
-    def get_devices(self, settings: QSettings, show_alert=lambda x: None):
+    def get_devices(self, settings: QSettings, show_alert=lambda x: None,
+                    on_device_found=None):
         # Guard against an unresponsive usbmuxd/lockdown hang blocking startup
         # forever. Enumeration of a handful of devices is normally near-instant,
-        # so 60s is a generous ceiling.
+        # so 60s is a generous ceiling. ``on_device_found`` (optional) fires
+        # after each device is appended so the UI can show it immediately
+        # instead of waiting for the whole list (user latency fix 2026-10-03).
         try:
-            asyncio.run(asyncio.wait_for(self._get_devices(settings, show_alert), timeout=60))
+            asyncio.run(asyncio.wait_for(
+                self._get_devices(settings, show_alert, on_device_found),
+                timeout=60))
         except asyncio.TimeoutError:
             show_alert(ApplyAlertMessage(
                 txt=QCoreApplication.tr("Getting the device list timed out."),
                 detailed_txt=QCoreApplication.tr(
                     "Device enumeration took too long. Check your USB connection and try again.")
             ))
-    async def _get_devices(self, settings: QSettings, show_alert=lambda x: None):
+    async def _get_devices(self, settings: QSettings, show_alert=lambda x: None,
+                           on_device_found=None):
         # Test mode: use mock device already set up in main_app.py
         if self._test_mode:
             self.pref_manager.settings = settings
             return
-        
+
         self.devices.clear()
+        self.detection_notes = []
+        # Detection diagnostics (user report 2026-10-03: "No Device" with
+        # zero explanation, and slow detection). Every stage is logged with
+        # timings so the log says WHERE seconds went instead of silence.
+        import logging as _logging
+        import time as _time
+        _det = _logging.getLogger("WorkSlop.detection")
+        _t0 = _time.monotonic()
         # handle errors when failing to get connected devices
         try:
             connected_devices = await usbmux.list_devices()
@@ -207,40 +226,42 @@ class DeviceManager:
             sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
             if os.name == 'nt':
                 sysmsg = QCoreApplication.tr("Make sure you have the \"Apple Devices\" app from the Microsoft Store or iTunes from Apple's website.")
+            _det.warning("usbmux.list_devices failed after %.2fs",
+                         _time.monotonic() - _t0, exc_info=True)
             show_alert(ApplyAlertMessage(
                 txt=QCoreApplication.tr("Failed to get device list. Click \"Show Details\" for the traceback.") + f"\n\n{sysmsg}", detailed_txt=str(traceback.format_exc())
             ))
             self.set_current_device(index=None)
             return
-        # Connect via usbmuxd
+        _det.info("usbmux enumerated %d device(s) in %.2fs",
+                  len(connected_devices), _time.monotonic() - _t0)
+        if not connected_devices:
+            # Nothing plugged in: leave an honest diagnostic note for the UI
+            # instead of the old silent path (user could not tell a dead
+            # Apple Mobile Device Service from "no cable").
+            self.detection_notes.append(
+                "No device reported by usbmux. Check the USB cable, tap "
+                "Trust on the iPhone, and (on Windows) make sure the Apple "
+                "Mobile Device Service is running (Apple Devices app or "
+                "iTunes installed).")
+        # Connect via usbmuxd — sequential per device (usually one).
+        alerted = False
         for device in connected_devices:
+            _td = _time.monotonic()
             try:
-                async with lockdown_session(device.serial) as ld:
-                    # Check backup encryption status if experimental option not enabled
-                    if not self.pref_manager.use_encrypted_backup:
-                        try:
-                            from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
-                            mb = Mobilebackup2Service(ld)
-                            await mb.connect()
-                            is_encrypted = await mb.get_will_encrypt()
-                            await mb.close()
-                            if is_encrypted:
-                                show_alert(ApplyAlertMessage(
-                                    txt=QCoreApplication.tr("Backup encryption is enabled on your iPhone."),
-                                    detailed_txt=QCoreApplication.tr(
-                                        # REAUDIT FIX: user-visible alert still
-                                        # named the old upstream project.
-                                        "WorkSlop Desktop needs to temporarily disable backup encryption to apply tweaks safely.\n\n"
-                                        "Please choose one:\n"
-                                        "1. Disable encryption on your iPhone: Settings → General → Transfer or Reset iPhone → Backup Password → Turn Off\n"
-                                        "2. Or enable \"Use Encrypted Backups (Experimental)\" in WorkSlop Desktop Settings → enter your backup password when prompted.\n\n"
-                                        "Tip: Option 1 is simpler if you don't know your backup password."
-                                    )
-                                ))
-                                self.set_current_device(index=None)
-                                return
-                        except Exception:
-                            pass  # If we can't check, continue anyway
+                # pair_timeout: detection must not sit up to 120s behind an
+                # unanswered Trust prompt per device (lockdown_session
+                # default). 30s is enough for a human tap; hitting Refresh
+                # after trusting is instant.
+                async with lockdown_session(device.serial, pair_timeout=30.0) as ld:
+                    # SPEED: read the basic identity first and publish the
+                    # device immediately. The old code started a whole
+                    # Mobilebackup2 service session BEFORE collecting the
+                    # name/version (seconds per device), and when backup
+                    # encryption was on it dropped the device from the list
+                    # entirely. The apply flow re-checks encryption itself
+                    # before every restore, so detection no longer pays for
+                    # or is gated by that check.
                     vals = ld.all_values
                     model = vals['ProductType']
                     hardware = vals['HardwareModel']
@@ -266,7 +287,6 @@ class DeviceManager:
                             cpu = cpu_type
                     except Exception:
                         show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Click \"Show Details\" for the traceback."), detailed_txt=str(traceback.format_exc())))
-                    locale = await ld.get_locale()
                     dev = Device(
                             udid=device.serial,
                             usb=device.is_usb,
@@ -276,24 +296,67 @@ class DeviceManager:
                             model=model,
                             hardware=hardware,
                             cpu=cpu,
-                            locale=locale,
+                            locale="",
                         )
                     self.devices.append(dev)
+                    # Publish the first device right away — Home no longer
+                    # waits for every remaining device / detail query.
+                    if len(self.devices) == 1:
+                        self.set_current_device(index=0)
+                    if on_device_found is not None:
+                        try:
+                            on_device_found(dev)
+                        except Exception:
+                            _det.debug("on_device_found callback failed",
+                                       exc_info=True)
+                    # Details that only some pages need (locale for
+                    # PosterBoard) are filled in afterwards, same session,
+                    # so they never delay the device appearing.
+                    try:
+                        dev.locale = await ld.get_locale()
+                    except Exception:
+                        _det.debug("get_locale failed for %s", device.serial,
+                                   exc_info=True)
+                    _det.info(
+                        "device %s ready in %.2fs (name=%r model=%s iOS %s build %s)",
+                        device.serial, _time.monotonic() - _td,
+                        dev.name, dev.model, dev.version, dev.build)
             except PasswordRequiredError as e:
-                show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Device is password protected! You must trust the computer on your device.\n\nUnlock your device. On the popup, click \"Trust\", enter your password, then try again.")))
+                _det.warning("device %s needs Trust/unlock (%.2fs)",
+                             device.serial, _time.monotonic() - _td)
+                self.detection_notes.append(
+                    "A connected device is locked or not trusted yet. "
+                    "Unlock it, tap Trust, then press Refresh.")
+                if not alerted:
+                    alerted = True
+                    show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Device is password protected! You must trust the computer on your device.\n\nUnlock your device. On the popup, click \"Trust\", enter your password, then try again.")))
             except MuxException as e:
                 # there is probably a cable issue
-                print(f"MUX ERROR with lockdown device with UUID {device.serial}")
-                show_alert(ApplyAlertMessage(txt="MuxException: " + repr(e) + "\n\n" + QCoreApplication.tr("If you keep receiving this error, try using a different cable or port."),
-                               detailed_txt=str(traceback.format_exc())))
+                _det.warning("MuxException for %s after %.2fs: %r",
+                             device.serial, _time.monotonic() - _td, e)
+                self.detection_notes.append(
+                    "USB connection error. Try a different cable or port.")
+                if not alerted:
+                    alerted = True
+                    show_alert(ApplyAlertMessage(txt="MuxException: " + repr(e) + "\n\n" + QCoreApplication.tr("If you keep receiving this error, try using a different cable or port."),
+                                   detailed_txt=str(traceback.format_exc())))
             except Exception as e:
-                print(f"ERROR with lockdown device with UUID {device.serial}")
-                show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc())))
-        
+                _det.warning("lockdown failed for %s after %.2fs: %r",
+                             device.serial, _time.monotonic() - _td, e,
+                             exc_info=True)
+                self.detection_notes.append(
+                    f"Could not read device info ({type(e).__name__}). "
+                    "Unlock the device and press Refresh.")
+                if not alerted:
+                    alerted = True
+                    show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc())))
+
         if len(self.devices) > 0:
             self.set_current_device(index=0)
         else:
             self.set_current_device(index=None)
+        _det.info("detection finished: %d device(s) in %.2fs total",
+                  len(self.devices), _time.monotonic() - _t0)
 
     ## CURRENT DEVICE
     def set_current_device(self, index: int = None):

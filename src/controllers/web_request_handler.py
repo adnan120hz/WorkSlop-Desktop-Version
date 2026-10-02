@@ -133,6 +133,27 @@ def _strip_one_v(tag: str):
     return stripped
 
 
+def _public_version(value) -> "Version | None":
+    """Parse a version for comparison, robust to release-tag shapes.
+
+    One leading ``v`` is stripped and any ``+build`` local suffix is
+    ignored (so a packaged ``10.0+0`` never compares newer than the
+    ``v10.0`` release, and equal versions are simply equal — the
+    "always says update is available" bug). Returns None when the value
+    does not parse as a version at all.
+    """
+    try:
+        raw = str(value or "").strip()
+    except Exception:
+        return None
+    raw = _strip_one_v(raw)
+    raw = raw.split("+", 1)[0]
+    try:
+        return Version(raw)
+    except InvalidVersion:
+        return None
+
+
 def _parse_release(raw, channel: str):
     """Return ``(ReleaseInfo|None, invalid_tag: bool)`` for one API object."""
     if not isinstance(raw, dict):
@@ -245,7 +266,9 @@ def check_for_update(current_version: str, current_build: int,
                                  checked_at)
 
     try:
-        current_v = Version(str(current_version))
+        current_v = _public_version(current_version)
+        if current_v is None:
+            raise InvalidVersion(str(current_version))
     except InvalidVersion:
         return _result("unknown", None, "local_version_invalid")
 
@@ -279,10 +302,12 @@ def check_for_update(current_version: str, current_build: int,
             return _result("up_to_date", None, kind, invalid_tags)
         _release_cache[channel] = (time.monotonic(), latest)
 
-    latest_v = Version(latest.version)
-    if latest_v > current_v:
+    latest_v = _public_version(latest.version)
+    # Strictly-greater only: the same version (v10.0 vs 10.0, or a
+    # packaged 10.0+0) is up-to-date and must never re-offer itself.
+    if latest_v is not None and latest_v > current_v:
         return _result("update_available", latest, None, invalid_tags)
-    if (latest_v == current_v and current_build > 0
+    if (latest_v is not None and latest_v == current_v and current_build > 0
             and not latest.prerelease):
         # A dev/beta build of this version moves to its public build.
         return _result("update_available", latest, None, invalid_tags)

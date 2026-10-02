@@ -220,6 +220,39 @@ def is_device_test_tweak(tweak_id) -> bool:
         return False
 
 
+# USER POLICY EXPANSION (2026-10-03): every audit research-only tweak that
+# is a real registry tweak joins the device-test path — toggle enabled,
+# UNPROVEN badge, one-time backup confirmation, Apply Journal entry — the
+# same treatment the three Liquid Glass candidates already have. What
+# stays hard-locked, with no path through here:
+#   * removed/killed IDs (REMOVED_TWEAK_IDS) — wrong delivery, dead
+#     readers, settings duplicates, user-killed candidates;
+#   * non-registry research families (Status Bar / Daemons / PosterBoard /
+#     Templates / Risky / Eligibility pages own their controls);
+#   * MobileGestalt-gated tweaks on a locked/unknown build — the shared
+#     MobileGestalt decision stays fail-closed and is evaluated BEFORE
+#     this path in tweak_deliverability (RdarFix included).
+def is_device_test_candidate(tweak_id) -> bool:
+    """True when *tweak_id* may be enabled as an UNPROVEN device test.
+
+    The original three Liquid Glass candidates always qualify. Every other
+    audit research-only ID qualifies only when it is a registry tweak
+    (``SPECS_BY_ID``); non-registry families and removed tombstones never
+    do. Deliverability still applies every other gate (version range,
+    device class, MobileGestalt) on top of this classification.
+    """
+    try:
+        canonical = canonical_tweak_id(tweak_id)
+    except Exception:
+        return False
+    if is_removed_tweak(canonical):
+        return False
+    if canonical in DEVICE_TEST_TWEAK_IDS:
+        return True
+    return (is_audit_research_only(canonical)
+            and canonical in SPECS_BY_ID)
+
+
 # Explicit user-retained exception (2026-10-02 17:21 WIB). It remains an
 # active product row by user order; retention is not reader evidence and
 # must never be read as proof that the archived v4 Liquid Glass set works.
@@ -283,6 +316,13 @@ def clear_audit_research_only_state(device_version: str = "",
     AutoSave, or a previous device cannot be counted or delivered as a
     supported iOS 26.6.1 feature. Returns the names cleared. Non-target
     devices and the user-retained exception are untouched.
+
+    Registry research-only tweaks are NOT cleared anymore (user policy
+    2026-10-03): they are deliverable as UNPROVEN device tests, and the
+    apply pass journals them as such. Only non-registry research families
+    (Status Bar / Daemons / PosterBoard / Risky / Eligibility controls)
+    and MobileGestalt-gated rows are still force-cleared — the latter via
+    ``clear_unsupported_mobilegestalt_state`` on locked builds.
     """
     if not is_audit_target(device_version, device_build):
         return []
@@ -294,6 +334,8 @@ def clear_audit_research_only_state(device_version: str = "",
             continue
         if not is_audit_research_only(tweak_id):
             continue
+        if is_device_test_candidate(tweak_id):
+            continue  # registry research-only: device-testable, not cleared
         try:
             tweak.set_enabled(False)
         except Exception:
@@ -417,11 +459,6 @@ def tweak_deliverability(tweak_id, device_version: str = "",
     if is_removed_tweak(canonical) or is_removed_tweak(tweak_id):
         return (False, "REMOVED_TWEAK",
                 "Removed from WorkSlop v10 by user order; it is never applied.")
-    if (is_audit_research_only(canonical)
-            and is_audit_target(device_version, device_build)):
-        return (False, "AUDIT_RESEARCH_ONLY",
-                "Research-only in the Wave 10 audit; not a supported "
-                "iOS 26.6.1 ship feature.")
     spec = SPECS_BY_ID.get(canonical)
 
     if spec is not None and device_version:
@@ -444,9 +481,31 @@ def tweak_deliverability(tweak_id, device_version: str = "",
             return (False, "IPHONE_ONLY", "This tweak is for iPhone only.")
 
     if requires_gestalt(canonical, tweak):
+        # MobileGestalt stays fail-closed and is evaluated BEFORE the
+        # device-test path: a research-only classification can never open
+        # a MobileGestalt-gated tweak on a locked/unknown build (RdarFix
+        # included, via the MobileGestalt-page flow set).
         decision = mobilegestalt_decision(device_build, device_version)
         if not decision.supported:
             return (False, decision.reason_code, decision.user_message)
+
+    if (is_audit_research_only(canonical)
+            and is_audit_target(device_version, device_build)):
+        if canonical in SPECS_BY_ID:
+            # Device-test path (expanded user policy 2026-10-03): every
+            # research-only REGISTRY tweak may be enabled for an isolated
+            # device test on the audited target — badge UNPROVEN, backup
+            # confirmation, Apply Journal. Non-registry research families
+            # stay locked here; their own pages own those controls.
+            return (True, "DEVICE_TEST_OK",
+                    "UNPROVEN — device test: classified research-only by "
+                    "the Wave 10 audit; structure recorded, on-device "
+                    "effect not proven. Full backup first, Low Power Mode "
+                    "off, one candidate per apply, and never reset the "
+                    "SpringBoard page on iOS 26.6.1.")
+        return (False, "AUDIT_RESEARCH_ONLY",
+                "Research-only in the Wave 10 audit; not a supported "
+                "iOS 26.6.1 ship feature.")
 
     if is_device_test_tweak(canonical):
         # Deliverable, but honestly labelled: the structure is verified,

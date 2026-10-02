@@ -170,6 +170,24 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.LTR, Section.INTERNAL, "Force Left-to-Right Layout", GP, "NSForceLeftToRightWritingDirection",
        description=QT_TRANSLATE_NOOP("Nugget", "Forces a left-to-right layout across the whole system regardless of the RTL language setting."),
        excludes=(TweakID.RTL,)),
+    # Disable thermal monitoring (launchd daemon kill switch). Source
+    # structure (NOT copied code): leminlimez/Nugget
+    # src/tweaks/daemons_tweak.py — Daemon.thermalmonitord =
+    # ["com.apple.thermalmonitord"], presented on the Daemons page as
+    # "Disable thermalmonitord". WorkSlop 5-layer audit vs iOS 26.6.1:
+    #   key    "com.apple.thermalmonitord" (the launchd service label)
+    #   path   /var/db/com.apple.xpc.launchd/disabled.plist (same file
+    #          the shipped Daemons feature writes)
+    #   value  true (bool)
+    #   reader launchd's stock disabled.plist mechanism — the delivery
+    #          channel is proven; the on-device effect is user-reported
+    #          working (2026-10-03), not lab-verified here.
+    # It shares the disabled.plist payload with the Daemons tweak; the
+    # apply pass merges both into one dict (see AdvancedPlistTweak merge).
+    _t(TweakID.DisableThermal, Section.INTERNAL, "Disable Thermal",
+       FileLocation.disabledDaemons, "com.apple.thermalmonitord",
+       description=QT_TRANSLATE_NOOP("Nugget", "Disables the thermalmonitord daemon via launchd's disabled list, so iOS stops applying thermal throttling. Reported working by users; also removes the device's thermal protection — the phone can run hotter under load. Re-enable by turning this off and applying again. A reboot is required.")),
+
     _t(TweakID.SBIconVisibility, Section.INTERNAL, "Show Hidden Icons on Home Screen", GP, "SBIconVisibility",
        description=QT_TRANSLATE_NOOP("Nugget", "Reveals hidden or disabled Home Screen icons, including internal placeholder icons that are normally not drawn.")),
     _t(TweakID.iMessageDiagnosticsEnabled, Section.INTERNAL, "iMessage Debugging", GP, "iMessageDiagnosticsEnabled",

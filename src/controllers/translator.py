@@ -17,33 +17,23 @@ class Translator:
         self.settings = settings
 
     def get_saved_locale_code(self) -> str:
-        saved = self.settings.value("locale_code", "", type=str)
-        return saved if saved else self.system_locale_code()
+        # English-only product (user order 2026-10-03): the app ships and
+        # runs in English (US); there is no language picker anymore, so the
+        # saved/system locale never steers the UI language.
+        return "en"
     def system_locale_code(self) -> str:
-        """Best matching app-locale code for the OS language (e.g. 'ru',
-        'es_MX', 'zh_CN'); falls back to 'en'."""
-        from src.gui.pages.main.settings import available_languages
-        codes = set(available_languages.values())
-        sys_locale = QLocale.system()
-        name = sys_locale.name()  # e.g. "ru_RU", "es_MX", "zh_CN"
-        if name in codes:
-            return name
-        base = sys_locale.languageToCode(sys_locale.language())
-        if base in codes:
-            return base
+        """Locked to English: WorkSlop Desktop is English-only."""
         return "en"
     def set_default_locale(self, code: str):
         QLocale.setDefault(QLocale(code))
     def set_new_language(self, code: str, restart: bool = False):
-        if not code:
-            self.settings.remove("locale_code")
-            code = self.system_locale_code()
-        else:
-            self.settings.setValue("locale_code", code)
-        self.set_default_locale(code)
+        # English-only product: language switching (and its restart) is
+        # disabled by user order 2026-10-03. Any legacy caller just gets
+        # English reloaded in place — no settings write, no app restart
+        # (the old os.execl restart also crashed on Windows).
+        self.settings.remove("locale_code")
+        self.set_default_locale("en")
         self.load_translations()
-        if restart:
-            os.execl(sys.executable, sys.executable, *sys.argv)
 
     def load_translations(self):
         qt_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)

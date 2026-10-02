@@ -249,7 +249,7 @@ check("Home shows the big Apple brand logo (no phone frame)",
       hasattr(home, "_brand_logo") and not home._brand_logo.pixmap().isNull())
 check("Home has no phone frame widget anymore",
       not hasattr(home, "_phone"))
-check("device chip is device", home._device_chip.text() == "iPhone 14")
+check("device title is device", home._device_title.text() == "iPhone 14")
 check("phone caption is device", home._phone_caption.text() == "iPhone 14")
 check("refresh phone link not hidden", not home._refresh_link.isHidden())
 check("no big blue info buttons", home._refresh_info_btn.isHidden()

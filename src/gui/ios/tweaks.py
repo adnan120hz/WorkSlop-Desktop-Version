@@ -13,7 +13,7 @@ from src.gui.ios.compat import is_tweak_compatible, tweak_incompatibility_reason
 from src.devicemanagement.constants import mobilegestalt_decision
 from src.tweaks.capabilities import (
     clear_audit_research_only_state, clear_unsupported_mobilegestalt_state,
-    is_device_test_tweak,
+    is_device_test_tweak, is_device_test_candidate,
 )
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
@@ -266,7 +266,7 @@ class IOSSectionContent(QWidget):
                 f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
                 " background-color: transparent;")
             self._switch_labels.append(label)
-            if is_device_test_tweak(tweak_id):
+            if is_device_test_candidate(tweak_id):
                 # Device-test candidates stay enabled (that is the point of
                 # the path) but must never look like proven features: a
                 # persistent badge under the name, plus the warning in the
@@ -293,7 +293,7 @@ class IOSSectionContent(QWidget):
             row_layout.addWidget(make_switch_column(card, switch))
 
             tip = description
-            if is_device_test_tweak(tweak_id):
+            if is_device_test_candidate(tweak_id):
                 warn = QCoreApplication.translate(
                     "Nugget",
                     "UNPROVEN — device test: the audit verified this tweak's "
@@ -536,7 +536,7 @@ class IOSSectionContent(QWidget):
                 sw.setChecked(False)
                 sw.blockSignals(False)
             return
-        if checked and is_device_test_tweak(tweak_id) \
+        if checked and is_device_test_candidate(tweak_id) \
                 and not self._confirm_device_test_enable(tweak_id):
             set_tweak_enabled(tweak_id, False)
             sw = self._switches.get(tweak_id)

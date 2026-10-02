@@ -45,6 +45,7 @@ class RiskySection(QWidget):
     def refresh(self):
         load_risky()
         self._build_ui()
+        self._apply_gating()
         self._sync_controls()
 
     # -- ui ----------------------------------------------------------------
@@ -77,6 +78,43 @@ class RiskySection(QWidget):
         self._layout.addWidget(card)
         self._switches[tweak_id] = sw
         return sw
+
+    # Single-source gating (user audit 2026-10-03): Risky rows consult the
+    # SAME deliverability decision as the Tweaks page and the backend, so
+    # CustomResolution can no longer be toggled where the shared decision
+    # forbids it (wrong device / locked capability), and the reason is
+    # shown on the row instead of failing silently at apply.
+    def _device_context(self):
+        device = None
+        try:
+            device = self.window.device_manager.data_singleton.current_device
+        except Exception:
+            device = None
+        if device is None:
+            return "", "", True
+        return (getattr(device, "version", "") or "",
+                getattr(device, "build", "") or "",
+                "iPad" not in str(getattr(device, "model", "") or ""))
+
+    def _apply_gating(self):
+        from src.tweaks.capabilities import tweak_deliverability
+        version, build, is_iphone = self._device_context()
+        for tweak_id, sw in list(self._switches.items()):
+            deliverable, _code, message = tweak_deliverability(
+                tweak_id, device_version=version, device_build=build,
+                is_iphone=is_iphone)
+            sw.setEnabled(bool(deliverable))
+            tip = "" if deliverable else (
+                tr("Locked: ") + str(message or "Not supported on this device."))
+            sw.setToolTip(tip)
+            if not deliverable and tweak_id in tweaks:
+                # Defense in depth: a locked tweak must not stay enabled
+                # from a preset / previous device.
+                try:
+                    tweaks[tweak_id].set_enabled(False)
+                except Exception:
+                    pass
+                self._sync_switch(tweak_id)
 
     def _sync_switch(self, tweak_id):
         if tweak_id in tweaks and tweak_id in self._switches:

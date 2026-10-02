@@ -86,6 +86,7 @@ class TweakID(Enum):
     VCDiagnosticsEnabled = auto()
     AccessoryDeveloperEnabled = auto()
     KeyFlick = auto()
+    DisableThermal = auto()
 
     DisableSecondsHand = auto()
     DisableSearchingWebsites = auto()

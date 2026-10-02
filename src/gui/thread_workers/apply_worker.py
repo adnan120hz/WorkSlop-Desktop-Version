@@ -789,6 +789,9 @@ class CacheUpdateThread(QThread):
 
 class RefreshDevicesThread(QThread):
     alert = Signal(object)
+    # Fires (queued) each time a device is appended during enumeration so
+    # the UI can show it immediately instead of waiting for the whole list.
+    device_found = Signal()
 
     def __init__(self, manager, settings):
         super().__init__()
@@ -802,7 +805,9 @@ class RefreshDevicesThread(QThread):
         import logging
         log = logging.getLogger("WorkSlop.refresh")
         try:
-            self.manager.get_devices(self.settings, self.alert_window)
+            self.manager.get_devices(
+                self.settings, self.alert_window,
+                on_device_found=lambda _dev: self.device_found.emit())
         except Exception as e:
             traceback_str = traceback.format_exc()
             log.error("refresh devices failed: %s\n%s", e, traceback_str)

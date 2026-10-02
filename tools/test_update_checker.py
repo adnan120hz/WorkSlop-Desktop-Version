@@ -101,6 +101,16 @@ def test_version_compare():
     check("10.0 == 10.0 up to date", r.outcome == "up_to_date")
     r = run(Fetcher(FakeResponse([rel("v9.0")])), "10.0", 0, "stable")
     check("older release not an update", r.outcome == "up_to_date")
+    # 2026-10-03 regression pack: the installed build must never re-offer
+    # its own release.
+    r = run(Fetcher(FakeResponse([rel("v10.0")])), "10.0+0", 0, "stable")
+    check("packaged 10.0+0 == v10.0 up to date", r.outcome == "up_to_date",
+          str(r.outcome))
+    r = run(Fetcher(FakeResponse([rel("v10.1")])), "10.0", 0, "stable")
+    check("10.0 -> v10.1 is an update", r.outcome == "update_available")
+    r = run(Fetcher(FakeResponse([rel("v4.0-pre", prerelease=True)])),
+            "10.0", 0, "beta")
+    check("v4.0-pre is not an update for 10.0", r.outcome == "up_to_date")
 
 
 def test_build_rule():

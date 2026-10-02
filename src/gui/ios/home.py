@@ -19,8 +19,7 @@ from PySide6.QtWidgets import (
 from src.gui.ios.components import IOSCard, IOSDangerButton
 from src.gui.preset_widget import PresetWidget
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
-from src.tweaks.capabilities import (
-    is_audit_research_only, is_audit_user_retained, is_device_test_tweak)
+from src.tweaks.capabilities import is_audit_user_retained
 from src.tweaks.registry import Section, home_tweak_catalogue
 
 # Action tile: (title, subtitle, page_index, tile color, icon resource).
@@ -37,6 +36,38 @@ _ACTION_TILES = [
     ("MobileGestalt", "Device feature flags", 12, "#2386E8", ":/icon/ws-chip.svg"),
     ("Reset Tweaks", "Remove applied tweaks", -1, "#0959B4", ":/icon/ws-trash.svg"),
 ]
+
+
+def _make_glossy_apple(size: int, dpr: float = 1.0) -> QPixmap:
+    """White Apple logo with a glossy finish for the deep-blue brand panel.
+
+    The base pictogram is rendered white, then a soft top-light gradient
+    and a radial highlight are composited over it (clipped to the logo's
+    alpha) so it reads as polished/glossy rather than flat. Honest limit:
+    this is a 2D gloss treatment of the monochrome logo, not a 3D render.
+    """
+    base = theme_pixmap(":/icon/apple.svg", "#FFFFFF", size, dpr)
+    if base.isNull():
+        return base
+    out = QPixmap(base.size())
+    out.fill(Qt.transparent)
+    painter = QPainter(out)
+    painter.drawPixmap(0, 0, base)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    grad = QLinearGradient(0, 0, 0, out.height())
+    grad.setColorAt(0.0, QColor(255, 255, 255, 255))
+    grad.setColorAt(0.45, QColor(235, 244, 255, 235))
+    grad.setColorAt(1.0, QColor(190, 216, 245, 225))
+    painter.fillRect(out.rect(), grad)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    highlight = QRadialGradient(out.width() * 0.38, out.height() * 0.16,
+                                out.width() * 0.55)
+    highlight.setColorAt(0.0, QColor(255, 255, 255, 120))
+    highlight.setColorAt(1.0, QColor(255, 255, 255, 0))
+    painter.fillRect(out.rect(), highlight)
+    painter.end()
+    return out
 
 
 def _soft_shadow(widget):
@@ -127,6 +158,7 @@ class IOSHomePage(QWidget):
         scroll.setWidgetResizable(True)
         self._scroll = scroll
         content = QWidget()
+        self._scroll_content = content
         scroll.setWidget(content)
         outer.addWidget(scroll)
 
@@ -135,20 +167,9 @@ class IOSHomePage(QWidget):
         layout.setContentsMargins(20, 16, 20, 18)
         layout.setSpacing(14)
 
-        # ---- Device name chip (reference: small name pill above phone) -----
-        chip_row = QHBoxLayout()
-        chip_row.setContentsMargins(0, 0, 0, 0)
-        chip_row.setSpacing(10)
-        self._device_chip = QLabel("iPhone", self)
-        self._device_chip.setStyleSheet(t("info_header"))
-        self._device_chip.setAlignment(Qt.AlignCenter)
-        self._device_chip.setMinimumWidth(170)
-        chip_row.addWidget(self._device_chip, 0, Qt.AlignLeft)
-        chip_row.addStretch(1)
-        self._chip_status = QLabel("", self)
-        self._chip_status.setStyleSheet(t("home_subtitle"))
-        chip_row.addWidget(self._chip_status)
-        layout.addLayout(chip_row)
+        # (The old top-left device-name chip row was removed 2026-10-03 by
+        # user order — a leftover of the pre-rebuild Home header. The
+        # device name lives in the sidebar and the title card below.)
 
         # Compatibility controls: the sidebar owns device selection now, but
         # existing Home refresh paths still use this combo/buttons.
@@ -181,24 +202,40 @@ class IOSHomePage(QWidget):
         main_row.setContentsMargins(0, 0, 0, 0)
         main_row.setSpacing(22)
 
-        # Brand visual (user revision 2026-10-02): the Home visual is a
-        # large Apple logo in every state — connected or not. No phone
-        # frame / fake home screen is shown on Home anymore (PhoneFrame
-        # remains in use only by the PosterBoard tendie preview dialog).
+        # Brand visual (user revision 2026-10-03): glossy WHITE Apple logo
+        # on a deep-blue rounded panel, in every state (connected or not).
+        # The panel is the brand block; the logo gets a subtle highlight
+        # gradient plus a soft drop shadow so it reads glossy, not flat.
         phone_col = QVBoxLayout()
         phone_col.setContentsMargins(0, 0, 0, 0)
         phone_col.setSpacing(6)
-        self._brand_logo = QLabel(self)
+        self._brand_panel = QFrame(self)
+        self._brand_panel.setObjectName("brandLogoPanel")
+        self._brand_panel.setFixedSize(240, 300)
+        self._brand_panel.setStyleSheet(
+            "QFrame#brandLogoPanel { background: qlineargradient("
+            "x1:0, y1:0, x2:0, y2:1, stop:0 #1273E6, stop:1 #064A9E); "
+            "border: 1px solid #0A5BC4; border-radius: 24px; }")
+        _soft_shadow(self._brand_panel)
+        _brand_layout = QVBoxLayout(self._brand_panel)
+        _brand_layout.setContentsMargins(10, 10, 10, 10)
+        self._brand_logo = QLabel(self._brand_panel)
         self._brand_logo.setAlignment(Qt.AlignCenter)
-        self._brand_logo.setFixedSize(220, 300)
         self._brand_logo.setStyleSheet("background-color: transparent;")
         try:
             _logo_dpr = self.devicePixelRatioF()
         except Exception:
             _logo_dpr = 1.0
-        self._brand_logo.setPixmap(
-            theme_pixmap(":/icon/apple.svg", "#0B65D8", 190, _logo_dpr))
-        phone_col.addWidget(self._brand_logo, 0, Qt.AlignHCenter)
+        self._brand_logo.setPixmap(_make_glossy_apple(190, _logo_dpr))
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from PySide6.QtGui import QColor as _QColor
+        _glow = QGraphicsDropShadowEffect(self._brand_logo)
+        _glow.setBlurRadius(28)
+        _glow.setOffset(0, 4)
+        _glow.setColor(_QColor(255, 255, 255, 110))
+        self._brand_logo.setGraphicsEffect(_glow)
+        _brand_layout.addWidget(self._brand_logo, 1)
+        phone_col.addWidget(self._brand_panel, 0, Qt.AlignHCenter)
         self._phone_caption = QLabel("iPhone", self)
         self._phone_caption.setAlignment(Qt.AlignCenter)
         self._phone_caption.setStyleSheet(t("phone_caption"))
@@ -364,11 +401,16 @@ class IOSHomePage(QWidget):
             self._catalogue_card)
         self._catalogue_header.setStyleSheet(t("home_section_title"))
         catalogue_layout.addWidget(self._catalogue_header)
+        self._catalogue_rows_box = QWidget(self._catalogue_card)
+        self._catalogue_rows_layout = QVBoxLayout(self._catalogue_rows_box)
+        self._catalogue_rows_layout.setContentsMargins(2, 2, 2, 2)
+        self._catalogue_rows_layout.setSpacing(6)
+        catalogue_layout.addWidget(self._catalogue_rows_box)
         self.tweak_catalogue_entries = ()
+        # Plain-text mirror of the chip rows (kept hidden; tests and
+        # accessibility read the names from here).
         self.tweak_catalogue_lbl = QLabel("", self._catalogue_card)
-        self.tweak_catalogue_lbl.setWordWrap(True)
-        self.tweak_catalogue_lbl.setTextFormat(Qt.PlainText)
-        catalogue_layout.addWidget(self.tweak_catalogue_lbl)
+        self.tweak_catalogue_lbl.hide()
         info_col.addWidget(self._catalogue_card)
         info_col.addStretch(1)
         main_row.addLayout(info_col, 1)
@@ -456,10 +498,6 @@ class IOSHomePage(QWidget):
         self._title.setStyleSheet(t("home_title"))
         self.subtitle.setStyleSheet(t("home_subtitle"))
         self._device_title.setStyleSheet(t("info_header"))
-        if hasattr(self, "_device_chip"):
-            self._device_chip.setStyleSheet(t("info_header"))
-        if hasattr(self, "_chip_status"):
-            self._chip_status.setStyleSheet(t("home_subtitle"))
         if hasattr(self, "_title_card"):
             self._title_card.setStyleSheet(t("modern_card"))
         if hasattr(self, "_details_card"):
@@ -515,9 +553,36 @@ class IOSHomePage(QWidget):
             self.update_device_info()
             self.update_status()
 
+    # -- layout health -----------------------------------------------------
+    def _sync_scroll_content_height(self):
+        """Pin the scroll content to its natural (uncompressed) height.
+
+        Without this the scroll area squeezes the whole page into the
+        viewport instead of scrolling: the bottom tiles were cropped and
+        the catalogue chips collapsed to 0px in real windows (user
+        reports 2026-10-03). Deferred so layouts have settled.
+        """
+        try:
+            content = self._scroll_content
+            lay = content.layout()
+            hint = lay.sizeHint().height() if lay is not None \
+                else content.sizeHint().height()
+            if hint > 0:
+                content.setMinimumHeight(hint)
+        except Exception:
+            pass
+
     @Slot()
     def refresh_devices(self):
         self.window.refresh_devices()
+
+    def show_detection_guidance(self, text: str):
+        """Show WHY nothing was detected (cable/Trust/driver) in the
+        no-device state — under the brand panel, where the user looks."""
+        note = str(text or "").strip()
+        if note and hasattr(self, "_phone_caption"):
+            self._phone_caption.setWordWrap(True)
+            self._phone_caption.setText(note)
 
     @Slot()
     def open_settings(self):
@@ -588,9 +653,15 @@ class IOSHomePage(QWidget):
             status_text = QCoreApplication.translate("Nugget", "Not connected")
             color = c.text_secondary
         self.status_lbl.setText(f"<span style='color:{color};'>{status_text}</span>")
-        if hasattr(self, "_chip_status") and not self._chip_status.text():
-            self._chip_status.setText(status_text)
-        self._set_info("support", status_text)
+        # The Support row is a per-device verdict: with nothing connected
+        # it must not render a status at all (user report — pre-device
+        # statuses looked like real answers). The status label above the
+        # card still says "Not connected".
+        try:
+            has_device = bool(self.window.device_manager.get_current_device_udid())
+        except Exception:
+            has_device = False
+        self._set_info("support", status_text if has_device else "")
 
     def update_device_info(self):
         ver = "—"
@@ -621,11 +692,6 @@ class IOSHomePage(QWidget):
         if not device_name and hasattr(self, "device_combo"):
             device_name = self.device_combo.currentText().split(" (@", 1)[0]
         self._device_title.setText(device_name or "No device connected")
-        if hasattr(self, "_device_chip"):
-            self._device_chip.setText(device_name or "iPhone")
-        if hasattr(self, "_chip_status"):
-            self._chip_status.setText(
-                f"iOS {ver} ({build})" if ver != "—" else "")
         # No real capacity / color / battery source exists yet: hide those
         # title-card elements instead of showing placeholder "—" text.
         if hasattr(self, "_capacity_chip"):
@@ -652,25 +718,37 @@ class IOSHomePage(QWidget):
         self._set_info("connection", connection)
 
         gestalt_text = ""
-        statusbar_text = "—"
+        statusbar_text = ""
         try:
-            from src.devicemanagement.constants import (
-                is_ios27_build, mobilegestalt_decision)
-            build_str = "" if build == "—" else str(build)
-            ver_str = "" if ver == "—" else str(ver)
-            # The MobileGestalt row must report the SAME shared decision
-            # that gates the MobileGestalt page/backend (fail-closed on
-            # iOS 26.6.1 builds 23G82/23G83) — never a separate guess.
-            decision = mobilegestalt_decision(build_str, ver_str)
-            gestalt_text = "Supported" if decision.supported else "Locked"
-            statusbar_text = "Locked (iOS 27)" if is_ios27_build(build_str) else "Available"
+            devices_now = self.window.device_manager.devices
         except Exception:
-            pass
+            devices_now = []
+        if devices_now:
+            try:
+                from src.devicemanagement.constants import (
+                    is_ios27_build, mobilegestalt_decision)
+                build_str = "" if build == "—" else str(build)
+                ver_str = "" if ver == "—" else str(ver)
+                # The MobileGestalt row must report the SAME shared
+                # decision that gates the MobileGestalt page/backend
+                # (fail-closed on iOS 26.6.1 builds 23G82/23G83) — never a
+                # separate guess. Support/Status Bar rows likewise only
+                # exist once a real device supplied the inputs.
+                decision = mobilegestalt_decision(build_str, ver_str)
+                gestalt_text = "Supported" if decision.supported else "Locked"
+                statusbar_text = "Locked (iOS 27)" if is_ios27_build(build_str) else "Available"
+            except Exception:
+                gestalt_text = ""
+                statusbar_text = ""
+        # No device: gestalt/statusbar stay empty, so _set_info hides the
+        # rows entirely instead of showing a misleading pre-computed
+        # "Locked"/"Available" with nothing connected.
         self._set_info("gestalt", gestalt_text)
         self._set_info("statusbar", statusbar_text)
         self._set_info("storage", "—")
         if hasattr(self, "tweak_catalogue_lbl"):
             self.refresh_tweak_catalogue()
+        QTimer.singleShot(0, self._sync_scroll_content_height)
 
     def refresh_device_combo(self):
         self.populate_device_picker()
@@ -679,7 +757,15 @@ class IOSHomePage(QWidget):
         self.preset_widget.refresh()
 
     def refresh_tweak_catalogue(self):
-        """Rebuild the Home tweak catalogue from the live registry."""
+        """Rebuild the Home tweak catalogue from the live registry.
+
+        Presentation (user 2026-10-03): one row per section — small bold
+        section title, ONE status badge for the whole section (never a
+        repeated "(research only)" on every item), then short name chips.
+        No descriptions here; detail lives on the Tweaks page. The hidden
+        ``tweak_catalogue_lbl`` keeps a plain-text mirror (name lines) for
+        tests/accessibility.
+        """
         entries = home_tweak_catalogue()
         try:
             from src.tweaks.hidden import current_hidden_tweak_names
@@ -691,25 +777,79 @@ class IOSHomePage(QWidget):
             if entry["id_name"] not in hidden_names)
         self.tweak_catalogue_entries = entries
 
+        from src.tweaks.capabilities import is_device_test_candidate
         grouped = {section: [] for section in Section}
+        plain = {section: [] for section in Section}
         for entry in entries:
             label = QCoreApplication.translate("Nugget", entry["title"])
-            if is_audit_user_retained(entry["id"]):
-                label += " (" + QCoreApplication.translate(
-                    "Nugget", "user-retained") + ")"
-            elif is_device_test_tweak(entry["id"]):
-                label += " (" + QCoreApplication.translate(
-                    "Nugget", "device test — unproven") + ")"
-            elif is_audit_research_only(entry["id"]):
-                label += " (" + QCoreApplication.translate(
-                    "Nugget", "research only") + ")"
-            grouped[entry["section"]].append(label)
+            grouped[entry["section"]].append((label, entry))
+            plain[entry["section"]].append(label)
+
+        # Rebuild the rows box from scratch: deleting the old container
+        # wholesale avoids stale-chip/layout residue entirely.
+        old_box = getattr(self, "_catalogue_rows_box", None)
+        if old_box is not None:
+            parent_layout = old_box.parentWidget().layout() \
+                if old_box.parentWidget() is not None else None
+            if parent_layout is not None:
+                parent_layout.removeWidget(old_box)
+            old_box.setParent(None)
+            old_box.deleteLater()
+        self._catalogue_rows_box = QWidget(self._catalogue_card)
+        rows_layout = QVBoxLayout(self._catalogue_rows_box)
+        rows_layout.setContentsMargins(2, 2, 2, 2)
+        rows_layout.setSpacing(6)
+        self._catalogue_rows_layout = rows_layout
+        card_layout = self._catalogue_card.layout()
+        if card_layout is not None:
+            card_layout.addWidget(self._catalogue_rows_box)
         lines = []
         for section in Section:
-            names = grouped[section]
-            if names:
-                lines.append(section.value + ": " + " · ".join(names))
+            items = grouped[section]
+            if not items:
+                continue
+            lines.append(section.value + ": " + " · ".join(plain[section]))
+            if rows_layout is None:
+                continue
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(6)
+            title = QLabel(section.value, self._catalogue_rows_box)
+            title.setStyleSheet(t("catalogue_section"))
+            row.addWidget(title)
+            candidates = [e for (_l, e) in items
+                          if is_device_test_candidate(e["id"])]
+            retained = [e for (_l, e) in items
+                        if is_audit_user_retained(e["id"])]
+            badge_text = ""
+            if candidates and len(candidates) == len(items):
+                badge_text = QCoreApplication.translate(
+                    "Nugget", "UNPROVEN — device test")
+            elif candidates:
+                badge_text = QCoreApplication.translate(
+                    "Nugget", "some UNPROVEN — device test")
+            elif retained:
+                badge_text = QCoreApplication.translate(
+                    "Nugget", "user-retained")
+            if badge_text:
+                badge = QLabel(badge_text, self._catalogue_rows_box)
+                badge.setStyleSheet(t("catalogue_badge"))
+                row.addWidget(badge)
+            row.addStretch(1)
+            rows_layout.addLayout(row)
+            chips = QGridLayout()
+            chips.setContentsMargins(0, 0, 0, 2)
+            chips.setHorizontalSpacing(6)
+            chips.setVerticalSpacing(6)
+            for index, (label, _entry) in enumerate(items):
+                chip_text = label if len(label) <= 32 else label[:30] + "…"
+                chip = QLabel(chip_text, self._catalogue_rows_box)
+                chip.setToolTip(label)
+                chip.setStyleSheet(t("catalogue_chip"))
+                chips.addWidget(chip, index // 2, index % 2)
+            rows_layout.addLayout(chips)
         self.tweak_catalogue_lbl.setText("\n".join(lines))
+        QTimer.singleShot(0, self._sync_scroll_content_height)
 
     def set_statusbar_visible(self, visible: bool):
         self.statusbar_card.setVisible(visible)

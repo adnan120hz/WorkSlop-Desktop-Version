@@ -9,7 +9,6 @@ from pathlib import Path
 from src.gui.ios.components import (
     IOSSectionHeader, IOSSwitch, IOSCard
 )
-from src.gui.pages.main.settings import available_languages
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.controllers.preset_manager import PresetManager
 from src.controllers.hotload import HotLoad
@@ -28,7 +27,6 @@ class IOSSettingsPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
-        self.lang_indexes = []
         self.preset_manager = PresetManager()
         self._tm = ColorThemeManager.instance()
 
@@ -260,10 +258,9 @@ class IOSSettingsPage(QWidget):
         self._ws_action_row(up_lay, "CK", tr("Check for Updates"),
                             self._on_check_updates_clicked)
 
-        # --- Language ---
-        ln_lay = self._ws_section("App Language")
-        lang_body = self._ws_control_row(ln_lay, "LN", tr("App Language"), first=True)
-        self._make_language_combo(lang_body)
+        # (No App Language section: WorkSlop Desktop is English-only by
+        # user order 2026-10-03 — the translator is locked to English and
+        # the picker/restart flow was removed.)
 
         # --- Device ---
         dv_lay = self._ws_section("Device")
@@ -392,31 +389,6 @@ class IOSSettingsPage(QWidget):
             QMessageBox.warning(self, tr("Check for Updates"),
                                 tr("Couldn't check for updates. "
                                    "Please try again later."))
-
-    def _make_language_combo(self, lay):
-        self.lang_drp = QComboBox()
-        self._lang_drp = self.lang_drp
-        for language, code in available_languages.items():
-            self.lang_indexes.append(code)
-            self.lang_drp.addItem(QCoreApplication.translate("Nugget", language))
-        if self.window.settings.contains("locale_code"):
-            try:
-                idx = self.lang_indexes.index(self.window.translator.get_saved_locale_code())
-            except ValueError:
-                idx = 0
-        else:
-            idx = 0
-        self.lang_drp.setCurrentIndex(idx)
-        self.lang_drp.activated.connect(self._on_lang_selected)
-        lay.addWidget(self.lang_drp)
-
-    def _on_lang_selected(self, index: int):
-        new_lang = self.lang_indexes[index]
-        currently_system = not self.window.settings.contains("locale_code")
-        if new_lang == "" and currently_system:
-            return
-        if new_lang != self.window.translator.get_saved_locale_code():
-            self.window.translator.set_new_language(new_lang, restart=True)
 
     def _on_text_row_edit(self, title: str, on_submit):
         c = self._tm.colors

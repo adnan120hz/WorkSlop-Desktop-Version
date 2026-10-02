@@ -157,6 +157,14 @@ class WorkSlopDevicePanel(QWidget):
         self._rows = []
 
     # -- public API --------------------------------------------------------------
+    def set_searching(self, searching: bool):
+        """Visual feedback while a device enumeration is running."""
+        if searching:
+            self._connection_lbl.setText(
+                QCoreApplication.translate("Nugget", "Searching for devices…"))
+        else:
+            self.refresh_devices()
+
     def select(self, menu_id: str):
         btn = self._buttons.get(menu_id)
         if btn is not None:

@@ -151,13 +151,31 @@ for tid in DEVICE_TEST_IDS:
         tid, device_version="26.6.1", device_build="23G82")
     check(f"{tid.name} delivers as DEVICE_TEST_OK on 23G82",
           ok and code == "DEVICE_TEST_OK", code)
-ok, code, _ = tweak_deliverability(TweakID.AnimDragCoeff, **TARGET)
-check("research-only stays locked", not ok and code == "AUDIT_RESEARCH_ONLY", code)
+ok, code, msg = tweak_deliverability(TweakID.AnimDragCoeff, **TARGET)
+check("research-only registry tweak is device-testable (2026-10-03 policy)",
+      ok and code == "DEVICE_TEST_OK" and "UNPROVEN" in msg, code)
+ok, code, _ = tweak_deliverability(TweakID.SBBuildNumber, **TARGET)
+check("Internal research-only registry tweak is device-testable",
+      ok and code == "DEVICE_TEST_OK", code)
+ok, code, _ = tweak_deliverability(TweakID.StatusBar, **TARGET)
+check("non-registry research family stays locked",
+      not ok and code == "AUDIT_RESEARCH_ONLY", code)
 ok, code, _ = tweak_deliverability(TweakID.GlassLegibility2, **TARGET)
 check("killed K1 stays REMOVED_TWEAK", not ok and code == "REMOVED_TWEAK", code)
 check("K1 is a removed tombstone", is_removed_tweak(TweakID.GlassLegibility2))
 ok, code, _ = tweak_deliverability(TweakID.ModelName, **TARGET)
 check("MobileGestalt fail-closed on 23G83", not ok, code)
+ok, code, _ = tweak_deliverability(TweakID.RdarFix, **TARGET)
+check("RdarFix (MG flow) stays fail-closed on 23G83", not ok, code)
+from src.tweaks.capabilities import is_device_test_candidate  # noqa: E402
+check("K1 is not a device-test candidate",
+      not is_device_test_candidate(TweakID.GlassLegibility2))
+check("removed tombstone is not a device-test candidate",
+      not is_device_test_candidate(TweakID.DisableSolariumSwiftUI))
+check("MG tweak is not device-testable on target classification alone",
+      not is_device_test_candidate(TweakID.ModelName))
+check("research-only registry tweak is a device-test candidate",
+      is_device_test_candidate(TweakID.AnimDragCoeff))
 ok, code, _ = tweak_deliverability(TweakID.LockScreenFootnote, **TARGET)
 check("ship-candidate delivers OK", ok and code == "OK", code)
 
@@ -274,9 +292,11 @@ check("ship-candidate FlatIconsEverywhere enabled",
       lg_page.content._switches[TweakID.FlatIconsEverywhere].isEnabled())
 research = TweakID.SBBuildNumber
 rsw = in_page.content._switches[research]
-check("research-only switch disabled", not rsw.isEnabled())
-check("research-only lock reason present",
-      "Research-only" in (rsw.toolTip() or ""), (rsw.toolTip() or "")[:60])
+check("research-only registry switch ENABLED as device test (2026-10-03 policy)",
+      rsw.isEnabled())
+in_badge_texts = [w.text() for w in in_page.findChildren(QLabel)]
+check("research-only row carries the UNPROVEN badge",
+      any("UNPROVEN" in tx for tx in in_badge_texts))
 
 print("\nGUI: device-test confirmation dialog gates enabling")
 import src.gui.ios.tweaks as tweaks_gui  # noqa: E402

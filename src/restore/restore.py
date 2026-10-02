@@ -202,7 +202,15 @@ async def _wait_for_device(udid: str, progress_callback,
         ConnectionFailedError, ConnectionTerminatedError, LockdownError,
         MissingValueError, PairingError, FatalPairingError,
     )
+    # Cap the Abort/Resume cycles (84% hang fix): previously every timeout
+    # restarted a fresh 20-minute cycle with no limit, so a device that
+    # never came back kept the apply "running" forever. 5 cycles ≈ up to
+    # 100 minutes of user-confirmed waiting is the hard ceiling; after it,
+    # the friendly error below is raised instead of another silent cycle.
+    _wait_cycles = 0
+    _MAX_WAIT_CYCLES = 5
     while True:
+        _wait_cycles += 1
         start = time.monotonic()
         deadline = start + timeout
         delay = 1.0
@@ -238,7 +246,7 @@ async def _wait_for_device(udid: str, progress_callback,
                 if not autopair_tried and time.monotonic() - start >= 30:
                     autopair_tried = True
                     try:
-                        ld = await create_using_usbmux(serial=udid, autopair=True)
+                        ld = await create_using_usbmux(serial=udid, autopair=True, pair_timeout=120.0)
                         if getattr(ld, "paired", False):
                             return ld
                         try:
@@ -299,6 +307,9 @@ async def _wait_for_device(udid: str, progress_callback,
                 "  \u2022 Abort \u2014 stop now. Tweaks may not be applied and "
                 "data protection stays incomplete.")
         log_info("Reconnect wait timed out; asking the user whether to resume or abort")
+        if _wait_cycles >= _MAX_WAIT_CYCLES:
+            log_error(f"Reconnect wait gave up after {_wait_cycles} cycles")
+            raise err
         try:
             decision = prompt_choice(title, text)
         except Exception as e:
@@ -349,16 +360,74 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
 
     max_retries = 18
 
+    # STALL WATCHDOG (84% hang fix, 2026-10-03): mb.restore() has NO
+    # timeout anywhere below it — pymobiledevice3's receive loop exits
+    # only when the device speaks, so a wedged backupd / half-rebooted
+    # device / half-open socket froze Phase 3 forever at one number with
+    # zero status text (the reported "stuck at 84%"). Track the last
+    # progress the device reported; while it is silent, re-emit the last
+    # percentage (with an honest "still waiting" note) so the status bar
+    # never sits unexplained for minutes, and after the stall limit
+    # cancel the attempt so the EXISTING retry machinery (transient
+    # ConnectionTerminatedError) gets a fresh shot instead of one
+    # immortal attempt.
+    stall_seconds = 300.0
+    try:
+        import os as _os
+        stall_seconds = float(
+            _os.environ.get("WORKSLOP_PHASE3_STALL_SECONDS", "300") or 300)
+    except Exception:
+        stall_seconds = 300.0
+    _watch = {"last_progress_at": None, "last_cb": None}
+
     async def _restore_once():
-        async with _start_mobilebackup2(lc) as mb:
-            await mb.restore(
-                backup_root,
-                system=True, copy=True, remove=False,
-                reboot=reboot, source=udid,
-                skip_apps=skip_apps,
-                progress_callback=progress_callback,
-                password=backup_password,
-            )
+        import time as _time
+        _watch["last_progress_at"] = _time.monotonic()
+        _watch["last_cb"] = None
+
+        def _tracking_callback(cb_arg):
+            _watch["last_progress_at"] = _time.monotonic()
+            _watch["last_cb"] = cb_arg
+            progress_callback(cb_arg)
+
+        async def _do_restore():
+            async with _start_mobilebackup2(lc) as mb:
+                await mb.restore(
+                    backup_root,
+                    system=True, copy=True, remove=False,
+                    reboot=reboot, source=udid,
+                    skip_apps=skip_apps,
+                    progress_callback=_tracking_callback,
+                    password=backup_password,
+                )
+
+        task = asyncio.ensure_future(_do_restore())
+        try:
+            while not task.done():
+                await asyncio.wait({task}, timeout=20)
+                if task.done():
+                    break
+                silent = _time.monotonic() - (
+                    _watch["last_progress_at"] or _time.monotonic())
+                if silent >= stall_seconds:
+                    task.cancel()
+                    log_error(
+                        f"Phase 3 stalled: no device progress for "
+                        f"{silent:.0f}s — aborting this attempt so the "
+                        f"retry loop can reconnect (was frozen forever)")
+                    raise ConnectionTerminatedError(
+                        "Device stopped reporting restore progress; "
+                        "retrying with a fresh connection.")
+                # Heartbeat: re-emit the last percentage so the GUI bar
+                # and "%" status text stay alive with an honest note.
+                if _watch["last_cb"] is not None:
+                    progress_callback(_watch["last_cb"])
+                log_info(f"Phase 3 heartbeat: device silent for "
+                         f"{silent:.0f}s (limit {stall_seconds:.0f}s)")
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        return await task
 
     def _on_retry(attempt: int, total: int, e: Exception, delay: float) -> None:
         progress_callback(
@@ -743,6 +812,10 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 # screen — mobilebackup2 refuses to start with
                 # PasswordRequiredError before a single retry. Offer the same
                 # Abort/Resume choice as the reconnect wait instead of crashing.
+                # Capped (84% hang fix): an unlock that never sticks used to
+                # loop unlock→prompt→resume forever; after 3 resumes the
+                # friendly NuggetException below explains the state instead.
+                _pw_resumes = 0
                 while True:
                     try:
                         await _restore_protective_backup(
@@ -754,8 +827,9 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                                 for f in (inject_files or [])))
                         break
                     except PasswordRequiredError:
-                        if prompt_choice is None:
+                        if prompt_choice is None or _pw_resumes >= 3:
                             raise
+                        _pw_resumes += 1
                         log_info("Phase 3: protective restore blocked — device "
                                  "locked (bootloop signature); asking user to "
                                  "resume or abort")

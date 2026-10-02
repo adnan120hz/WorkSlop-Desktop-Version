@@ -624,6 +624,20 @@ STYLES = {
             border: 1px solid #E1ECF6;
         }}
     """,
+    "catalogue_section": (
+        "font-size: 12px; font-weight: 800; color: {text_primary}; "
+        "background-color: transparent;"
+    ),
+    "catalogue_badge": (
+        "font-size: 10px; font-weight: 700; color: #B3261E; "
+        "background-color: #FDECEA; border: 1px solid #F3C2BF; "
+        "border-radius: 8px; padding: 2px 8px;"
+    ),
+    "catalogue_chip": (
+        "font-size: 11px; font-weight: 600; color: #0B4A8A; "
+        "background-color: #EAF3FE; border: 1px solid #CFE3F8; "
+        "border-radius: 9px; padding: 3px 9px;"
+    ),
 
     "home_combo": """
         QComboBox {{
