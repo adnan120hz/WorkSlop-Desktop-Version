@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QSize, QCoreApplication, QUrl
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGridLayout,
     QPushButton, QScrollArea, QToolButton, QStackedWidget,
-    QCheckBox, QComboBox
+    QCheckBox, QComboBox, QListWidget, QMessageBox
 )
 from PySide6.QtGui import QPixmap, QIcon, QImageReader
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -56,39 +56,90 @@ class IOSPosterboardPage(QWidget):
 
         self._reset_caption = QLabel(QCoreApplication.translate(
             "Nugget",
-            "Emergency reset for when PosterBoard behaves strangely or the "
-            "database won't load after a restore. Resets on the next apply."
+            "Recovery for when a wallpaper misbehaves: clears the delivered "
+            "descriptors on the next apply and PosterBoard rebuilds itself. "
+            "No database is restored, so this cannot corrupt the store."
         ))
         self._reset_caption.setWordWrap(True)
         reset_layout.addWidget(self._reset_caption)
 
         layout.addWidget(reset_card)
 
-        # Disable PosterBoard card (iOS 26.2+ safety)
-        disable_card = IOSCard()
-        disable_layout = QVBoxLayout(disable_card)
-        disable_layout.setContentsMargins(16, 12, 16, 12)
-        disable_layout.setSpacing(8)
+        # Delivery mode card (Nugget v7.4 flow, WorkSlop styling):
+        # Descriptors = file-only delivery (default, easy recovery);
+        # Configurations = database-backed (opt-in, advanced).
+        mode_card = IOSCard()
+        mode_layout = QVBoxLayout(mode_card)
+        mode_layout.setContentsMargins(16, 12, 16, 12)
+        mode_layout.setSpacing(8)
 
-        self._disable_check = QCheckBox(QCoreApplication.translate(
-            "Nugget", "Disable PosterBoard (skip on apply)"))
-        self._disable_check.setChecked(False)
-        self._disable_check.stateChanged.connect(self._on_disable_toggled)
-        disable_layout.addWidget(self._disable_check)
+        self._mode_descriptors = QCheckBox(QCoreApplication.translate(
+            "Nugget", "Descriptors (recommended)"))
+        self._mode_configs = QCheckBox(QCoreApplication.translate(
+            "Nugget", "Configurations (database, advanced)"))
+        self._mode_descriptors.setChecked(True)
+        self._mode_descriptors.stateChanged.connect(
+            lambda state: self._on_mode_toggled(False, state))
+        self._mode_configs.stateChanged.connect(
+            lambda state: self._on_mode_toggled(True, state))
+        mode_layout.addWidget(self._mode_descriptors)
+        mode_layout.addWidget(self._mode_configs)
 
-        self._disable_caption = QLabel(QCoreApplication.translate(
+        self._mode_caption = QLabel(QCoreApplication.translate(
             "Nugget",
-            "iOS 26.2 and newer: PosterBoard restores work but are still "
-            "buggy (wallpapers may not appear, database can corrupt). "
-            "Enable this to completely skip PosterBoard on the next apply — "
-            "your current wallpapers stay untouched. If a PosterBoard apply "
-            "already failed, use Reset above first; if reset doesn't fix it, "
-            "use Full Reset (wipes all wallpapers and starts clean)."
+            "Descriptors: wallpapers are delivered as files and PosterBoard "
+            "loads them itself — the database is never touched, so a bad "
+            "wallpaper can simply be removed or reset. Configurations: "
+            "descriptors are also registered in the device database "
+            "(fetched on apply); only needed for descriptor sets that "
+            "refuse to appear otherwise."
         ))
-        self._disable_caption.setWordWrap(True)
-        disable_layout.addWidget(self._disable_caption)
+        self._mode_caption.setWordWrap(True)
+        mode_layout.addWidget(self._mode_caption)
 
-        layout.addWidget(disable_card)
+        layout.addWidget(mode_card)
+
+        # Configurations data card (v7.4 page flow: the database tools
+        # live on the PosterBoard page, not in Settings). Visible only in
+        # Configurations mode; Descriptors mode never touches the DB.
+        self._config_card = IOSCard()
+        config_layout = QVBoxLayout(self._config_card)
+        config_layout.setContentsMargins(16, 12, 16, 12)
+        config_layout.setSpacing(8)
+        self.pb_db_lbl = QLabel(
+            QCoreApplication.translate("Nugget", "Database: none selected"),
+            self._config_card)
+        config_layout.addWidget(self.pb_db_lbl)
+        db_btns = QHBoxLayout()
+        get_db_btn = QPushButton(QCoreApplication.translate(
+            "Nugget", "Get Database from Device"), self._config_card)
+        get_db_btn.clicked.connect(self._on_pb_get_db)
+        db_btns.addWidget(get_db_btn)
+        sel_db_btn = QPushButton(QCoreApplication.translate(
+            "Nugget", "Select Database File"), self._config_card)
+        sel_db_btn.clicked.connect(self._on_pb_select_db)
+        db_btns.addWidget(sel_db_btn)
+        db_btns.addStretch(1)
+        config_layout.addLayout(db_btns)
+        config_layout.addWidget(QLabel(QCoreApplication.translate(
+            "Nugget", "Saved Configuration IDs"), self._config_card))
+        self.saved_ids_list = QListWidget(self._config_card)
+        self._saved_ids_list = self.saved_ids_list
+        config_layout.addWidget(self.saved_ids_list)
+        ids_btns = QHBoxLayout()
+        clear_btn = QPushButton(QCoreApplication.translate(
+            "Nugget", "Clear"), self._config_card)
+        clear_btn.clicked.connect(self._on_clear_saved_ids)
+        ids_btns.addWidget(clear_btn)
+        remove_btn = QPushButton(QCoreApplication.translate(
+            "Nugget", "Remove Selected"), self._config_card)
+        remove_btn.clicked.connect(self._on_remove_selected_id)
+        ids_btns.addWidget(remove_btn)
+        ids_btns.addStretch(1)
+        config_layout.addLayout(ids_btns)
+        self._config_card.hide()
+        layout.addWidget(self._config_card)
+        self._refresh_saved_ids()
 
         # Tab bar
         self.tab_stack = QStackedWidget()
@@ -147,8 +198,9 @@ class IOSPosterboardPage(QWidget):
             QPushButton:hover {{ background-color: {c.surface_hover}; }}
         """)
         self._reset_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
-        self._disable_check.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
-        self._disable_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        self._mode_descriptors.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
+        self._mode_configs.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
+        self._mode_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
         self._tab_bar.setStyleSheet(
             f"background-color: {c.bg_primary}; border-top: 1px solid {c.bg_secondary};"
         )
@@ -590,16 +642,98 @@ class IOSPosterboardPage(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        # Sync the disable checkbox with the tweak state.
+        # Sync the delivery-mode checkboxes with the tweak state.
         try:
             from src.tweaks.tweak_loader import tweaks, TweakID
             pb = tweaks.get(TweakID.PosterBoard)
             if pb is not None:
-                self._disable_check.blockSignals(True)
-                self._disable_check.setChecked(bool(pb.disabled))
-                self._disable_check.blockSignals(False)
+                for chk, configs in ((self._mode_descriptors, False),
+                                     (self._mode_configs, True)):
+                    chk.blockSignals(True)
+                    chk.setChecked(bool(pb.use_configs) == configs)
+                    chk.blockSignals(False)
+                if hasattr(self, "_config_card"):
+                    self._config_card.setVisible(bool(pb.use_configs))
+                self._refresh_saved_ids()
         except Exception:
             pass
+
+    def _on_mode_toggled(self, configs: bool, state):
+        # stateChanged delivers Qt.CheckState (an enum, not an int, in
+        # PySide6 6.x) — normalise via .value so the int comparison holds.
+        if getattr(state, "value", state) != 2:  # Qt.CheckState.Checked
+            return  # the paired handler re-checks the other box
+        try:
+            from src.tweaks.tweak_loader import tweaks, TweakID
+            pb = tweaks.get(TweakID.PosterBoard)
+            if pb is not None:
+                pb.use_configs = bool(configs)
+            other = self._mode_descriptors if configs else self._mode_configs
+            other.blockSignals(True)
+            other.setChecked(False)
+            other.blockSignals(False)
+            if hasattr(self, "_config_card"):
+                self._config_card.setVisible(bool(configs))
+        except Exception:
+            pass
+
+    # -- configurations-mode database tools (moved from Settings) --------
+    def _on_pb_get_db(self):
+        from src.gui.dialogs import PosterBoardDBWizard
+        current = self.window.device_manager.data_singleton.current_device
+        if current is None:
+            QMessageBox.warning(
+                self, QCoreApplication.translate("Nugget", "Get Database"),
+                QCoreApplication.translate("QCoreApplication", "Please connect a device."))
+            return
+        wizard = PosterBoardDBWizard(current.udid, self.pb_db_lbl, self._refresh_saved_ids)
+        wizard.exec()
+
+    def _on_pb_select_db(self):
+        from PySide6.QtWidgets import QFileDialog as FD
+        selected_file, _ = FD.getOpenFileName(
+            self, QCoreApplication.translate("Nugget", "Select PBFPosterExtensionDataStoreSQLiteDatabase File"),
+            "", "*.sqlite3", options=FD.ReadOnly)
+        if selected_file in (None, ""):
+            tweaks[TweakID.PosterBoard].config_manager.database = None
+            self.pb_db_lbl.setText(
+                QCoreApplication.translate("Nugget", "Database: none selected"))
+        else:
+            if not tweaks[TweakID.PosterBoard].config_manager.update_database_file(
+                    selected_file, self.window.device_manager.get_current_device_udid()):
+                QMessageBox.critical(
+                    self, QCoreApplication.translate("QtCore.QCoreApplication", "Error!"),
+                    QCoreApplication.translate("Nugget", "The database is not of the correct format!"))
+                return
+            self.pb_db_lbl.setText(
+                QCoreApplication.translate("Nugget", "Database: selected"))
+
+    def _refresh_saved_ids(self):
+        if not hasattr(self, "saved_ids_list"):
+            return
+        self.saved_ids_list.clear()
+        saved_ids = tweaks[TweakID.PosterBoard].config_manager.saved_items
+        if len(saved_ids) == 0:
+            self.saved_ids_list.setEnabled(False)
+            self.saved_ids_list.addItem(QCoreApplication.translate("MainWindow", "None"))
+        else:
+            self.saved_ids_list.setEnabled(True)
+            self.saved_ids_list.addItems([item.to_str() for item in saved_ids])
+
+    def _on_clear_saved_ids(self):
+        confirm = QMessageBox.question(
+            self, QCoreApplication.translate("Nugget", "Clear Saved IDs"),
+            QCoreApplication.translate("Nugget", "Clear all saved configuration IDs?"))
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+        tweaks[TweakID.PosterBoard].config_manager.saved_items.clear()
+        self._refresh_saved_ids()
+
+    def _on_remove_selected_id(self):
+        curr_row = self.saved_ids_list.currentRow()
+        if curr_row >= 0 and len(tweaks[TweakID.PosterBoard].config_manager.saved_items) > 0:
+            tweaks[TweakID.PosterBoard].config_manager.saved_items.pop(curr_row)
+            self._refresh_saved_ids()
 
     def refresh_tendies(self):
         for reply, *_ in self._tendie_preview_replies:
@@ -768,17 +902,6 @@ class IOSPosterboardPage(QWidget):
             tweaks[TweakID.PosterBoard].tendies.remove(tendie)
         self.refresh_tendies()
 
-    def _on_disable_toggled(self, state):
-        from src.tweaks.tweak_loader import tweaks, TweakID
-        pb = tweaks.get(TweakID.PosterBoard)
-        if pb is not None:
-            pb.disabled = (state == Qt.Checked)
-            if pb.disabled:
-                # Disabling cancels any pending reset too — a disabled
-                # PosterBoard means "don't touch it at all".
-                pb.full_reset = False
-                pb.resetModes = []
-
     def _reset_posterboard(self):
         c = ColorThemeManager.instance().colors
         from PySide6.QtWidgets import (
@@ -812,19 +935,19 @@ class IOSPosterboardPage(QWidget):
 
         desc = QLabel(QCoreApplication.translate(
             "Nugget",
-            "If PosterBoard is broken after a restore, try in this order:\n"
-            "1. Reset the items below (keeps your other wallpapers).\n"
-            "2. If that doesn't fix it, use Full Reset — wipes ALL wallpapers "
-            "and starts PosterBoard clean."
+            "If a wallpaper misbehaves after an apply, reset the items "
+            "below and apply again — the descriptors are cleared and "
+            "PosterBoard rebuilds its store itself. \"Everything\" clears "
+            "the whole descriptor store."
         ))
         desc.setWordWrap(True)
         desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
         layout.addWidget(desc)
 
-        reset_full = QCheckBox(QCoreApplication.translate(
-            "Nugget", "Full Reset — delete ALL wallpapers (empty database, wipe everything)"))
-        reset_full.setChecked(False)
-        layout.addWidget(reset_full)
+        reset_all = QCheckBox(QCoreApplication.translate(
+            "Nugget", "Everything — all PosterBoard descriptors"))
+        reset_all.setChecked(False)
+        layout.addWidget(reset_all)
 
         reset_collections = QCheckBox(QCoreApplication.translate("Nugget", "Collections"))
         reset_collections.setChecked(True)
@@ -844,18 +967,17 @@ class IOSPosterboardPage(QWidget):
         layout.addWidget(btn_box)
 
         if dialog.exec() == QDialog.Accepted:
-            if reset_full.isChecked():
-                tweaks[TweakID.PosterBoard].full_reset = True
-                tweaks[TweakID.PosterBoard].resetModes = []
+            if reset_all.isChecked():
+                tweaks[TweakID.PosterBoard].resetModes = ["All"]
                 QMessageBox.information(
                     self.window,
                     QCoreApplication.translate("Nugget", "Reset Scheduled"),
                     QCoreApplication.translate(
                         "Nugget",
-                        "A full PosterBoard reset has been scheduled. The "
-                        "entire container will be wiped and an empty database "
-                        "restored on the next apply. Apply your tweaks to "
-                        "execute the reset."))
+                        "A full PosterBoard descriptor reset has been "
+                        "scheduled. All delivered wallpapers will be cleared "
+                        "on the next apply. Apply your tweaks to execute "
+                        "the reset."))
                 return
             selected = []
             if reset_collections.isChecked():

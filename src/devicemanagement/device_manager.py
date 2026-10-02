@@ -690,16 +690,6 @@ class DeviceManager:
                 organization_name=organization_name,
             )
             tweaks[TweakID.PosterBoard].config_manager.save_staged_ids(self.get_current_device_udid())
-            if tweaks[TweakID.PosterBoard].full_reset:
-                # the on-device PosterBoard container was wiped — the stale
-                # locally-saved database and wallpaper IDs no longer match the
-                # empty DB, so drop them or the next apply rebuilds ghosts.
-                PreferenceManager.remove_pbconfig_data(self.get_current_device_udid())
-                tweaks[TweakID.PosterBoard].config_manager.saved_items = []
-                tweaks[TweakID.PosterBoard].config_manager.database = None
-                tweaks[TweakID.PosterBoard].config_manager.staged_database = None
-                tweaks[TweakID.PosterBoard].resetModes = []
-                tweaks[TweakID.PosterBoard].full_reset = False
             msg = QCoreApplication.tr("Your device will now restart.\n\nRemember to turn Find My back on!")
             if not self.pref_manager.auto_reboot:
                 msg = QCoreApplication.tr("Please restart your device to see changes.")
@@ -781,11 +771,16 @@ class DeviceManager:
                 len(pb.tendies) == 0 and pb.videoFile is None
                 and len(_pb_templates) == 0)
             log_info(f'needs_posterboard={needs_posterboard}, tendies={len(pb.tendies)}, videoFile={pb.videoFile is not None}')
+            # PosterBoard database is now needed ONLY in the opt-in
+            # "configurations" delivery mode (v7.4 architecture, 2026-10-03).
+            # The default descriptors mode stages plain files and never
+            # fetches, mutates, or ships the device sqlite — so no Phase 0
+            # extract and no targeted PB backup run for it.
+            pb_db_needed = bool(needs_posterboard and pb.use_configs)
 
             # Phase 0: protective backup.
             #  - iOS 27+ (partial support): the heavy backup is built and later
-            #    restored (Phase 1/3) to survive the security-recovery wipe. It
-            #    also carries the PosterBoard sqlite when wallpapers are pending.
+            #    restored (Phase 1/3) to survive the security-recovery wipe.
             #  - iOS 26.x: the apply is a plain sparse restore (no wipe, no Phase
             #    3), so NO Phase 0 runs here at all — PosterBoard delivery
             #    happens through the targeted PosterBoard-only backup below.
@@ -811,7 +806,7 @@ class DeviceManager:
                 # protection (photos/settings get wiped).
                 try:
                     prepared_root, pb_from_cache = await self._prepare_protective_backup(
-                        update_label, needs_posterboard=needs_posterboard,
+                        update_label, needs_posterboard=pb_db_needed,
                         prompt_password=prompt_password, on_backup_complete=on_backup_complete)
                 except Exception as e:
                     if "disk space" in str(e).lower() or "NotEnoughDiskSpace" in type(e).__name__:
@@ -843,14 +838,13 @@ class DeviceManager:
             else:
                 log_info("Phase 0 skipped: no iOS 27 protective restore required")
 
-            # PosterBoard delivery:
-            #  - iOS 27+: the sqlite normally rides the Phase 0 backup (extracted
-            #    inside _prepare_protective_backup); when it could not be read out
-            #    of it (device rejected the container / encrypted backup), this
-            #    targeted PosterBoard-only backup runs as the fallback.
-            #  - iOS 26.x: no Phase 0 at all, so this targeted backup IS the
-            #    delivery channel — tiny and fast, no full device backup.
-            if needs_posterboard and not pb_from_cache and not raw_sparse:
+            # PosterBoard delivery (v7.4 architecture): descriptor FILES are
+            # staged by the normal apply pass below — no database is involved.
+            # Only the opt-in configurations mode needs the device sqlite; it
+            # normally rides the Phase 0 backup (extracted inside
+            # _prepare_protective_backup) and this targeted backup is its
+            # fallback when extraction failed.
+            if pb_db_needed and not pb_from_cache and not raw_sparse:
                 if os.environ.get("GOLDENNUGGET_SKIP_PB_BACKUP"):
                     log_warn("GOLDENNUGGET_SKIP_PB_BACKUP=1 set; skipping PosterBoard DB fetch")
                 else:

@@ -289,7 +289,6 @@ class IOSSettingsPage(QWidget):
             pb_lay, "RF", tr("Force PosterBoard Refresh"),
             pref.auto_refresh_posterboard,
             self._make_setting_handler("auto_refresh_posterboard"))
-        self._make_pb_db_rows(pb_lay)
 
         # --- Backup ---
         bk_lay = self._ws_section("Backup")
@@ -428,30 +427,6 @@ class IOSSettingsPage(QWidget):
         self.window.settings.setValue("organization_name", text)
         self.window._sync_settings()
 
-    def _make_pb_db_rows(self, lay):
-        tr = lambda s: QCoreApplication.translate("Nugget", s)
-        self.pb_db_lbl = self._ws_info_row(
-            lay, "DB", tr("Database"), "sqlite: None")
-        self._ws_action_row(lay, "GD", tr("Get Database from Device"),
-                            self._on_pb_get_db)
-        self._ws_action_row(lay, "SD", tr("Select Database File"),
-                            self._on_pb_select_db)
-        body = self._ws_control_row(lay, "ID", tr("Saved Configuration IDs"))
-        self.saved_ids_list = QListWidget()
-        self._saved_ids_list = self.saved_ids_list
-        body.addWidget(self.saved_ids_list)
-        ids_btns = QHBoxLayout()
-        ids_btns.setSpacing(8)
-        clear_btn = self._make_mini_button(tr("Clear"))
-        clear_btn.clicked.connect(self._on_clear_saved_ids)
-        remove_btn = self._make_mini_button(tr("Remove Selected"))
-        remove_btn.clicked.connect(self._on_remove_selected_id)
-        ids_btns.addWidget(clear_btn)
-        ids_btns.addWidget(remove_btn)
-        ids_btns.addStretch(1)
-        body.addLayout(ids_btns)
-        self._refresh_saved_ids()
-
     def _make_backup_location_rows(self, lay):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
         body = self._ws_control_row(lay, "LC", tr("Backup/Cache Location"))
@@ -541,52 +516,10 @@ class IOSSettingsPage(QWidget):
         self._accent_picker.setStyleSheet(
             f"background-color: {c.bg_primary};"
         )
-        if hasattr(self, '_lang_drp'):
-            self._retheme_lang_dropdown()
-        if hasattr(self, '_saved_ids_list'):
-            self._retheme_saved_ids_list()
         if hasattr(self, '_preset_name_txt'):
             self._retheme_preset_inputs()
         if hasattr(self, '_preset_list'):
             self._retheme_preset_list()
-
-    def _retheme_lang_dropdown(self):
-        c = self._tm.colors
-        self._lang_drp.setStyleSheet(f"""
-            QComboBox {{
-                background-color: {c.bg_input};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 10.5pt;
-                padding: 8px 12px;
-                min-width: 140px;
-            }}
-            QComboBox::drop-down {{ border: none; width: 24px; }}
-            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {c.text_secondary}; margin-right: 10px; }}
-            QComboBox QAbstractItemView {{
-                background-color: {c.bg_tertiary};
-                border: 1px solid {c.border};
-                border-radius: 10px;
-                color: {c.text_primary};
-                selection-background-color: {c.accent};
-            }}
-        """)
-
-    def _retheme_saved_ids_list(self):
-        c = self._tm.colors
-        self._saved_ids_list.setStyleSheet(f"""
-            QListWidget {{
-                background-color: {c.bg_input};
-                border: none;
-                border-radius: 8px;
-                color: {c.text_primary};
-                font-size: 13px;
-                padding: 4px;
-            }}
-            QListWidget::item {{ padding: 6px; }}
-            QListWidget::item:selected {{ background-color: {c.scrollbar_pressed}; color: {c.text_primary}; }}
-        """)
 
     def _retheme_preset_inputs(self):
         c = self._tm.colors
@@ -893,59 +826,6 @@ class IOSSettingsPage(QWidget):
             QPushButton:hover {{ background-color: {c.surface_hover}; }}
         """)
         return btn
-
-    def _on_pb_get_db(self):
-        from src.gui.dialogs import PosterBoardDBWizard
-        current = self.window.device_manager.data_singleton.current_device
-        if current is None:
-            QMessageBox.warning(
-                self, QCoreApplication.translate("Nugget", "Get Database"),
-                QCoreApplication.translate("QCoreApplication", "Please connect a device."))
-            return
-        wizard = PosterBoardDBWizard(current.udid, self.pb_db_lbl, self._refresh_saved_ids)
-        wizard.exec()
-
-    def _on_pb_select_db(self):
-        from PySide6.QtWidgets import QFileDialog as FD
-        selected_file, _ = FD.getOpenFileName(
-            self, QCoreApplication.translate("Nugget", "Select PBFPosterExtensionDataStoreSQLiteDatabase File"),
-            "", "*.sqlite3", options=FD.ReadOnly)
-        if selected_file in (None, ""):
-            tweaks[TweakID.PosterBoard].config_manager.database = None
-            self.pb_db_lbl.setText("sqlite: None")
-        else:
-            if not tweaks[TweakID.PosterBoard].config_manager.update_database_file(
-                    selected_file, self.window.device_manager.get_current_device_udid()):
-                QMessageBox.critical(
-                    self, QCoreApplication.translate("QtCore.QCoreApplication", "Error!"),
-                    QCoreApplication.translate("Nugget", "The database is not of the correct format!"))
-                return
-            self.pb_db_lbl.setText("sqlite: Selected")
-
-    def _refresh_saved_ids(self):
-        self.saved_ids_list.clear()
-        saved_ids = tweaks[TweakID.PosterBoard].config_manager.saved_items
-        if len(saved_ids) == 0:
-            self.saved_ids_list.setEnabled(False)
-            self.saved_ids_list.addItem(QCoreApplication.translate("MainWindow", "None"))
-        else:
-            self.saved_ids_list.setEnabled(True)
-            self.saved_ids_list.addItems([item.to_str() for item in saved_ids])
-
-    def _on_clear_saved_ids(self):
-        confirm = QMessageBox.question(
-            self, QCoreApplication.translate("Nugget", "Clear Saved IDs"),
-            QCoreApplication.translate("Nugget", "Clear all saved configuration IDs?"))
-        if confirm != QMessageBox.StandardButton.Yes:
-            return
-        tweaks[TweakID.PosterBoard].config_manager.saved_items.clear()
-        self._refresh_saved_ids()
-
-    def _on_remove_selected_id(self):
-        curr_row = self.saved_ids_list.currentRow()
-        if curr_row >= 0 and len(tweaks[TweakID.PosterBoard].config_manager.saved_items) > 0:
-            tweaks[TweakID.PosterBoard].config_manager.saved_items.pop(curr_row)
-            self._refresh_saved_ids()
 
     def scroll_to_presets(self):
         if self.scroll_area is not None:

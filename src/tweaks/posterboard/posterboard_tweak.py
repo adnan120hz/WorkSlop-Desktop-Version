@@ -9,8 +9,7 @@ from PySide6.QtCore import QCoreApplication
 from ..tweak_classes import Tweak
 from .tendie_file import TendieFile
 from .template_file import TemplateFile
-from .pb_config_manager import (
-    DB_FILE_NAME, PBConfigManager, create_empty_posterboard_db)
+from .pb_config_manager import PBConfigManager
 from src.utils.file_to_restore import FileToRestore
 from src.controllers.plist_handler import set_plist_value
 from src.controllers.files_handler import get_bundle_files
@@ -18,6 +17,23 @@ from src.controllers import video_handler
 from src.controllers.aar.aar import wrap_in_aar
 from src.exceptions.nugget_exception import NuggetException
 from src.devicemanagement.constants import Version
+
+# PosterBoard architecture: leminlimez/Nugget v7.4 (tag v7.4, commit
+# 26097697f5527f42c13ebd2e90ef0e1e5958da41), adopted 2026-10-03 and
+# adapted to this fork's layout (FileToRestore lives in src.utils; the
+# config manager keeps this fork's stricter DB validation):
+#   * DEFAULT mode = descriptors: tendies/templates/video are staged as
+#     plain descriptor FILES under PRBPosterExtensionDataStore and
+#     PosterBoard ingests them itself. No device sqlite is fetched,
+#     mutated, or shipped. A broken descriptor fails alone — delete it
+#     or reset wallpapers; the data store is never corrupted by us.
+#   * OPTIONAL "configurations" mode (use_configs) keeps the database
+#     path for users who need it; only then is the device DB fetched
+#     (targeted backup) and a staged sqlite shipped.
+# The fork's old always-DB system (fetch + mutate + inject on every
+# apply, plus the full_reset empty-DB wipe) is retired: recovery from a
+# bad wallpaper is now "remove/reset", never a database restore.
+
 
 class PosterboardTweak(Tweak):
     def __init__(self):
@@ -28,13 +44,13 @@ class PosterboardTweak(Tweak):
         self.loop_video = True
         self.reverse_video = False
         self.use_foreground = False
+        # v7.4 delivery mode: False = descriptors (default, file-only),
+        # True = configurations (database-backed, opt-in).
+        self.use_configs = False
         self.calculationMode = 'linear'
         self.bundle_id = "com.apple.PosterBoard"
         self.resetModes = []
-        self.full_reset = False
         # When True, PosterBoard is completely excluded from the apply.
-        # Use this on iOS 26.2+ where PosterBoard restores are buggy —
-        # it guarantees we don't touch PosterBoard at all.
         self.disabled = False
         self.structure_version = 61
         self.config_manager = PBConfigManager()
@@ -43,7 +59,7 @@ class PosterboardTweak(Tweak):
         if self.disabled:
             return False
         return (len(self.tendies) > 0 or self.videoFile != None
-                or len(self.resetModes) > 0 or self.full_reset)
+                or len(self.resetModes) > 0)
 
     def is_empty(self) -> bool:
         return not self.uses_domains()
@@ -120,15 +136,16 @@ class PosterboardTweak(Tweak):
                     else:
                         folder_name = str(uuid.uuid4()).upper()
                         curr_randomized_id = randint(9999, 99999)
-                    # add it to the configuration
-                    ext = restore_path.split('/')[6]
-                    self.config_manager.add_config(folder_name, ext)
+                    # add it to the configuration (configurations mode only)
+                    if self.use_configs:
+                        ext = restore_path.split('/')[6]
+                        self.config_manager.add_config(folder_name, ext)
                 # if file then add it, otherwise recursively call again
                 fullpath = os.path.join(curr_path, folder)
                 if os.path.isfile(fullpath):
                     try:
                         # if converting to config and it is a file to be modified, then update it (don't add it here and add them later)
-                        if self.config_manager.file_needs_updated(folder):
+                        if self.use_configs and self.config_manager.file_needs_updated(folder):
                             continue
                         # update plist ids if needed
                         new_contents = None
@@ -148,8 +165,8 @@ class PosterboardTweak(Tweak):
                     except IOError:
                         print(f"Failed to open file: {folder}") # TODO: Add QDebug equivalent
                 else:
-                    # add config files if needed
-                    if curr_path.endswith("versions") and "descriptor" in curr_path:
+                    # add config files if needed (configurations mode only)
+                    if self.use_configs and curr_path.endswith("versions") and "descriptor" in curr_path:
                         self.config_manager.cache_config_files()
                         for config_file in self.config_manager.config_files:
                             files_to_restore.append(FileToRestore(
@@ -180,7 +197,10 @@ class PosterboardTweak(Tweak):
                         ext = "com.apple.MercuryPoster"
                     else:
                         ext = "com.apple.WallpaperKit.CollectionsPoster"
-                    wpfolder = "configurations"
+                    if self.use_configs:
+                        wpfolder = "configurations"
+                    else:
+                        wpfolder = "descriptors"
                     self.recursive_add(
                         files_to_restore,
                         os.path.join(curr_path, folder),
@@ -248,98 +268,63 @@ class PosterboardTweak(Tweak):
             
             
 
+    def _stage_force_refresh(self, files_to_restore, version):
+        plist = {
+            "PBF_LOCALE_DID_CHANGE": False,
+            "PBF_RESET_FILE_PROTECTIONS": True
+        }
+        if Version(version) >= Version("26.4"):
+            plist["PersistedPosterContainerBundleIdentifiers"] = [
+                "com.apple.Posters.CollectionsPosterApp"
+            ]
+            plist["CompletedPosterBundleIdentifierMigrations"] = [
+                "com.apple.Posters.UnityPosterApp.ExtragalacticPoster",
+                "com.apple.Posters.WeatherPosterApp.WeatherPoster",
+                "com.apple.Posters.UnityPosterApp.Unity2025Poster",
+                "com.apple.Posters.UnityPosterApp.UnityPosterExtension",
+                "com.apple.Posters.UnityPosterApp.RhizomePoster",
+                "com.apple.Posters.KaleidoscopePosterApp.KaleidoscopePoster"
+            ]
+        files_to_restore.append(FileToRestore(
+            contents=plistlib.dumps(plist, fmt=plistlib.PlistFormat.FMT_BINARY),
+            restore_path="/Library/Preferences/com.apple.PosterBoard.unprotectedUserDefaults.plist",
+            domain=f"AppDomain-{self.bundle_id}"
+        ))
+
     def apply_tweak(self,
                     files_to_restore: list[FileToRestore], output_dir: str,
                     templates: list[TemplateFile],
                     version: str, force_pb_refresh: bool,
                     update_label=lambda x: None):
         # Disabled: don't touch PosterBoard at all on this apply.
-        # This is the safe option on iOS 26.2+ where PosterBoard restores
-        # are known to be buggy.
         if self.disabled:
             return
-        # find the directory
-        # The on-device store structure version is learned from the fetched
-        # DB's manifest path (61, 62, ... vary between iOS releases) by
-        # extract_posterboard_db and carried on the config manager; fall back
-        # to 61 (the oldest supported layout) when no DB was fetched.
-        self.structure_version = self.config_manager.structure_version if (
-            getattr(self.config_manager, "structure_version", 0)) else 61
-        if self.full_reset:
-            # Full reset: wipe the entire PosterBoard container and replace
-            # the on-device sqlite with an empty (schema-only) database.
-            update_label(QCoreApplication.tr("Resetting PosterBoard..."))
-            # Zero out every wallpaper provider under Extensions plus the
-            # gallery cache. The zero-files keep the /61 folder a real
-            # directory, so the sqlite injection below lands cleanly.
-            wipe_paths = [
-                f"/{self.structure_version}/Extensions",
-                f"/{self.structure_version}/GalleryCache",
-                f"/{self.structure_version}/Backups",
-            ]
-            for wp in wipe_paths:
-                files_to_restore.append(FileToRestore(
-                    contents=b"",
-                    restore_path=f"/Library/Application Support/PRBPosterExtensionDataStore{wp}",
-                    domain=f"AppDomain-{self.bundle_id}"
-                ))
-            # fresh empty database
-            empty_db = create_empty_posterboard_db(
-                os.path.join(output_dir, "empty_posterboard.sqlite3"))
-            db_path = (f"/Library/Application Support/PRBPosterExtensionDataStore/"
-                       f"{self.structure_version}/{DB_FILE_NAME}")
-            files_to_restore.append(FileToRestore(
-                contents=None,
-                contents_path=empty_db,
-                restore_path=db_path,
-                domain=f"AppDomain-{self.bundle_id}"
-            ))
-            # ship 0-byte -wal/-shm so iOS starts the store clean (WAL dead-zone)
-            for wal_suffix in ("-wal", "-shm"):
-                files_to_restore.append(FileToRestore(
-                    contents=b"",
-                    restore_path=db_path + wal_suffix,
-                    domain=f"AppDomain-{self.bundle_id}"
-                ))
-            # reset the PosterBoard preferences on a full reset
-            plist = {
-                "PBF_LOCALE_DID_CHANGE": False,
-                "PBF_RESET_FILE_PROTECTIONS": True
-            }
-            if Version(version) >= Version("26.4"):
-                plist["PersistedPosterContainerBundleIdentifiers"] = [
-                    "com.apple.Posters.CollectionsPosterApp"
-                ]
-                plist["CompletedPosterBundleIdentifierMigrations"] = [
-                    "com.apple.Posters.UnityPosterApp.ExtragalacticPoster",
-                    "com.apple.Posters.WeatherPosterApp.WeatherPoster",
-                    "com.apple.Posters.UnityPosterApp.Unity2025Poster",
-                    "com.apple.Posters.UnityPosterApp.UnityPosterExtension",
-                    "com.apple.Posters.UnityPosterApp.RhizomePoster",
-                    "com.apple.Posters.KaleidoscopePosterApp.KaleidoscopePoster"
-                ]
-            files_to_restore.append(FileToRestore(
-                contents=plistlib.dumps(plist, fmt=plistlib.PlistFormat.FMT_BINARY),
-                restore_path="/Library/Preferences/com.apple.PosterBoard.unprotectedUserDefaults.plist",
-                domain=f"AppDomain-{self.bundle_id}"
-            ))
-            return
-        elif len(self.resetModes) > 0:
-            # null out the folder
+        # Structure version (v7.4 rule): iOS 16 uses the 59 layout,
+        # everything newer the 61 layout — learned from the OS version,
+        # NOT from a fetched database (there is no database fetch in the
+        # default descriptors mode). In configurations mode a fetched DB
+        # may still refine it.
+        if version.startswith("16"):
+            self.structure_version = 59
+        elif getattr(self.config_manager, "structure_version", 0):
+            self.structure_version = self.config_manager.structure_version
+        else:
+            self.structure_version = 61
+        if len(self.resetModes) > 0:
+            # Reset = zero the descriptor/gallery folders ONLY (v7.4).
+            # No database is created or shipped: PosterBoard rebuilds its
+            # own store from whatever descriptors remain, which is what
+            # makes recovery from a bad wallpaper trivial.
             file_paths = []
             for mode in self.resetModes:
                 if mode == "Collections":
-                    # resetting collections
                     file_paths.append(f"/{self.structure_version}/Extensions/com.apple.WallpaperKit.CollectionsPoster/descriptors")
                     file_paths.append(f"/{self.structure_version}/Extensions/com.apple.MercuryPoster/descriptors")
                 elif mode == "Suggested Photos":
-                    # resetting suggested photos
                     file_paths.append(f"/{self.structure_version}/Extensions/com.apple.PhotosUIPrivate.PhotosPosterProvider/descriptors")
                 elif mode == "Gallery Cache":
-                    # resetting gallery cache
                     file_paths.append(f"/{self.structure_version}/GalleryCache")
                 else:
-                    # resetting prb extensions
                     file_paths.append("")
             for file_path in file_paths:
                 files_to_restore.append(FileToRestore(
@@ -347,6 +332,8 @@ class PosterboardTweak(Tweak):
                     restore_path=f"/Library/Application Support/PRBPosterExtensionDataStore{file_path}",
                     domain=f"AppDomain-{self.bundle_id}"
                 ))
+            if force_pb_refresh:
+                self._stage_force_refresh(files_to_restore, version)
             return
         elif len(self.tendies) == 0 and len(templates) == 0 and self.videoFile == None:
             return
@@ -364,48 +351,30 @@ class PosterboardTweak(Tweak):
                 template.extract(output_dir=output_dir)
         # add the files
         update_label(QCoreApplication.tr("Adding tendies..."))
-        self.config_manager.start_staging()
+        if self.use_configs:
+            self.config_manager.start_staging()
         self.recursive_add(files_to_restore, curr_path=output_dir)
-        staged_db_path = self.config_manager.update_sqlite()
-        db_path = f"/Library/Application Support/PRBPosterExtensionDataStore/{self.structure_version}/PBFPosterExtensionDataStoreSQLiteDatabase.sqlite3"
-        files_to_restore.append(FileToRestore(
-            contents=None,
-            contents_path=staged_db_path,
-            restore_path=db_path,
-            domain=f"AppDomain-{self.bundle_id}"
-        ))
-        # The on-device database runs in WAL mode. Replacing only the main
-        # file while a stale -wal/-shm stays behind makes the next open replay
-        # old frames over the fresh database -> "database disk image is
-        # malformed" / random PosterBoard breakage. Ship 0-byte companions so
-        # iOS starts the store clean.
-        for wal_suffix in ("-wal", "-shm"):
+        if self.use_configs:
+            # Configurations mode only: register the new descriptors in
+            # a staged copy of the device database. The 0-byte -wal/-shm
+            # companions stay mandatory HERE (a replaced WAL-mode main
+            # file must not replay stale frames); descriptors mode above
+            # never ships a database at all.
+            staged_db_path = self.config_manager.update_sqlite()
+            db_path = f"/Library/Application Support/PRBPosterExtensionDataStore/{self.structure_version}/PBFPosterExtensionDataStoreSQLiteDatabase.sqlite3"
             files_to_restore.append(FileToRestore(
-                contents=b"",
-                restore_path=db_path + wal_suffix,
+                contents=None,
+                contents_path=staged_db_path,
+                restore_path=db_path,
                 domain=f"AppDomain-{self.bundle_id}"
             ))
+            for wal_suffix in ("-wal", "-shm"):
+                files_to_restore.append(FileToRestore(
+                    contents=b"",
+                    restore_path=db_path + wal_suffix,
+                    domain=f"AppDomain-{self.bundle_id}"
+                ))
         # add the force refresh
         if force_pb_refresh:
-            plist = {
-                "PBF_LOCALE_DID_CHANGE": False,
-                "PBF_RESET_FILE_PROTECTIONS": True
-            }
-            if Version(version) >= Version("26.4"):
-                plist["PersistedPosterContainerBundleIdentifiers"] = [
-                    "com.apple.Posters.CollectionsPosterApp"
-                ]
-                plist["CompletedPosterBundleIdentifierMigrations"] = [
-                    "com.apple.Posters.UnityPosterApp.ExtragalacticPoster",
-                    "com.apple.Posters.WeatherPosterApp.WeatherPoster",
-                    "com.apple.Posters.UnityPosterApp.Unity2025Poster",
-                    "com.apple.Posters.UnityPosterApp.UnityPosterExtension",
-                    "com.apple.Posters.UnityPosterApp.RhizomePoster",
-                    "com.apple.Posters.KaleidoscopePosterApp.KaleidoscopePoster"
-                ]
-            files_to_restore.append(FileToRestore(
-                contents=plistlib.dumps(plist, fmt=plistlib.PlistFormat.FMT_BINARY),
-                restore_path="/Library/Preferences/com.apple.PosterBoard.unprotectedUserDefaults.plist",
-                domain=f"AppDomain-{self.bundle_id}"
-            ))
+            self._stage_force_refresh(files_to_restore, version)
         update_label(QCoreApplication.tr("Adding other tweaks..."))
