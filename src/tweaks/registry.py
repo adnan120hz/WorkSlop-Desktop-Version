@@ -267,7 +267,7 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.GlassLegibility2, Section.LIQUID_GLASS, "Glass Legibility Value 2", FileLocation.uikit, "UIViewGlassLegibilitySetting", value=2,
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Glass legibility value 2 = unobserved branch. 0=Clear, 1=Tinted (proven).")),
     _t(TweakID.SolariumFeatureFlags, Section.FEATURE_FLAGS, "Solarium Feature Flags", FileLocation.featureflags, "SolariumFlags",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "WARNING: Can break Control Center (full white). Developer only.")),
+       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "PLACEHOLDER: Specific Solarium flags not yet defined. Channel dead on 26.2+. WARNING: Can break Control Center.")),
     _t(TweakID.DisallowGlassTime, Section.LIQUID_GLASS, "Disallow Glass on LS Clock", GP, "SBDisallowGlassTime",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock.")),
     _t(TweakID.DisableGlassDock, Section.LIQUID_GLASS, "Disable Glass on Dock", GP, "SBDisableGlassDock",
@@ -340,8 +340,11 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.DisableRefractionEverywhere, Section.LIQUID_GLASS, "Disable Refraction Everywhere (Predicted)", GP, "SBDisableRefractionEverywhere",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable refraction everywhere. Predicted.")),
     # === Remaining: status bar, notifications, keyboard, siri ===
-    _t(TweakID.StatusBarOverrides, Section.SPRINGBOARD, "Status Bar Overrides (Developer)", FileLocation.globalPreferencesHomeDomain, "StatusBarOverrides",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "DEVELOPER ONLY: Binary status bar overrides. Requires manual file creation.")),
+    # REMOVED: StatusBarOverrides was incorrectly registered as a plist key.
+    # The actual statusBarOverrides is a BINARY STRUCT file at
+    # /var/mobile/Library/SpringBoard/statusBarOverrides (iOS 26), not a plist.
+    # It requires manual binary file creation, not BasicPlistTweak.
+    # See ~/workspace/riset/ for the visual signal research.
     _t(TweakID.ShowSystemServices, Section.SPRINGBOARD, "Show System Services Icons", GP, "ShowSystemServices",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show/hide VPN/Location/Alarm icons.")),
     _t(TweakID.KbAutocorrect, Section.INTERNAL, "Keyboard Autocorrect", GP, "KeyboardAutocorrection",
@@ -351,10 +354,11 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SiriEnabled, Section.INTERNAL, "Siri Master Switch", GP, "Assistant Enabled",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Master on/off for Siri.")),
     # === WorkSlop own system — remaining audited candidates (not GoldenNugget copy) ===
-    _t(TweakID.GranularSpringBoard, Section.LIQUID_GLASS, "Granular SpringBoard Glass", GP, "SBGranularGlass",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Granular glass control per SpringBoard surface.")),
-    _t(TweakID.LGLPMGestalt, Section.LIQUID_GLASS, "LG Low Power Mode Signal", GP, "SAGvsp6O6kAQ4fEfDJpC4Q",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "LGLPM signal. Unverified on 26.6.1.")),
+    # REMOVED: GranularSpringBoard used invented key SBGranularGlass (not a real
+    # Apple key). The granular controls are N1-N7 (SBUseFlatIconsEverywhere, etc.)
+    # which are implemented as separate entries below.
+    _t(TweakID.LGLPMGestalt, Section.LIQUID_GLASS, "LG Low Power Mode Signal", FileLocation.mga, "SAGvsp6O6kAQ4fEfDJpC4Q",
+       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "LGLPM MobileGestalt signal. BLOCKED on iOS 26.2+ (Apple locked MobileGestalt).")),
     _t(TweakID.ShowBatteryPercentage, Section.SPRINGBOARD, "Battery Percentage", FileLocation.springboard, "SBShowBatteryPercentage",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show battery percentage.")),
     _t(TweakID.NotifScheduled, Section.SPRINGBOARD, "Scheduled Delivery", GP, "globalScheduledDeliverySetting",
