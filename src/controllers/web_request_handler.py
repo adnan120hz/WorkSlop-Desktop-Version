@@ -47,8 +47,8 @@ CHANNELS = (CHANNEL_STABLE, CHANNEL_BETA)
 
 # User-facing channel labels. Never claim a stable public release.
 CHANNEL_LABELS = {
-    CHANNEL_STABLE: "Release (non-prerelease)",
-    CHANNEL_BETA: "Beta / prerelease",
+    CHANNEL_STABLE: "Release",
+    CHANNEL_BETA: "All releases",
 }
 
 _CACHE_TTL_SECONDS = 6 * 60 * 60

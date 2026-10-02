@@ -354,8 +354,8 @@ class IOSSettingsPage(QWidget):
         self._update_channels = [CHANNEL_STABLE, CHANNEL_BETA]
         # Static literals only — the translation extractor cannot match a
         # variable argument (see AGENTS.md i18n rules).
-        self.update_channel_drp.addItem(tr("Release (non-prerelease)"))
-        self.update_channel_drp.addItem(tr("Beta / prerelease"))
+        self.update_channel_drp.addItem(tr("Release"))
+        self.update_channel_drp.addItem(tr("All releases"))
         try:
             self.update_channel_drp.setCurrentIndex(
                 self._update_channels.index(get_update_channel()))

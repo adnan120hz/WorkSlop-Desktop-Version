@@ -271,8 +271,6 @@ class UpdateAppDialog(QDialog):
         if latest_version != None:
             # REAUDIT FIX: was "Nugget v{0}" — user-visible dialog text.
             message_text += self.tr("WorkSlop Desktop v{0} is available. ").format(latest_version)
-        if result is not None and result.latest is not None and result.latest.prerelease:
-            message_text += self.tr("This is a beta / prerelease build.") + " "
         message_text += self.tr("Would you like to go to the download on GitHub?")
         message = QLabel(message_text)
 
