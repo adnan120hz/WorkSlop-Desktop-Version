@@ -17,10 +17,10 @@ from PySide6.QtWidgets import (
 )
 
 from src.gui.ios.components import IOSCard, IOSDangerButton
-from src.gui.ios.phone_frame import PhoneFrame
 from src.gui.preset_widget import PresetWidget
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
-from src.tweaks.capabilities import is_audit_research_only, is_audit_user_retained
+from src.tweaks.capabilities import (
+    is_audit_research_only, is_audit_user_retained, is_device_test_tweak)
 from src.tweaks.registry import Section, home_tweak_catalogue
 
 # Action tile: (title, subtitle, page_index, tile color, icon resource).
@@ -40,11 +40,11 @@ _ACTION_TILES = [
 
 
 def _soft_shadow(widget):
-    """Soft card shadow like the reference's floating white cards."""
+    """Very soft card shadow like the reference's floating white cards."""
     effect = QGraphicsDropShadowEffect(widget)
-    effect.setBlurRadius(18)
-    effect.setOffset(0, 3)
-    effect.setColor(QColor(31, 78, 121, 30))
+    effect.setBlurRadius(14)
+    effect.setOffset(0, 2)
+    effect.setColor(QColor(31, 78, 121, 22))
     widget.setGraphicsEffect(effect)
     return widget
 
@@ -86,7 +86,7 @@ class _ActionTile(QWidget):
             dpr = self.devicePixelRatioF()
         except Exception:
             dpr = 1.0
-        self._chip.setPixmap(theme_pixmap(self._icon_res, "#FFFFFF", 30, dpr))
+        self._chip.setPixmap(theme_pixmap(self._icon_res, "#FFFFFF", 28, dpr))
 
     def _retheme(self):
         self._label.setStyleSheet(t("action_tile_label"))
@@ -181,17 +181,24 @@ class IOSHomePage(QWidget):
         main_row.setContentsMargins(0, 0, 0, 0)
         main_row.setSpacing(22)
 
-        # Phone: realistic frame + real home screen, like the reference.
-        # The cutout (notch / Dynamic Island) follows the detected device
-        # in update_device_info via set_product_type.
+        # Brand visual (user revision 2026-10-02): the Home visual is a
+        # large Apple logo in every state — connected or not. No phone
+        # frame / fake home screen is shown on Home anymore (PhoneFrame
+        # remains in use only by the PosterBoard tendie preview dialog).
         phone_col = QVBoxLayout()
         phone_col.setContentsMargins(0, 0, 0, 0)
         phone_col.setSpacing(6)
-        self._phone = PhoneFrame(self)
-        self._phone.setFixedSize(208, 428)
-        self._phone.set_wallpaper(self._make_wallpaper_pixmap())
-        self._phone.show_home_screen()
-        phone_col.addWidget(self._phone, 0, Qt.AlignHCenter)
+        self._brand_logo = QLabel(self)
+        self._brand_logo.setAlignment(Qt.AlignCenter)
+        self._brand_logo.setFixedSize(220, 300)
+        self._brand_logo.setStyleSheet("background-color: transparent;")
+        try:
+            _logo_dpr = self.devicePixelRatioF()
+        except Exception:
+            _logo_dpr = 1.0
+        self._brand_logo.setPixmap(
+            theme_pixmap(":/icon/apple.svg", "#0B65D8", 190, _logo_dpr))
+        phone_col.addWidget(self._brand_logo, 0, Qt.AlignHCenter)
         self._phone_caption = QLabel("iPhone", self)
         self._phone_caption.setAlignment(Qt.AlignCenter)
         self._phone_caption.setStyleSheet(t("phone_caption"))
@@ -267,6 +274,7 @@ class IOSHomePage(QWidget):
         details_layout.setContentsMargins(18, 10, 18, 12)
         details_layout.setSpacing(0)
         self._info_values = {}
+        self._info_rows = {}
         left_fields = [
             ("ios", "iOS Version"),
             ("model", "Product Type"),
@@ -303,6 +311,8 @@ class IOSHomePage(QWidget):
             val.setStyleSheet(t("info_value"))
             val.setTextInteractionFlags(Qt.TextSelectableByMouse)
             self._info_values[key] = val
+            self._info_rows[key] = row
+            row.hide()  # shown by _set_info only when real data exists
             row_layout.addWidget(val, 1)
             return row
 
@@ -340,55 +350,26 @@ class IOSHomePage(QWidget):
         self._details_btn.clicked.connect(self.open_settings)
         self._details_btn.hide()
 
-        # Hard Disk Capacity card (reference): honest unknown until the
-        # device stack reports real capacity data.
-        self._capacity_card = QFrame(self)
-        self._capacity_card.setObjectName("capacityCard")
-        self._capacity_card.setStyleSheet(t("modern_card"))
-        _soft_shadow(self._capacity_card)
-        cap_layout = QVBoxLayout(self._capacity_card)
-        cap_layout.setContentsMargins(16, 12, 16, 12)
-        cap_layout.setSpacing(8)
-        cap_header = QHBoxLayout()
-        cap_header.setContentsMargins(0, 0, 0, 0)
-        cap_header.setSpacing(10)
-        cap_title = QLabel(
-            QCoreApplication.translate("Nugget", "Hard Disk Capacity"),
-            self._capacity_card)
-        cap_title.setStyleSheet(t("home_section_title"))
-        cap_header.addWidget(cap_title)
-        cap_header.addStretch(1)
-        self._capacity_value = QLabel("—", self._capacity_card)
-        self._capacity_value.setStyleSheet(t("home_subtitle"))
-        cap_header.addWidget(self._capacity_value)
-        cap_layout.addLayout(cap_header)
-        self._capacity_bar = QProgressBar(self._capacity_card)
-        self._capacity_bar.setRange(0, 100)
-        self._capacity_bar.setValue(0)
-        self._capacity_bar.setTextVisible(False)
-        self._capacity_bar.setFixedHeight(7)
-        self._capacity_bar.setStyleSheet(t("storage_bar"))
-        cap_layout.addWidget(self._capacity_bar)
-        legend = QHBoxLayout()
-        legend.setContentsMargins(0, 0, 0, 0)
-        legend.setSpacing(14)
-        self._capacity_legend = []
-        for text, color in [
-                ("System", "#0B65D8"), ("Apps", "#2386E8"),
-                ("Photos", "#7B5CD6"), ("Media", "#F2C230"),
-                ("UDisk", "#20B486"), ("Others", "#F07F3C"),
-                ("Free", "#B9CBDC")]:
-            lbl = QLabel(f"■ {text}", self._capacity_card)
-            lbl.setStyleSheet(
-                f"color: {color}; font-size: 11px; font-weight: 700; "
-                "background-color: transparent;")
-            self._capacity_legend.append(lbl)
-            legend.addWidget(lbl)
-        legend.addStretch(1)
-        cap_layout.addLayout(legend)
-        info_col.addWidget(self._capacity_card)
-        # Compatibility alias for older callers/tests.
-        self._storage_bars = [self._capacity_bar]
+        # Tweak list card (user change 2026-10-02, replaces the old Hard
+        # Disk Capacity card): the build's tweak catalogue lives in the
+        # right column under the device info card, derived live from the
+        # registry with research-only / user-retained / device-test badges.
+        self._catalogue_card = _CatalogueCard(self)
+        self._catalogue_card.setObjectName("tweakListCard")
+        catalogue_layout = QVBoxLayout(self._catalogue_card)
+        catalogue_layout.setContentsMargins(16, 14, 16, 14)
+        catalogue_layout.setSpacing(7)
+        self._catalogue_header = QLabel(
+            QCoreApplication.translate("Nugget", "TWEAKS IN THIS BUILD"),
+            self._catalogue_card)
+        self._catalogue_header.setStyleSheet(t("home_section_title"))
+        catalogue_layout.addWidget(self._catalogue_header)
+        self.tweak_catalogue_entries = ()
+        self.tweak_catalogue_lbl = QLabel("", self._catalogue_card)
+        self.tweak_catalogue_lbl.setWordWrap(True)
+        self.tweak_catalogue_lbl.setTextFormat(Qt.PlainText)
+        catalogue_layout.addWidget(self.tweak_catalogue_lbl)
+        info_col.addWidget(self._catalogue_card)
         info_col.addStretch(1)
         main_row.addLayout(info_col, 1)
         layout.addLayout(main_row)
@@ -422,25 +403,8 @@ class IOSHomePage(QWidget):
         self.icon_themes_card = self._tile_by_title["Tweaks"]
         self.passcode_theme_card = self._tile_by_title["Tweaks"]
 
-        # Registry-derived tweak catalogue (derived from SPECS_BY_SECTION;
-        # new registry entries appear automatically). HotLoad-hidden tweaks
-        # are filtered at refresh; research-only / user-retained rows are
-        # badged, never presented as proven.
-        self._catalogue_card = _CatalogueCard(self)
-        catalogue_layout = QVBoxLayout(self._catalogue_card)
-        catalogue_layout.setContentsMargins(16, 14, 16, 14)
-        catalogue_layout.setSpacing(7)
-        self._catalogue_header = QLabel(
-            QCoreApplication.translate("Nugget", "TWEAKS IN THIS BUILD"),
-            self._catalogue_card)
-        self._catalogue_header.setStyleSheet(t("home_section_title"))
-        catalogue_layout.addWidget(self._catalogue_header)
-        self.tweak_catalogue_entries = ()
-        self.tweak_catalogue_lbl = QLabel("", self._catalogue_card)
-        self.tweak_catalogue_lbl.setWordWrap(True)
-        self.tweak_catalogue_lbl.setTextFormat(Qt.PlainText)
-        catalogue_layout.addWidget(self.tweak_catalogue_lbl)
-        layout.addWidget(self._catalogue_card)
+        # The tweak catalogue card lives in the right column (built with
+        # the info cards above); refresh it now that the page exists.
         self.refresh_tweak_catalogue()
 
         # Session controls: reset + presets.
@@ -477,38 +441,6 @@ class IOSHomePage(QWidget):
         self.update_status()
         self.update_device_info()
         self.refresh_preset_widget()
-
-    @staticmethod
-    def _make_wallpaper_pixmap():
-        """Generic blue/black bubble wallpaper (drawn, not artwork).
-
-        Two overlapping glowing bubbles on deep navy, like the reference
-        device screen: electric blue on top, warm silver below.
-        """
-        pixmap = QPixmap(393, 852)
-        painter = QPainter(pixmap)
-        base = QLinearGradient(0, 0, 0, 852)
-        base.setColorAt(0.0, QColor("#0A1E3F"))
-        base.setColorAt(0.45, QColor("#04070F"))
-        base.setColorAt(1.0, QColor("#0B0E18"))
-        painter.fillRect(pixmap.rect(), base)
-        top = QRadialGradient(196, 165, 305)
-        top.setColorAt(0.0, QColor("#A8DEFF"))
-        top.setColorAt(0.35, QColor("#2F8FE8"))
-        top.setColorAt(0.72, QColor("#0A49A0"))
-        top.setColorAt(1.0, QColor(4, 7, 15, 0))
-        painter.setBrush(top)
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(-75, -120, 545, 560)
-        bottom = QRadialGradient(196, 700, 330)
-        bottom.setColorAt(0.0, QColor("#C9CFD9"))
-        bottom.setColorAt(0.4, QColor("#767E92"))
-        bottom.setColorAt(0.75, QColor("#2E3444"))
-        bottom.setColorAt(1.0, QColor(4, 7, 15, 0))
-        painter.setBrush(bottom)
-        painter.drawEllipse(-85, 420, 565, 550)
-        painter.end()
-        return pixmap
 
     def _style_device_combo(self):
         self.device_combo.setStyleSheet(t("home_combo"))
@@ -622,8 +554,15 @@ class IOSHomePage(QWidget):
 
     def _set_info(self, key, text):
         lbl = self._info_values.get(key)
-        if lbl is not None:
-            lbl.setText(text if text else "—")
+        if lbl is None:
+            return
+        text = "" if text is None else str(text)
+        lbl.setText(text)
+        # Unknown values are hidden, not shown as a stray "—": the whole
+        # row disappears until real data exists (user instruction).
+        row = getattr(self, "_info_rows", {}).get(key)
+        if row is not None:
+            row.setVisible(bool(text) and text != "—")
 
     def update_status(self):
         c = self._c
@@ -687,23 +626,17 @@ class IOSHomePage(QWidget):
         if hasattr(self, "_chip_status"):
             self._chip_status.setText(
                 f"iOS {ver} ({build})" if ver != "—" else "")
+        # No real capacity / color / battery source exists yet: hide those
+        # title-card elements instead of showing placeholder "—" text.
         if hasattr(self, "_capacity_chip"):
-            self._capacity_chip.setText("—")
+            self._capacity_chip.hide()
         if hasattr(self, "_color_value"):
-            self._color_value.setText("Color —")
+            self._color_value.hide()
         if hasattr(self, "_battery_value"):
-            self._battery_value.setText("Battery —")
-        if hasattr(self, "_capacity_value"):
-            self._capacity_value.setText("—")
+            self._battery_value.hide()
         self._phone_caption.setText(device_name or "iPhone")
         self._set_info("device_name", device_name or "—")
         self._set_info("model", str(model))
-        # Frame cutout follows the detected device (iPhone14,5 -> small
-        # notch, iPhone15,2 -> Dynamic Island, ...). Unknown -> island.
-        try:
-            self._phone.set_product_type(str(model))
-        except Exception:
-            pass
         if udid and udid != "—" and len(str(udid)) > 18:
             udid = str(udid)[:8] + "…" + str(udid)[-6:]
         self._set_info("udid", str(udid))
@@ -718,15 +651,18 @@ class IOSHomePage(QWidget):
             pass
         self._set_info("connection", connection)
 
-        gestalt_text = "—"
+        gestalt_text = ""
         statusbar_text = "—"
         try:
             from src.devicemanagement.constants import (
-                is_device_supported, is_ios27_build)
+                is_ios27_build, mobilegestalt_decision)
             build_str = "" if build == "—" else str(build)
             ver_str = "" if ver == "—" else str(ver)
-            gestalt_text = ("Supported" if is_device_supported(build_str, ver_str)
-                            else "Locked")
+            # The MobileGestalt row must report the SAME shared decision
+            # that gates the MobileGestalt page/backend (fail-closed on
+            # iOS 26.6.1 builds 23G82/23G83) — never a separate guess.
+            decision = mobilegestalt_decision(build_str, ver_str)
+            gestalt_text = "Supported" if decision.supported else "Locked"
             statusbar_text = "Locked (iOS 27)" if is_ios27_build(build_str) else "Available"
         except Exception:
             pass
@@ -761,6 +697,9 @@ class IOSHomePage(QWidget):
             if is_audit_user_retained(entry["id"]):
                 label += " (" + QCoreApplication.translate(
                     "Nugget", "user-retained") + ")"
+            elif is_device_test_tweak(entry["id"]):
+                label += " (" + QCoreApplication.translate(
+                    "Nugget", "device test — unproven") + ")"
             elif is_audit_research_only(entry["id"]):
                 label += " (" + QCoreApplication.translate(
                     "Nugget", "research only") + ")"

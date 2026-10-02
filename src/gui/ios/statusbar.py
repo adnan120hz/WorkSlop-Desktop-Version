@@ -253,6 +253,16 @@ class IOSStatusBarPage(QWidget):
         self._ios27_note.setWordWrap(True)
         self.content_layout.addWidget(self._ios27_note)
 
+        # Shared-capability containment note: on the audited iOS 26.6.1
+        # target the whole classic Status Bar family is research-only in
+        # the backend, so the classic rows below are disabled with this
+        # reason instead of toggling into state that can never apply
+        # ("half-active"). Text comes from tweak_deliverability itself.
+        self._gate_note = QLabel("")
+        self._gate_note.setWordWrap(True)
+        self.content_layout.addWidget(self._gate_note)
+        self._rows.append((self._gate_note, False))
+
         self.content_layout.addStretch()
 
         self._retheme()
@@ -298,10 +308,11 @@ class IOSStatusBarPage(QWidget):
             except InvalidVersion:
                 classic_ok = False
         deliverable = False
+        gate_message = ""
         if classic_ok:
             try:
                 from src.tweaks.capabilities import tweak_deliverability
-                deliverable, _code, _msg = tweak_deliverability(
+                deliverable, _code, gate_message = tweak_deliverability(
                     TweakID.StatusBar, device_version=version,
                     device_build=self._current_build(),
                     tweak=self.status_manager)
@@ -318,6 +329,12 @@ class IOSStatusBarPage(QWidget):
         elif classic_ok and deliverable:
             self._signal_note.setText("")
             self._signal_note.setVisible(False)
+        elif classic_ok and gate_message:
+            # Single source of truth: the note IS the shared capability
+            # gate's own message (research-only containment on this
+            # target), not page-local copy that could drift from it.
+            self._signal_note.setText(gate_message)
+            self._signal_note.setVisible(True)
         else:
             self._signal_note.setText(QCoreApplication.translate(
                 "Nugget",
@@ -352,6 +369,27 @@ class IOSStatusBarPage(QWidget):
         for widget, survives in self._rows:
             widget.setVisible(not is_ios27 or survives)
         self._ios27_note.setVisible(is_ios27)
+        if not is_ios27:
+            # Honest containment for the classic family: ask the one
+            # shared predicate. When it contains Status Bar on this
+            # device, every classic switch card goes disabled (backend
+            # would skip the family anyway) and the reason is shown.
+            deliverable, gate_message = True, ""
+            try:
+                from src.tweaks.capabilities import tweak_deliverability
+                deliverable, _code, gate_message = tweak_deliverability(
+                    TweakID.StatusBar, device_version=version or "",
+                    device_build=self._current_build(),
+                    tweak=self.status_manager)
+            except Exception:
+                deliverable, gate_message = True, ""
+            for widget, _survives in self._rows:
+                if widget.findChild(IOSSwitch) is not None:
+                    widget.setEnabled(deliverable)
+            self._gate_note.setText(
+                "" if deliverable else
+                QCoreApplication.translate("Nugget", "Locked: ") + gate_message)
+            self._gate_note.setVisible(not deliverable)
         self._refresh_full_signal_gate(is_ios27=is_ios27)
 
     def _header(self, title: str, survives_ios27: bool = False):
@@ -367,6 +405,8 @@ class IOSStatusBarPage(QWidget):
         # because it is a note rather than a value.
         self._ios27_note.setStyleSheet(
             f"background-color: transparent; color: {c.text_secondary}; font-size: 14px;")
+        self._gate_note.setStyleSheet(
+            f"background-color: transparent; color: {c.error}; font-size: 14px;")
         for _lbl in (self._signal_desc, self._signal_note):
             _lbl.setStyleSheet(
                 f"background-color: transparent; color: {c.text_secondary}; font-size: 14px;")

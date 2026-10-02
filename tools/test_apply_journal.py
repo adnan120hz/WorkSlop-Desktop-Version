@@ -242,10 +242,10 @@ def test_manager_integration():
               by_id["LockScreenFootnote"]["status"] == "skipped"
               and by_id["LockScreenFootnote"]["skip_reason"]
               == "hotload_rule")
-        check("research-only skip recorded",
-              by_id["SolariumForceFallback"]["status"] == "skipped"
-              and by_id["SolariumForceFallback"]["skip_reason"]
-              == "AUDIT_RESEARCH_ONLY")
+        check("device-test candidate delivered (journal-recorded)",
+              by_id["SolariumForceFallback"]["status"] == "delivered-by-restore"
+              and by_id["SolariumForceFallback"]["files"],
+              str(by_id["SolariumForceFallback"].get("status")))
         check("gestalt locked skip recorded",
               by_id["ModelName"]["status"] == "skipped"
               and by_id["ModelName"]["skip_reason"]

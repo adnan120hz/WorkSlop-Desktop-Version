@@ -87,7 +87,8 @@ from src.tweaks import tweak_loader
 from src.tweaks.basic_plist_locations import FileLocation
 from src.tweaks.capabilities import (
     canonical_tweak_id, clear_audit_research_only_state,
-    is_audit_research_only, is_removed_tweak, tweak_deliverability,
+    is_audit_research_only, is_device_test_tweak, is_removed_tweak,
+    tweak_deliverability,
 )
 from src.tweaks.registry import SPECS, SPECS_BY_ID
 from src.tweaks.tweak_classes import BasicPlistTweak
@@ -148,8 +149,7 @@ SHIP_CANDIDATES = [
 ]
 
 REGISTRY_RESEARCH_IDS = [
-    TweakID.SolariumForceFallback, TweakID.DisallowGlassTime,
-    TweakID.DisableGlassDock, TweakID.WatchOSCompatibility,
+    TweakID.WatchOSCompatibility,
     TweakID.CustomLockDate, TweakID.AnimDragCoeff, TweakID.ShowSystemServices,
     TweakID.SBBuildNumber, TweakID.RTL, TweakID.LTR, TweakID.SBIconVisibility,
     TweakID.iMessageDiagnosticsEnabled, TweakID.IDSDiagnosticsEnabled,
@@ -231,6 +231,41 @@ def test_ship_candidates_remain_but_research_is_contained():
     check("FlatIconsEverywhere stays active by user order", ok, code)
 
 
+DEVICE_TEST_IDS = [
+    TweakID.SolariumForceFallback, TweakID.DisallowGlassTime,
+    TweakID.DisableGlassDock,
+]
+
+
+def test_device_test_candidates_are_open_but_labelled():
+    print("\nDevice-test Liquid Glass candidates deliver with DEVICE_TEST_OK")
+    for tid in DEVICE_TEST_IDS:
+        check(f"{tid.name} retains an active spec", tid in SPECS_BY_ID)
+        check(f"{tid.name} is a device-test tweak", is_device_test_tweak(tid))
+        check(f"{tid.name} is not audit research-contained",
+              not is_audit_research_only(tid))
+        ok, code, msg = tweak_deliverability(tid, **TARGET)
+        check(f"{tid.name} delivers on target as device test",
+              ok and code == "DEVICE_TEST_OK", code)
+        check(f"{tid.name} deliverability message warns unproven",
+              "UNPROVEN" in msg, msg[:40])
+    # Stale ON state for a device-test candidate must NOT be force-cleared
+    # by the research containment sweep (it is testable now)...
+    dummy = _DummyTweak()
+    cleared = clear_audit_research_only_state(
+        "26.6.1", "23G83",
+        tweaks_dict={TweakID.SolariumForceFallback: dummy})
+    check("device-test state survives the research clear",
+          cleared == [] and dummy.enabled)
+    # ...while a genuine research-only row is still cleared/locked.
+    ok, code, _ = tweak_deliverability(TweakID.AnimDragCoeff, **TARGET)
+    check("other research-only rows stay locked",
+              not ok and code == "AUDIT_RESEARCH_ONLY", code)
+    # Removed/killed stays locked with REMOVED_TWEAK.
+    ok, code, _ = tweak_deliverability(TweakID.GlassLegibility2, **TARGET)
+    check("killed K1 stays locked", not ok and code == "REMOVED_TWEAK", code)
+
+
 class _DummyTweak:
     def __init__(self):
         self.enabled = True
@@ -289,6 +324,7 @@ test_registry_kills_and_tombstones()
 test_duplicate_aliases_have_one_writer()
 test_ship_candidates_remain_but_research_is_contained()
 test_stale_state_and_loader_cleanup()
+test_device_test_candidates_are_open_but_labelled()
 test_custom_gestalt_surface_is_killed()
 
 print(f"\nALL {PASS} CHECKS PASSED")

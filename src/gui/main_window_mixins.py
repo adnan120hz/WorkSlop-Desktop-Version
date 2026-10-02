@@ -625,6 +625,32 @@ class NavigationMixin:
         """Toggle fullscreen (F11). Returns the new fullscreen state."""
         return self.set_fullscreen(not self.isFullScreen())
 
+    def _install_fullscreen_shortcuts(self):
+        """Register F11 / ESC as window shortcuts for fullscreen.
+
+        The application-wide event filter alone proved unreliable on real
+        Windows (a focused child can consume or re-route the raw key
+        event before the filter sees it, and it never fires at all for a
+        hidden/modal-blocked window), so fullscreen is driven by proper
+        QShortcuts with WindowShortcut context: they fire whenever this
+        window is the active window, whatever child widget has focus,
+        and stay inactive while a modal dialog owns its own window.
+        ESC only leaves fullscreen; in a normal window it does nothing
+        here (navigation-back stays with the event filter below).
+        """
+        from PySide6.QtGui import QKeySequence, QShortcut
+        f11 = QShortcut(QKeySequence("F11"), self)
+        f11.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
+        f11.activated.connect(self.toggle_fullscreen)
+        esc = QShortcut(QKeySequence("Escape"), self)
+        esc.setContext(QtCore.Qt.ShortcutContext.WindowShortcut)
+        esc.activated.connect(self._esc_shortcut)
+        self._fullscreen_shortcuts = (f11, esc)
+
+    def _esc_shortcut(self):
+        if self.isFullScreen():
+            self.set_fullscreen(False)
+
     def eventFilter(self, obj, event):
         """Handle F11 fullscreen, ESC, and the mouse back button."""
         if QtWidgets.QApplication.activeModalWidget() is not None:

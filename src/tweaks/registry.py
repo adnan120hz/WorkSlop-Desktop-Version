@@ -212,7 +212,7 @@ SPECS: tuple[TweakSpec, ...] = (
        FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
        description=QT_TRANSLATE_NOOP("Nugget", "Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.")),
     _t(TweakID.SolariumForceFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
     # REMOVED (Wave 10, user order 2026-10-02): GlassLegibility2 (K1),
     # DisableSolariumSwiftUI (dead reader on iOS 26.6.1), and
     # SolariumFeatureFlags (placeholder with no real flag set) are deleted
@@ -220,9 +220,9 @@ SPECS: tuple[TweakSpec, ...] = (
     # tombstones in src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old
     # presets naming them resolve to removed/skipped, never applied.
     _t(TweakID.DisallowGlassTime, Section.LIQUID_GLASS, "Disallow Glass on LS Clock", GP, "SBDisallowGlassTime",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
     _t(TweakID.DisableGlassDock, Section.LIQUID_GLASS, "Disable Glass on Dock", GP, "SBDisableGlassDock",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Liquid Glass on Dock — solid style.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Liquid Glass on Dock — solid style. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
     _t(TweakID.FlatIconsEverywhere, Section.LIQUID_GLASS, "Flat Icons Everywhere", GP, "SBUseFlatIconsEverywhere",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "User-retained Wave 10 exception: force all icons flat, no 3D/glass effect. Pattern-grade; iOS 26.6.1 reader unproven.")),
     # REMOVED (Wave 10, user order 2026-10-02): DisableGlassEverywhere and

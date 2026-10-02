@@ -2,10 +2,11 @@
 """Offscreen checks + screenshots for the modern blue Wave 10 UI.
 
 Contract: bright-blue top bar with five centered category tabs, white left
-sidebar with device dropdown + menu, realistic phone showing a real home
-screen (cutout matched to the detected device), right info/capacity
-cards, strong-blue bottom tiles, light footer, and an animated blue
-Apple-logo background behind content.
+sidebar with device dropdown + menu, big Apple brand logo on Home (no phone
+frame in any state), right info/capacity cards, strong-blue bottom tiles,
+light footer, and an animated blue Apple-logo background behind content.
+The notch mapping unit checks below still cover PhoneFrame itself, which
+remains in use by the PosterBoard tendie preview dialog.
 
 Run: QT_QPA_PLATFORM=offscreen /tmp/sbvenv/bin/python \
     tools/test_wave10_ui_rebuild.py
@@ -244,13 +245,10 @@ pf.close()
 print("\nHome modern reference layout")
 home = IOSHomePage(window)
 app.processEvents()
-check("phone frame present", isinstance(home._phone, PhoneFrame))
-check("phone shows the real home screen by default",
-      home._phone.showing_home_screen)
-check("phone cutout matches stub iPhone14,5 (small notch)",
-      home._phone.notch_type == "notch_small", home._phone.notch_type)
-check("phone product type wired from device",
-      home._phone.product_type == "iPhone14,5", home._phone.product_type)
+check("Home shows the big Apple brand logo (no phone frame)",
+      hasattr(home, "_brand_logo") and not home._brand_logo.pixmap().isNull())
+check("Home has no phone frame widget anymore",
+      not hasattr(home, "_phone"))
 check("device chip is device", home._device_chip.text() == "iPhone 14")
 check("phone caption is device", home._phone_caption.text() == "iPhone 14")
 check("refresh phone link not hidden", not home._refresh_link.isHidden())
@@ -260,9 +258,19 @@ check("Reboot hidden without handler", home._reboot_link.isHidden())
 check("Turn Off hidden without handler", home._turnoff_link.isHidden())
 check("title card exists", home._title_card.objectName() == "deviceTitleCard")
 check("details card exists", home._details_card.objectName() == "deviceDetailsCard")
-check("capacity card exists", home._capacity_card.objectName() == "capacityCard")
-check("capacity unknown honest", home._capacity_value.text() == "—")
-check("battery unknown honest", home._battery_value.text().endswith("—"))
+check("tweak list card replaces capacity card on Home",
+      home._catalogue_card.objectName() == "tweakListCard")
+check("no Hard Disk Capacity card on Home",
+      not hasattr(home, "_capacity_card"))
+check("capacity chip hidden without data", home._capacity_chip.isHidden())
+check("battery hidden without data", home._battery_value.isHidden())
+check("MobileGestalt row Locked on 23G83 (shared decision)",
+      home._info_values["gestalt"].text() == "Locked",
+      home._info_values["gestalt"].text())
+check("serial row hidden without data",
+      home._info_rows["serial"].isHidden())
+check("storage row hidden without data",
+      home._info_rows["storage"].isHidden())
 check("device title", home._device_title.text() == "iPhone 14")
 check("model in table", home._info_values["model"].text() == "iPhone14,5")
 check("iOS in table", home._info_values["ios"].text() == "26.6.1")
@@ -316,6 +324,16 @@ esc = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape,
                 Qt.KeyboardModifier.NoModifier)
 check("ESC leaves fullscreen first",
       harness.eventFilter(harness, esc) is True and not harness.isFullScreen())
+
+print("\nfullscreen via window shortcuts (real-Windows path)")
+harness._install_fullscreen_shortcuts()
+check("fullscreen shortcuts installed",
+      len(getattr(harness, "_fullscreen_shortcuts", ())) == 2)
+_f11_sc, _esc_sc = harness._fullscreen_shortcuts
+_f11_sc.activated.emit()
+check("F11 shortcut enters fullscreen", harness.isFullScreen())
+_esc_sc.activated.emit()
+check("ESC shortcut leaves fullscreen", not harness.isFullScreen())
 harness.close()
 
 print("\ncomposite screenshots (shell-shaped)")
@@ -369,7 +387,7 @@ frame.setStyleSheet(t("global"))
 frame.show()
 app.processEvents()
 shot_path = os.path.abspath(
-    os.path.join(shot_dir, "home-modern-v6.png"))
+    os.path.join(shot_dir, "home-modern-v7.png"))
 pixmap = frame.grab()
 check("screenshot rendered", not pixmap.isNull(),
       f"{pixmap.width()}x{pixmap.height()}")
@@ -380,7 +398,7 @@ app.processEvents()
 check("composite enters fullscreen", frame.isFullScreen())
 check("fullscreen layout expands without clipping",
       topbar.width() <= frame.width()
-      and home._phone.width() <= home.width(),
+      and home._brand_logo.width() <= home.width(),
       f"frame={frame.width()} home={home.width()}")
 full_path = os.path.abspath(
     os.path.join(shot_dir, "home-modern-fullscreen-offscreen.png"))

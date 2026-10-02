@@ -84,6 +84,7 @@ class WorkSlopDevicePanel(QWidget):
             btn.setFixedHeight(36)
             btn.setIconSize(QSize(17, 17))
             btn.clicked.connect(lambda _=False, m=menu_id: self.menu_selected.emit(m))
+            btn.toggled.connect(lambda _c, m=menu_id: self._tint_nav_icon(m))
             self._group.addButton(btn)
             self._buttons[menu_id] = (btn, icon_res)
             nav_layout.addWidget(btn)
@@ -131,12 +132,27 @@ class WorkSlopDevicePanel(QWidget):
             version = getattr(device, "version", "") or "—"
             build = getattr(device, "build", "") or "—"
             self._connection_lbl.setText(f"iOS {version} ({build})  •  {tag}")
+            self._hint.setText(
+                QCoreApplication.translate(
+                    "Nugget", "Select a device, then choose a tool."))
         else:
             self.device_combo.addItem(
                 QCoreApplication.translate("Nugget", "No device connected"))
             self._connection_lbl.setText(
                 QCoreApplication.translate(
                     "Nugget", "Connect an iPhone via USB."))
+            # Honest no-device guidance (Windows especially): detection
+            # goes through the Apple Mobile Device service via usbmux, and
+            # an empty list with no error usually means the driver/service
+            # is missing or the iPhone has not trusted this computer yet.
+            # Say so instead of sitting silently on "No device".
+            self._hint.setText(
+                QCoreApplication.translate(
+                    "Nugget",
+                    "No device detected. Check the USB cable, unlock the "
+                    "iPhone and tap Trust, and on Windows make sure the "
+                    "Apple Mobile Device driver is installed (Apple Devices "
+                    "app from the Microsoft Store, or iTunes from Apple)."))
         self.device_combo.blockSignals(False)
         self._rows = []
 
@@ -171,6 +187,16 @@ class WorkSlopDevicePanel(QWidget):
         self.refresh_devices()
 
     # -- theming --------------------------------------------------------------------
+    def _tint_nav_icon(self, menu_id: str):
+        """Thin outline icons: muted blue-grey when idle, brand blue on the
+        active pill — one consistent 17px outline set, like the reference."""
+        entry = self._buttons.get(menu_id)
+        if entry is None:
+            return
+        btn, icon_res = entry
+        color = "#0B65D8" if btn.isChecked() else "#64798F"
+        btn.setIcon(theme_icon(icon_res, color))
+
     def _retheme(self):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(t("device_side_panel"))
@@ -178,7 +204,6 @@ class WorkSlopDevicePanel(QWidget):
         self._connection_lbl.setStyleSheet(t("device_row_meta"))
         self._hint.setStyleSheet(t("device_row_meta"))
         self.device_combo.setStyleSheet(t("sidebar_device_combo"))
-        c = ColorThemeManager.instance().colors
         for menu_id, (btn, icon_res) in self._buttons.items():
-            btn.setIcon(theme_icon(icon_res, c.accent))
             btn.setStyleSheet(t("sidebar_nav_button"))
+            self._tint_nav_icon(menu_id)

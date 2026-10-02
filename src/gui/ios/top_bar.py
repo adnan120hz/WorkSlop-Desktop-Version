@@ -165,14 +165,15 @@ class WorkSlopTopBar(QWidget):
             "letter-spacing: 2.4px; background: transparent;")
         for tab_id, (btn, icon_res) in self._buttons.items():
             btn.setIcon(theme_icon(icon_res, "#FFFFFF"))
-            btn.setIconSize(QSize(23, 23))
+            btn.setIconSize(QSize(24, 24))
             btn.setStyleSheet(f"""
                 QToolButton {{
                     background-color: transparent;
                     border: none;
-                    border-radius: 14px;
+                    border-bottom: 3px solid transparent;
+                    border-radius: 10px;
                     color: #EAF6FF;
-                    font-size: 11px;
+                    font-size: 12px;
                     font-weight: 600;
                     padding-top: 4px;
                     padding-bottom: 2px;
@@ -181,6 +182,7 @@ class WorkSlopTopBar(QWidget):
                 QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.13); color: #FFFFFF; }}
                 QToolButton:checked {{
                     background-color: {_BLUE_LIGHT};
+                    border-bottom: 3px solid #FFFFFF;
                     color: #FFFFFF;
                     font-weight: 800;
                 }}

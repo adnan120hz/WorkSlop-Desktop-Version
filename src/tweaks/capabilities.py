@@ -154,9 +154,6 @@ AUDIT_TARGET_BUILD = "23G83"
 # are already fail-closed by their own decision and are included so the
 # research-only classification is complete in one place.
 AUDIT_RESEARCH_ONLY_TWEAK_IDS = frozenset({
-    # Liquid Glass forensic / binary-gated registry rows
-    TweakID.SolariumForceFallback, TweakID.DisallowGlassTime,
-    TweakID.DisableGlassDock,
     # SpringBoard research registry rows
     TweakID.WatchOSCompatibility, TweakID.CustomLockDate,
     TweakID.AnimDragCoeff, TweakID.ShowSystemServices,
@@ -181,6 +178,47 @@ AUDIT_RESEARCH_ONLY_TWEAK_IDS = frozenset({
     # MobileGestalt-page adjacent research row (also MobileGestalt-gated)
     TweakID.RdarFix,
 }) | MOBILEGESTALT_TWEAK_IDS
+
+# DEVICE-TEST path (user doctrine, reaffirmed 2026-10-02): unproven is not
+# the same as wrong. A candidate whose key/domain/value/reader-hypothesis/
+# delivery structure survived the audit is *for* isolated device testing —
+# locking it away makes the test the doctrine demands impossible. Only
+# structurally wrong, dead-reader, wrong-delivery, settings-duplicate, or
+# user-killed candidates stay hard-locked (REMOVED_TWEAK_IDS above).
+#
+# These three Liquid Glass rows were substantively re-verified before the
+# unlock (payload trace, not UI state):
+#   * SolariumForceFallback=true — spec (registry.py) writes GP =
+#     FileLocation.globalPreferences
+#     (src/tweaks/basic_plist_locations.py:20
+#     "/var/Managed Preferences/mobile/.GlobalPreferences.plist"), exactly
+#     the Hitori .batter provenance: ManagedPreferencesDomain + hidden-dot
+#     .GlobalPreferences.plist (path_mapping maps "/var/Managed Preferences/"
+#     to ManagedPreferencesDomain). Audit: key PARTIAL (tool lineage),
+#     domain PASS, value PASS (bool true), reader UNKNOWN on 23G83.
+#   * SBDisallowGlassTime=true, SBDisableGlassDock=true — same GP file,
+#     bool true; audit 5-layer: exact claimed spelling (authenticity
+#     unproven), GP is the claimed route, value PASS, reader UNKNOWN.
+# All three ride BasicPlistTweak (value default True) into the single
+# managed-GP plist staged by the apply pass (one writer per (location,key)
+# is enforced by the registry audit test), and the Internal Options reset
+# nulls that same GP file with a valid empty plist, so reset cleans the
+# exact keys apply writes. Reader on iOS 26.6.1 is still UNPROVEN — that is
+# what the device test is for; the GUI must say so on every enable.
+DEVICE_TEST_TWEAK_IDS = frozenset({
+    TweakID.SolariumForceFallback, TweakID.DisallowGlassTime,
+    TweakID.DisableGlassDock,
+})
+
+
+def is_device_test_tweak(tweak_id) -> bool:
+    """True for audit-verified-but-unproven candidates opened for isolated
+    device testing (canonical ID wins; aliases resolve first)."""
+    try:
+        return canonical_tweak_id(tweak_id) in DEVICE_TEST_TWEAK_IDS
+    except Exception:
+        return False
+
 
 # Explicit user-retained exception (2026-10-02 17:21 WIB). It remains an
 # active product row by user order; retention is not reader evidence and
@@ -409,6 +447,17 @@ def tweak_deliverability(tweak_id, device_version: str = "",
         decision = mobilegestalt_decision(device_build, device_version)
         if not decision.supported:
             return (False, decision.reason_code, decision.user_message)
+
+    if is_device_test_tweak(canonical):
+        # Deliverable, but honestly labelled: the structure is verified,
+        # the on-device reader is not. Callers (GUI badge, journal, preset
+        # summaries) surface DEVICE_TEST_OK instead of a plain OK so the
+        # unproven status is never silently dropped.
+        return (True, "DEVICE_TEST_OK",
+                "UNPROVEN — device test: structure verified by audit, "
+                "on-device effect not proven. Full backup first, Low Power "
+                "Mode off, one candidate per apply, and never reset the "
+                "SpringBoard page on iOS 26.6.1.")
 
     return (True, "OK", "")
 

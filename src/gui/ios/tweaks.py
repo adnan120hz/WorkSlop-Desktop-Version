@@ -1,7 +1,8 @@
 from PySide6.QtCore import QCoreApplication, Qt
 from packaging.version import Version, InvalidVersion
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout
+    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout,
+    QMessageBox
 )
 
 from src.gui.ios.components import (
@@ -12,6 +13,7 @@ from src.gui.ios.compat import is_tweak_compatible, tweak_incompatibility_reason
 from src.devicemanagement.constants import mobilegestalt_decision
 from src.tweaks.capabilities import (
     clear_audit_research_only_state, clear_unsupported_mobilegestalt_state,
+    is_device_test_tweak,
 )
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
@@ -264,7 +266,25 @@ class IOSSectionContent(QWidget):
                 f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
                 " background-color: transparent;")
             self._switch_labels.append(label)
-            row_layout.addWidget(label, 1)
+            if is_device_test_tweak(tweak_id):
+                # Device-test candidates stay enabled (that is the point of
+                # the path) but must never look like proven features: a
+                # persistent badge under the name, plus the warning in the
+                # tooltip/description and a confirmation dialog on enable.
+                text_col = QWidget(card)
+                text_layout = QVBoxLayout(text_col)
+                text_layout.setContentsMargins(0, 0, 0, 0)
+                text_layout.setSpacing(2)
+                text_layout.addWidget(label)
+                badge = QLabel(QCoreApplication.translate(
+                    "Nugget", "⚠ UNPROVEN — device test"))
+                badge.setStyleSheet(
+                    f"color: {c.error}; font-size: 12px; font-weight: 700;"
+                    " background-color: transparent;")
+                text_layout.addWidget(badge)
+                row_layout.addWidget(text_col, 1)
+            else:
+                row_layout.addWidget(label, 1)
 
             switch = IOSSwitch(tweak.enabled)
             self._switches[tweak_id] = switch
@@ -273,6 +293,15 @@ class IOSSectionContent(QWidget):
             row_layout.addWidget(make_switch_column(card, switch))
 
             tip = description
+            if is_device_test_tweak(tweak_id):
+                warn = QCoreApplication.translate(
+                    "Nugget",
+                    "UNPROVEN — device test: the audit verified this tweak's "
+                    "key, location, value, and delivery path, but its effect "
+                    "on iOS 26.6.1 is not proven. Full backup first, Low "
+                    "Power Mode off, one candidate per apply, and never "
+                    "reset the SpringBoard page.")
+                tip = (tip + "\n\n" + warn) if tip else warn
             if lock_reason:
                 tip = (tip + "\n\n" + lock_reason) if tip else lock_reason
             if tip:
@@ -470,12 +499,45 @@ class IOSSectionContent(QWidget):
         return is_tweak_compatible(
             tweak_id, version, model.startswith("iPhone"), build)
 
+    def _confirm_device_test_enable(self, tweak_id: TweakID) -> bool:
+        """One-time confirmation before an UNPROVEN device-test candidate
+        is switched on. Returns True only when the user accepts the test
+        protocol; anything else leaves the tweak off."""
+        title = QCoreApplication.translate("Nugget", "Unproven device test")
+        body = QCoreApplication.translate(
+            "Nugget",
+            "This Liquid Glass candidate is UNPROVEN on iOS 26.6.1: the "
+            "audit verified its key, location, value, and delivery path, "
+            "but its on-device effect has not been proven.\n\n"
+            "Before applying:\n"
+            "• Make a full backup of the device first.\n"
+            "• Turn Low Power Mode OFF.\n"
+            "• Apply ONE candidate at a time, then restart the app or "
+            "reboot, and judge only its own surface.\n"
+            "• NEVER reset the SpringBoard page on iOS 26.6.1.\n\n"
+            "Every apply is still recorded in the Apply Journal. "
+            "Continue?")
+        answer = QMessageBox.question(
+            self, title, body,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        return answer == QMessageBox.StandardButton.Yes
+
     def _on_registry_switch(self, tweak_id: TweakID, checked: bool):
         # State-level guard: a visible-but-locked card cannot be toggled, but
         # programmatic signals, stale switches, and preset-synced widgets can
         # still fire. Re-check the shared predicate before mutating the model;
         # an unsupported tweak is forced off instead of enabled.
         if checked and not self._current_compatible(tweak_id):
+            set_tweak_enabled(tweak_id, False)
+            sw = self._switches.get(tweak_id)
+            if sw is not None and sw.isChecked():
+                sw.blockSignals(True)
+                sw.setChecked(False)
+                sw.blockSignals(False)
+            return
+        if checked and is_device_test_tweak(tweak_id) \
+                and not self._confirm_device_test_enable(tweak_id):
             set_tweak_enabled(tweak_id, False)
             sw = self._switches.get(tweak_id)
             if sw is not None and sw.isChecked():

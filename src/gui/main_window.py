@@ -121,6 +121,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
+        # The generated UI pins setMaximumSize(1000, 600), which on Windows
+        # disables the normal maximize button and can keep showFullScreen()
+        # from covering the screen. Lift the clamp here (the generated file
+        # itself stays untouched, per AGENTS.md) so maximize and F11
+        # fullscreen both work.
+        self.setMaximumSize(16777215, 16777215)
         self.noneText = self.tr("None")
         self.apply_in_progress = False
         self.refresh_in_progress = False
@@ -352,6 +358,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
         # Back navigation: ESC key and mouse back button go to the home page
         QtWidgets.QApplication.instance().installEventFilter(self)
+        # F11/ESC fullscreen via real window shortcuts (the app-wide event
+        # filter alone does not reliably deliver F11 on Windows).
+        self._install_fullscreen_shortcuts()
 
         # Update the app version/build number label
         self.updateAppVersionLabel()
@@ -400,52 +409,33 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                 self._sync_settings()
 
     def on_footer_check_update_clicked(self):
-        """Footer "Check Update": run the existing update checker off the
-        GUI thread and report through the same dialog as Settings."""
-        if (getattr(self, "_footer_update_thread", None) is not None
-                and self._footer_update_thread.isRunning()):
-            return
-        from PySide6.QtCore import QObject, QThread, Signal
+        """Footer "Check Update": run the update checker off the GUI thread
+        via the shared UpdateCheckRunner and report on the GUI thread.
 
-        class _FooterUpdateWorker(QObject):
-            done = Signal(object)
+        The runner owns the QThread lifecycle (fresh thread per check,
+        references dropped on finished, result delivered by queued signal);
+        calling this repeatedly — including while a check is running or
+        after one finished — cannot touch a deleted C++ QThread again.
+        """
+        runner = getattr(self, "_footer_update_runner", None)
+        if runner is None:
+            from src.gui.update_check import UpdateCheckRunner
+            runner = UpdateCheckRunner(self)
+            runner.result_ready.connect(self._report_footer_update_result)
+            self._footer_update_runner = runner
+        runner.start()
 
-            def run(self):
-                try:
-                    from src.controllers.web_request_handler import (
-                        check_for_update, get_update_channel)
-                    from src.version import App_Version, App_Build
-                    result = check_for_update(
-                        App_Version, App_Build, get_update_channel(),
-                        force=True)
-                except Exception:
-                    result = None
-                self.done.emit(result)
-
-        thread = QThread(self)
-        worker = _FooterUpdateWorker()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.done.connect(thread.quit)
-        worker.done.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-
-        def _report(result):
-            if result is not None and result.outcome == "update_available":
-                from src.gui.dialogs import UpdateAppDialog
-                UpdateAppDialog(result, self).exec()
-            elif result is not None and result.outcome == "up_to_date":
-                QtWidgets.QMessageBox.information(
-                    self, "Check for Updates", "You are up to date.")
-            else:
-                QtWidgets.QMessageBox.warning(
-                    self, "Check for Updates",
-                    "Couldn't check for updates. Please try again later.")
-
-        worker.done.connect(_report)
-        self._footer_update_thread = thread
-        self._footer_update_worker = worker
-        thread.start()
+    def _report_footer_update_result(self, result):
+        if result is not None and result.outcome == "update_available":
+            from src.gui.dialogs import UpdateAppDialog
+            UpdateAppDialog(result, self).exec()
+        elif result is not None and result.outcome == "up_to_date":
+            QtWidgets.QMessageBox.information(
+                self, "Check for Updates", "You are up to date.")
+        else:
+            QtWidgets.QMessageBox.warning(
+                self, "Check for Updates",
+                "Couldn't check for updates. Please try again later.")
 
     def eventFilter(self, obj, event):
         # Delegate explicitly: with QMainWindow first in the MRO, Python

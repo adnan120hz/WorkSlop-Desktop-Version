@@ -368,52 +368,30 @@ class IOSSettingsPage(QWidget):
     def _on_check_updates_clicked(self):
         # Manual check: network runs on a worker thread, never the GUI
         # thread; dedupe is bypassed so the outcome is always reported.
-        from PySide6.QtCore import QObject, QThread, Signal
+        # The shared runner owns the QThread lifecycle (fresh thread per
+        # check, result delivered on the GUI thread), so repeat clicks —
+        # including after a finished check — cannot crash on a deleted
+        # C++ QThread the way the old hand-rolled pattern did.
+        runner = getattr(self, "_update_runner", None)
+        if runner is None:
+            from src.gui.update_check import UpdateCheckRunner
+            runner = UpdateCheckRunner(self)
+            runner.result_ready.connect(self._report_update_result)
+            self._update_runner = runner
+        runner.start()
 
-        if (getattr(self, "_update_thread", None) is not None
-                and self._update_thread.isRunning()):
-            return
-
-        class _UpdateWorker(QObject):
-            done = Signal(object)
-
-            def run(self):
-                try:
-                    from src.controllers.web_request_handler import (
-                        check_for_update, get_update_channel)
-                    from src.gui.version import App_Version, App_Build
-                    result = check_for_update(
-                        App_Version, App_Build, get_update_channel(),
-                        force=True)
-                except Exception:
-                    result = None
-                self.done.emit(result)
-
+    def _report_update_result(self, result):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
-        thread = QThread(self)
-        worker = _UpdateWorker()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.done.connect(thread.quit)
-        worker.done.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-
-        def _report(result):
-            if result is not None and result.outcome == "update_available":
-                from src.gui.dialogs import UpdateAppDialog
-                UpdateAppDialog(result, self).exec()
-            elif result is not None and result.outcome == "up_to_date":
-                QMessageBox.information(self, tr("Check for Updates"),
-                                        tr("You are up to date."))
-            else:
-                QMessageBox.warning(self, tr("Check for Updates"),
-                                    tr("Couldn't check for updates. "
-                                       "Please try again later."))
-
-        worker.done.connect(_report)
-        self._update_thread = thread
-        self._update_worker = worker
-        thread.start()
+        if result is not None and result.outcome == "update_available":
+            from src.gui.dialogs import UpdateAppDialog
+            UpdateAppDialog(result, self).exec()
+        elif result is not None and result.outcome == "up_to_date":
+            QMessageBox.information(self, tr("Check for Updates"),
+                                    tr("You are up to date."))
+        else:
+            QMessageBox.warning(self, tr("Check for Updates"),
+                                tr("Couldn't check for updates. "
+                                   "Please try again later."))
 
     def _make_language_combo(self, lay):
         self.lang_drp = QComboBox()
