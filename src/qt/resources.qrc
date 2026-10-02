@@ -49,6 +49,20 @@
         <file>icon/liquid-glass.svg</file>
         <file>icon/lock.svg</file>
         <file>icon/play-circle.svg</file>
+        <file>icon/ws-device.svg</file>
+        <file>icon/ws-apps.svg</file>
+        <file>icon/ws-wallpaper.svg</file>
+        <file>icon/ws-flash.svg</file>
+        <file>icon/ws-toolbox.svg</file>
+        <file>icon/ws-refresh.svg</file>
+        <file>icon/ws-backup.svg</file>
+        <file>icon/ws-sliders.svg</file>
+        <file>icon/ws-glass.svg</file>
+        <file>icon/ws-signal.svg</file>
+        <file>icon/ws-poster.svg</file>
+        <file>icon/ws-gear.svg</file>
+        <file>icon/ws-chip.svg</file>
+        <file>icon/ws-trash.svg</file>
     </qresource>
     <qresource prefix="/translations">
         <file>translations/Nugget_en.qm</file>

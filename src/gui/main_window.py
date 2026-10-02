@@ -261,47 +261,92 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.content_stack.addWidget(ios_root)           # 0 = iOS pages
         self.content_stack.setStyleSheet("background: transparent;")
         shell = QtWidgets.QWidget(self)
-        shell.setProperty("cls", "central")  # shell background comes from SkyBackground
-        # Overlay grid: animated sky background behind the content.
-        overlay = QtWidgets.QGridLayout(shell)
-        overlay.setContentsMargins(0, 0, 0, 0)
-        overlay.setSpacing(0)
+        shell.setProperty("cls", "central")
+        # Wave 10 shell: animated blue Apple-logo background behind the
+        # content. White cards/panels sit above it, like the reference.
         from src.gui.ios.sky_bg import SkyBackground
         self._sky_bg = SkyBackground(shell)
-        self._sky_bg.start()
-        overlay.addWidget(self._sky_bg, 0, 0)
+        self._shell = shell
         content = QtWidgets.QWidget(shell)
         content.setStyleSheet("background: transparent; border: none;")
-        overlay.addWidget(content, 0, 0)
-        content.raise_()  # keep content above the sky background
+        shell_layout = QtWidgets.QStackedLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        shell_layout.setStackingMode(QtWidgets.QStackedLayout.StackAll)
+        shell_layout.addWidget(self._sky_bg)
+        shell_layout.addWidget(content)
+        self._sky_bg.lower()
         self.shell_layout = QtWidgets.QVBoxLayout(content)
         self.shell_layout.setContentsMargins(0, 0, 0, 0)
         self.shell_layout.setSpacing(0)
-        self.shell_layout.addWidget(self.ui.deviceBar)
+        # Reference layout shell: bright-blue top header (logo + tabs),
+        # light device panel left of the page stack, blue footer strip.
+        # The generated deviceBar is parked hidden — background flows still
+        # reference its picker/refresh widgets.
+        self.ui.deviceBar.hide()
+        from src.gui.ios.top_bar import WorkSlopTopBar
+        from src.gui.ios.device_panel import WorkSlopDevicePanel
+        self.workslop_topbar = WorkSlopTopBar(self)
+        self.workslop_topbar.tab_selected.connect(self._on_workslop_menu)
+        self.workslop_topbar.update_requested.connect(
+            self.on_footer_check_update_clicked)
+        self.shell_layout.addWidget(self.workslop_topbar)
         self.body_row = QtWidgets.QHBoxLayout()
         self.body_row.setContentsMargins(0, 0, 0, 0)
         self.body_row.setSpacing(0)
-        # WorkSlop sidebar: white navigation rail. The generated-UI
-        # sidebar is parked hidden — old flows still touch its buttons, but
-        # navigation now goes through the new rail.
-        from src.gui.ios.sidebar import WorkSlopSidebar
+        # The generated-UI sidebar is parked hidden — old flows still touch
+        # its buttons, but navigation now goes through the new sidebar/tabs.
         self.ui.sidebar.hide()
-        self.workslop_sidebar = WorkSlopSidebar(self)
-        self.workslop_sidebar.menu_selected.connect(self._on_workslop_menu)
-        self.body_row.addWidget(self.workslop_sidebar)
+        self.device_panel = WorkSlopDevicePanel(self)
+        self.device_panel.menu_selected.connect(self._on_workslop_menu)
+        # API compat: shell mixins talk to "workslop_sidebar" for selection
+        # sync and the MobileGestalt lock; that is the left sidebar now.
+        self.workslop_sidebar = self.device_panel
+        self.body_row.addWidget(self.device_panel)
         self.body_row.addWidget(self.content_stack, 1)
         self._style_device_pill()
         self.shell_layout.addLayout(self.body_row)
+
+        # Light footer: app status left; version, Feedback, and Check
+        # Update on the right. Check Update uses the existing checker.
+        from src.version import App_Version as _App_Version
+        footer = QtWidgets.QWidget(self)
+        footer.setObjectName("workslopFooter")
+        footer.setFixedHeight(30)
+        footer.setStyleSheet(
+            "QWidget#workslopFooter { background-color: #EDF5FD; "
+            "border-top: 1px solid #BDD7F2; }")
+        footer_layout = QtWidgets.QHBoxLayout(footer)
+        footer_layout.setContentsMargins(12, 0, 10, 0)
+        footer_layout.setSpacing(10)
+        self.footer_status_lbl = QtWidgets.QLabel("WorkSlop Desktop", footer)
+        self.footer_status_lbl.setStyleSheet(t("footer_light_text"))
+        footer_layout.addWidget(self.footer_status_lbl)
+        footer_layout.addStretch(1)
+        self.footer_version_lbl = QtWidgets.QLabel(
+            f"Version: {_App_Version}", footer)
+        self.footer_version_lbl.setStyleSheet(t("footer_light_text"))
+        footer_layout.addWidget(self.footer_version_lbl)
+        self.footer_feedback_btn = QtWidgets.QPushButton("Feedback", footer)
+        self.footer_feedback_btn.setStyleSheet(t("footer_light_button"))
+        self.footer_feedback_btn.clicked.connect(self.on_settingsPageBtn_clicked)
+        footer_layout.addWidget(self.footer_feedback_btn)
+        self.footer_update_btn = QtWidgets.QPushButton("Check Update", footer)
+        self.footer_update_btn.setStyleSheet(t("footer_light_button"))
+        self.footer_update_btn.clicked.connect(
+            self.on_footer_check_update_clicked)
+        footer_layout.addWidget(self.footer_update_btn)
+        self.workslop_footer = footer
+        self.shell_layout.addWidget(footer)
         self.setCentralWidget(shell)
 
         # WorkSlop Desktop branding (the generated .ui still says GoldenNugget;
         # overriding here keeps mainwindow_ui.py untouched).
         self.setWindowTitle("WorkSlop Desktop")
 
-        # Sky theme: light-blue shell with the animated SkyBackground canvas.
-        # The CobaltBackdrop is retired — keeping it would repaint bubbles
-        # every frame for no visible effect on an opaque background.
-        self._backdrop = None
+        # Animated blue Apple-logo background is instantiated above as
+        # the shell underlay (self._sky_bg).
+        self._backdrop = self._sky_bg
 
         self.apply_theme(self.theme_manager.current_theme)
 
@@ -354,6 +399,60 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                 self.settings.setValue("backup_prompt_done", True)
                 self._sync_settings()
 
+    def on_footer_check_update_clicked(self):
+        """Footer "Check Update": run the existing update checker off the
+        GUI thread and report through the same dialog as Settings."""
+        if (getattr(self, "_footer_update_thread", None) is not None
+                and self._footer_update_thread.isRunning()):
+            return
+        from PySide6.QtCore import QObject, QThread, Signal
+
+        class _FooterUpdateWorker(QObject):
+            done = Signal(object)
+
+            def run(self):
+                try:
+                    from src.controllers.web_request_handler import (
+                        check_for_update, get_update_channel)
+                    from src.version import App_Version, App_Build
+                    result = check_for_update(
+                        App_Version, App_Build, get_update_channel(),
+                        force=True)
+                except Exception:
+                    result = None
+                self.done.emit(result)
+
+        thread = QThread(self)
+        worker = _FooterUpdateWorker()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.done.connect(thread.quit)
+        worker.done.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+
+        def _report(result):
+            if result is not None and result.outcome == "update_available":
+                from src.gui.dialogs import UpdateAppDialog
+                UpdateAppDialog(result, self).exec()
+            elif result is not None and result.outcome == "up_to_date":
+                QtWidgets.QMessageBox.information(
+                    self, "Check for Updates", "You are up to date.")
+            else:
+                QtWidgets.QMessageBox.warning(
+                    self, "Check for Updates",
+                    "Couldn't check for updates. Please try again later.")
+
+        worker.done.connect(_report)
+        self._footer_update_thread = thread
+        self._footer_update_worker = worker
+        thread.start()
+
+    def eventFilter(self, obj, event):
+        # Delegate explicitly: with QMainWindow first in the MRO, Python
+        # attribute lookup would otherwise resolve QObject.eventFilter and
+        # the NavigationMixin handler (ESC/back/F11) would never run.
+        return NavigationMixin.eventFilter(self, obj, event)
+
     # ---- Color theme reactivity ------------------------------------------
 
     def _apply_global_stylesheet(self):
@@ -361,40 +460,49 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.setStyleSheet(t("global"))
         # Also update the QPalette so native widgets pick up the colors
         QtWidgets.QApplication.instance().setPalette(self._color_theme.build_palette())
-        # Re-style the ios_pages stack
-        self.ios_pages.setStyleSheet(t("page_bg"))
+        # Re-style the ios_pages stack transparently so the animated shell
+        # background shows around the white page surfaces.
+        self.ios_pages.setStyleSheet("background: transparent;")
+        if hasattr(self, "_shell"):
+            self._shell.setStyleSheet(
+                "background: transparent; border: none;")
         # Re-style the classic chrome (sidebar icons, device bar, home toolbar)
         self._retheme_classic()
 
     def _style_device_pill(self):
-        """Restyle the top device bar as a clean status pill.
+        """Restyle the generated top device bar as a command strip.
 
-        The picker group moves to the right; the old title text becomes a
-        plain expanding spacer.
+        The generated device bar is hidden in the current shell, but the
+        widgets remain live for background flows. If it is shown again, it
+        now reads as a deep-ink WorkSlop command strip rather than the old
+        white Sky pill.
         """
         c = self._color_theme.colors
         bar = self.ui.deviceBar
-        bar.setStyleSheet(f"background-color: {c.bg_primary};")
+        bar.setStyleSheet(
+            f"background-color: {c.menu_bg}; border-bottom: 3px solid {c.brand};")
         layout = self.ui.horizontalLayout_4
-        # title spacer first (expanding), device pill last (right-aligned)
+        # Title first (expanding), device picker last (right-aligned).
         layout.insertWidget(0, self.ui.titleBar)
-        self.ui.titleBar.setText("")
-        self.ui.titleBar.setStyleSheet("background-color: transparent; border: none;")
+        self.ui.titleBar.setText("WORKSLP DESKTOP  •  DEVICE WORKSPACE")
+        self.ui.titleBar.setStyleSheet(
+            f"background-color: transparent; border: none; color: {c.menu_text}; "
+            "font-size: 11px; font-weight: 800; letter-spacing: 1.6px;")
         pill = self.ui.horizontalWidget_2
         pill.setStyleSheet(f"""
             QWidget#horizontalWidget_2 {{
-                background-color: {c.bg_secondary};
-                border: 1px solid {c.border};
-                border-radius: 19px;
+                background-color: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 10px;
             }}
         """)
         self.ui.devicePicker.setStyleSheet(f"""
             QComboBox {{
                 background-color: transparent;
                 border: none;
-                color: {c.text_primary};
+                color: #FFFFFF;
                 font-size: 13px;
-                font-weight: 500;
+                font-weight: 650;
                 min-height: 36px;
                 padding-left: 10px;
             }}
@@ -404,7 +512,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                 width: 12px; height: 12px; margin-right: 8px;
             }}
             QComboBox QAbstractItemView {{
-                background-color: {c.bg_tertiary};
+                background-color: {c.bg_secondary};
                 border: 1px solid {c.border};
                 border-radius: 10px;
                 color: {c.text_primary};
@@ -415,20 +523,19 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             QToolButton {{
                 background-color: transparent;
                 border: none;
-                border-radius: 14px;
-                color: {c.text_primary};
+                border-radius: 8px;
+                color: #FFFFFF;
             }}
-            QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.12); }}
+            QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.14); }}
         """)
         self.ui.phoneIconBtn.setStyleSheet(
             "background-color: transparent; border: none;")
-        # green status dot like the mockup ("iPhone 15 • iOS 26.1 • USB")
         if not hasattr(self, "_device_dot"):
             from PySide6.QtWidgets import QLabel
             self._device_dot = QLabel(pill)
-            self._device_dot.setFixedSize(10, 10)
+            self._device_dot.setFixedSize(9, 9)
             self._device_dot.setStyleSheet(
-                "background-color: #34c759; border-radius: 5px;")
+                f"background-color: {c.success}; border-radius: 4px;")
             self.ui.horizontalLayout_19.insertWidget(0, self._device_dot)
             self.ui.horizontalLayout_19.setContentsMargins(12, 1, 6, 1)
 

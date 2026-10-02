@@ -13,7 +13,10 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
-from src.devicemanagement.constants import Version, is_gestalt_supported_build, is_ios27_build
+from src.devicemanagement.constants import (
+    Version, is_ios27_build, mobilegestalt_decision,
+)
+from src.tweaks.capabilities import clear_unsupported_mobilegestalt_state
 from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
@@ -184,6 +187,20 @@ class DeviceBarMixin:
         self.ios_home.refresh_device_combo()
         self.ios_home.update_device_info()
         self.ios_home.update_status()
+        # keep the left device panel tree in sync too
+        if hasattr(self, "device_panel"):
+            try:
+                self.device_panel.refresh_devices()
+            except Exception:
+                pass
+        if hasattr(self, "footer_status_lbl"):
+            try:
+                count = len(self.device_manager.devices or [])
+                self.footer_status_lbl.setText(
+                    f"{count} device(s) connected" if count
+                    else "No device connected")
+            except Exception:
+                pass
 
 
     def change_selected_device(self, index):
@@ -198,11 +215,28 @@ class DeviceBarMixin:
             device_build = self.device_manager.data_singleton.current_device.build or ""
             # MobileGestalt menu stays visible but auto-locks on unsupported
             # builds: open on iOS 16.0 -> iOS 26.2 beta 1, locked after that.
-            gestalt_ok = is_gestalt_supported_build(device_build)
+            # One shared decision (exact build authoritative) drives Home, the
+            # sidebar, Tweaks, Eligibility, presets, and the backend.
+            gestalt_decision = mobilegestalt_decision(
+                device_build, str(device_ver))
+            gestalt_ok = gestalt_decision.supported
+            if not gestalt_ok:
+                cleared = clear_unsupported_mobilegestalt_state(gestalt_decision)
+                if cleared:
+                    get_logger("gui").info(
+                        "MobileGestalt tweaks forced off for this device "
+                        f"({gestalt_decision.reason_code}): {', '.join(cleared)}")
+                    # Rewrite AutoSave so the cleared state is what a later
+                    # restart restores, not the stale ON state.
+                    try:
+                        if self.autosave_enabled():
+                            self._save_autosave_preset()
+                    except Exception:
+                        pass
             gestalt_tip_ok = "MobileGestalt (supports iOS 16.0 - 26.2 beta 1)"
             gestalt_tip_locked = (
-                "MobileGestalt requires iOS 16.0 through iOS 26.2 beta 1 "
-                f"(this device build: {device_build or 'unknown'})")
+                gestalt_decision.user_message +
+                f" (this device build: {device_build or 'unknown'})")
             self.ui.gestaltPageBtn.setVisible(True)
             self.ui.gestaltPageBtn.setEnabled(gestalt_ok)
             self.ui.gestaltPageBtn.setToolTip(
@@ -271,6 +305,10 @@ class DeviceBarMixin:
                 self._sync_sidebar_selection()
         else:
             self.device_manager.set_current_device(index=None)
+            # No device = unknown, and unknown is fail-closed for
+            # MobileGestalt: stale ON state must not survive into a summary
+            # or AutoSave.
+            clear_unsupported_mobilegestalt_state(mobilegestalt_decision("", ""))
 
         # update the interface
         self.updateInterfaceForNewDevice()
@@ -391,7 +429,7 @@ class SettingsMixin:
 
 
     def apply_theme(self, theme: int):
-        """Apply the Sky UI chrome (classic mode is removed)."""
+        """Apply the Wave 10 WorkSlop shell chrome (classic mode is removed)."""
         self.theme_manager.save_theme(theme)
         self.ui.sidebar.setVisible(False)
         self.ui.deviceBar.setVisible(False)
@@ -457,20 +495,41 @@ class NavigationMixin:
                 refresh()
         except Exception:
             pass
+        # Keep the blue top tabs highlighted with whatever page is showing,
+        # no matter which path navigated here (tabs, Home tiles, dialogs).
+        try:
+            self._sync_sidebar_selection()
+        except Exception:
+            pass
 
 
     def _on_workslop_menu(self, menu_id: str):
-        """Navigate from the 7-pill WorkSlop sidebar."""
+        """Navigate from the blue top header tabs (ex-sidebar handler)."""
         if menu_id == "home":
             self.show_home()
         elif menu_id == "tweaks":
             self.show_ios_page(1)
+        elif menu_id == "liquidglass":
+            self.on_liquidGlassPageBtn_clicked()
+            return
+        elif menu_id == "springboard":
+            self.on_springboardOptionsPageBtn_clicked()
+            return
+        elif menu_id == "internal":
+            self.on_internalOptionsPageBtn_clicked()
+            return
+        elif menu_id == "statusbar":
+            self.on_statusBarPageBtn_clicked()
+            return
+        elif menu_id == "posterboard" or menu_id == "wallpaper":
+            self.on_posterboardPageBtn_clicked()
+            return
+        elif menu_id == "daemons":
+            self.on_daemonsPageBtn_clicked()
+            return
         elif menu_id == "gestalt":
             self.on_mobileGestaltPageBtn_clicked()
             return  # already syncs the sidebar
-        elif menu_id == "wallpaper":
-            self.on_posterboardPageBtn_clicked()
-            return
         elif menu_id == "backup":
             self.ios_backup.refresh()
             self.show_ios_page(13)
@@ -487,18 +546,22 @@ class NavigationMixin:
         """Move the checked highlight of the WorkSlop sidebar to the active view."""
         page_to_menu = {
             0: "home",
-            1: "tweaks", 3: "tweaks", 5: "tweaks", 6: "tweaks",
-            7: "tweaks", 8: "tweaks", 9: "tweaks",
+            1: "tweaks", 6: "tweaks", 10: "tweaks", 11: "tweaks", 14: "tweaks",
+            9: "liquidglass",
+            7: "springboard",
+            8: "internal",
+            5: "statusbar",
+            2: "posterboard",
+            3: "daemons",
             12: "gestalt",
-            2: "wallpaper",
-            13: "backup",
-            15: "appdata",
-            10: "themes", 11: "themes", 14: "themes",
             4: "settings",
+            13: "home", 15: "home",
         }
         menu = page_to_menu.get(self.ios_pages.currentIndex())
         if menu is not None and hasattr(self, "workslop_sidebar"):
             self.workslop_sidebar.select(menu)
+        if menu is not None and hasattr(self, "workslop_topbar"):
+            self.workslop_topbar.select(menu)
 
 
     def show_home(self):
@@ -536,16 +599,51 @@ class NavigationMixin:
         self.ios_settings.scroll_to_presets()
 
 
+    # -- fullscreen -------------------------------------------------------
+    def set_fullscreen(self, enabled: bool) -> bool:
+        """Enter or leave true window fullscreen.
+
+        Returns True when the requested state is active. Leaving fullscreen
+        restores the maximized state the window had before it was entered;
+        the shell layout is size-policy driven (fixed rail + expanding page
+        stack), so maximized and fullscreen states reuse the same layout.
+        """
+        enabled = bool(enabled)
+        if enabled == self.isFullScreen():
+            return enabled
+        if enabled:
+            self._fullscreen_restore_maximized = self.isMaximized()
+            self.showFullScreen()
+        else:
+            if getattr(self, "_fullscreen_restore_maximized", False):
+                self.showMaximized()
+            else:
+                self.showNormal()
+        return self.isFullScreen()
+
+    def toggle_fullscreen(self) -> bool:
+        """Toggle fullscreen (F11). Returns the new fullscreen state."""
+        return self.set_fullscreen(not self.isFullScreen())
+
     def eventFilter(self, obj, event):
-        """Handle ESC and the mouse back button as navigation-back."""
+        """Handle F11 fullscreen, ESC, and the mouse back button."""
         if QtWidgets.QApplication.activeModalWidget() is not None:
             return False
         try:
             etype = event.type()
         except (AttributeError, TypeError):
             return False
-        if etype == QtCore.QEvent.Type.KeyPress and event.key() == QtCore.Qt.Key.Key_Escape:
-            return self._go_back()
+        if etype == QtCore.QEvent.Type.KeyPress:
+            if event.key() == QtCore.Qt.Key.Key_F11:
+                self.toggle_fullscreen()
+                return True
+            if event.key() == QtCore.Qt.Key.Key_Escape:
+                # In fullscreen, ESC first leaves fullscreen; only a normal
+                # window treats ESC as navigation-back.
+                if self.isFullScreen():
+                    self.set_fullscreen(False)
+                    return True
+                return self._go_back()
         if etype == QtCore.QEvent.Type.MouseButtonPress and event.button() in (
                 QtCore.Qt.MouseButton.BackButton, QtCore.Qt.MouseButton.ExtraButton1):
             return self._go_back()
@@ -662,15 +760,40 @@ class ApplyMixin:
         from src.tweaks.tweak_loader import (
             load_plist_tweaks, load_daemons, load_mobilegestalt,
             load_rdar_fix, load_eligibility, load_risky)
+        from src.devicemanagement.constants import mobilegestalt_decision
+        from src.tweaks.capabilities import (
+            clear_unsupported_mobilegestalt_state, tweak_deliverability,
+            validate_custom_resolution,
+        )
         load_plist_tweaks()
         load_daemons()
         # B7: the loaders below register every tweak family the registry
         # section loop above cannot see (all are idempotent, so calling them
-        # here is safe even if a page already ran them).
-        load_mobilegestalt()
-        load_rdar_fix()
-        load_eligibility()
+        # here is safe even if a page already ran them). Wave 10: they take
+        # the current shared MobileGestalt decision — never a no-argument
+        # load that would register deliverable gestalt tweaks blind.
+        try:
+            _dm = self.device_manager
+            _build = _dm.get_current_device_build() or ""
+            _version = _dm.get_current_device_version() or ""
+            _model = _dm.get_current_device_model() or ""
+            _device = _dm.data_singleton.current_device
+        except Exception:
+            _build = _version = _model = ""
+            _device = None
+        _decision = mobilegestalt_decision(_build, _version)
+        if not _decision.supported:
+            clear_unsupported_mobilegestalt_state(_decision)
+        load_mobilegestalt(_build, _version, _decision)
+        load_rdar_fix(_device, _decision)
+        load_eligibility(_device, _decision)
         load_risky()
+
+        def _deliverable(tid, tw=None):
+            ok, _code, _msg = tweak_deliverability(
+                tid, device_version=_version, device_build=_build,
+                is_iphone=_model.startswith("iPhone"), tweak=tw)
+            return ok
 
         lines = []
         total = 0
@@ -684,27 +807,37 @@ class ApplyMixin:
         for section in Section:
             enabled = sum(
                 1 for spec in SPECS_BY_SECTION[section]
-                if getattr(tweaks.get(spec.id), "enabled", False))
+                if getattr(tweaks.get(spec.id), "enabled", False)
+                and _deliverable(spec.id, tweaks.get(spec.id)))
             if enabled:
                 add(QCoreApplication.translate("Nugget", section.value), enabled)
 
         pb = tweaks.get(TweakID.PosterBoard)
-        if pb is not None:
+        if pb is not None and _deliverable(TweakID.PosterBoard, pb):
             add(QCoreApplication.translate("Nugget", "PosterBoard"), len(pb.tendies))
 
         tmpl = tweaks.get(TweakID.Templates)
-        if tmpl is not None:
+        if tmpl is not None and _deliverable(TweakID.Templates, tmpl):
             add(QCoreApplication.translate("Nugget", "Templates"), len(tmpl.templates))
 
         st = tweaks.get(TweakID.StatusBar)
-        if st is not None:
+        if st is not None and _deliverable(TweakID.StatusBar, st):
             try:
-                add(QCoreApplication.translate("Nugget", "Status Bar"), st.count_overrides())
+                # The named no-SIM feature gets its own summary line; the
+                # generic count excludes its owned flags (no double count).
+                for op in st.describe_active_operations():
+                    if op.get("id") == "statusbar.full_signal_bars_no_sim":
+                        lines.append("• " + QCoreApplication.translate(
+                            "Nugget", "Full Signal Bars (No SIM Visual)"))
+                        total += 1
+                    else:
+                        add(QCoreApplication.translate("Nugget", "Status Bar"),
+                            int(op.get("count", 0)))
             except Exception:
                 pass
 
         dm = tweaks.get(TweakID.Daemons)
-        if dm is not None:
+        if dm is not None and _deliverable(TweakID.Daemons, dm):
             add(QCoreApplication.translate("Nugget", "Daemons"),
                 sum(1 for v in getattr(dm, "value", {}).values() if v))
 
@@ -733,33 +866,51 @@ class ApplyMixin:
             1 for tid, tw in tweaks.items()
             if tid not in _spoof_ids
             and isinstance(tw, _gestalt_types)
-            and getattr(tw, "enabled", False))
+            and getattr(tw, "enabled", False)
+            and _deliverable(tid, tw))
         add(QCoreApplication.translate("Nugget", "MobileGestalt"), gestalt_on)
 
         _elig_types = (EligibilityTweak, AITweak, BookRestoreFileTweak)
         elig_on = sum(
-            1 for tw in tweaks.values()
+            1 for tid, tw in tweaks.items()
             if isinstance(tw, _elig_types)
-            and getattr(tw, "enabled", False))
+            and getattr(tw, "enabled", False)
+            and _deliverable(tid, tw))
         elig_on += sum(
             1 for tid in _spoof_ids
-            if getattr(tweaks.get(tid), "enabled", False))
-        # The Siri feature-flag pair (AIFeatureFlags / AIFeatureFlagsUI) is
-        # enabled from the Eligibility section but is not a registry spec.
+            if getattr(tweaks.get(tid), "enabled", False)
+            and _deliverable(tid, tweaks.get(tid)))
+        # Non-registry FeatureFlag tweaks are counted only when the central
+        # deliverability decision would actually let them generate a payload
+        # (removed tombstones such as AIFeatureFlags never count).
         ff_on = sum(
             1 for tid, tw in tweaks.items()
             if isinstance(tw, FeatureFlagTweak)
             and tid not in SPECS_BY_ID
-            and getattr(tw, "enabled", False))
+            and getattr(tw, "enabled", False)
+            and _deliverable(tid, tw))
         add(QCoreApplication.translate("Nugget", "Eligibility"),
             elig_on + ff_on)
 
         # Risky page tweaks (DisableOTAFile, CustomResolution) and the
         # ScreenTime agent plist nullifier (loaded by load_daemons()).
+        # CustomResolution only counts when it would pass the backend gate.
+        def _risky_count(tid):
+            tw = tweaks.get(tid)
+            if not getattr(tw, "enabled", False):
+                return 0
+            if not _deliverable(tid, tw):
+                return 0
+            if tid == TweakID.CustomResolution:
+                ok, _code, _msg = validate_custom_resolution(
+                    getattr(tw, "value", None))
+                return 1 if ok else 0
+            return 1
+
         risky_on = sum(
-            1 for tid in (TweakID.DisableOTAFile, TweakID.CustomResolution,
-                          TweakID.ClearScreenTimeAgentPlist)
-            if getattr(tweaks.get(tid), "enabled", False))
+            _risky_count(tid)
+            for tid in (TweakID.DisableOTAFile, TweakID.CustomResolution,
+                        TweakID.ClearScreenTimeAgentPlist))
         add(QCoreApplication.translate("Nugget", "Risky"), risky_on)
 
         return lines, total

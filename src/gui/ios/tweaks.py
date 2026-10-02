@@ -8,7 +8,11 @@ from src.gui.ios.components import (
     IOSCollapsibleSection, IOSCard, IOSSettingsRow,
     IOSSwitch, TextInputDialog, NumberInputDialog, decimals_for_step
 )
-from src.gui.ios.compat import is_tweak_compatible
+from src.gui.ios.compat import is_tweak_compatible, tweak_incompatibility_reason
+from src.devicemanagement.constants import mobilegestalt_decision
+from src.tweaks.capabilities import (
+    clear_audit_research_only_state, clear_unsupported_mobilegestalt_state,
+)
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
 from src.tweaks.registry import SPECS_BY_SECTION, SPECS_BY_ID, SECTION_FEATURES, Kind, Section
@@ -36,13 +40,20 @@ def _fmt_number(value) -> str:
         return str(value)
 
 
-def _lock_reason(tweak_id: TweakID) -> str:
+def _lock_reason(tweak_id: TweakID, device_version: str = "",
+                 is_iphone: bool = True, device_build: str = "") -> str:
     """Why this tweak's control is locked on the current device.
 
     Returns "" when the tweak is supported (control stays enabled).
     User decision 2026-10-01: unsupported tweaks stay visible but locked
-    instead of being hidden or toggleable.
+    instead of being hidden or toggleable. The reason comes from the same
+    deliverability predicate the backend uses, so a MobileGestalt-backed
+    tweak shows the shared capability reason, not a generic version guess.
     """
+    reason = tweak_incompatibility_reason(
+        tweak_id, device_version, is_iphone, device_build)
+    if reason:
+        return (QCoreApplication.translate("Nugget", "Locked: ") + reason)
     spec = SPECS_BY_ID.get(tweak_id)
     if spec is None:
         return ""
@@ -187,6 +198,20 @@ class IOSSectionContent(QWidget):
             device_ver = self.window.device_manager.get_current_device_version()
         except Exception:
             device_ver = ""
+        try:
+            device_build = self.window.device_manager.get_current_device_build()
+        except Exception:
+            device_build = ""
+        # Wave 10: a device switch is a state transition, not just a repaint.
+        # If MobileGestalt is locked/unknown on the newly selected device,
+        # stale ON state from a supported device, a preset, or the no-device
+        # screen is forced off before anything renders or counts it.
+        clear_unsupported_mobilegestalt_state(
+            mobilegestalt_decision(device_build, device_ver), tweaks_dict=tweaks)
+        # Wave 10 Package 1: on the audited iOS 26.6.1 target, research-only
+        # rows render locked by the shared deliverability predicate and any
+        # stale ON state is forced off before rendering/counting.
+        clear_audit_research_only_state(device_ver, device_build, tweaks_dict=tweaks)
         # iOS 27 moved the feature-flag store from
         # /var/preferences/FeatureFlags/Global.plist to
         # /var/preferences/FeatureFlags/Settings.plist (sole path read by the
@@ -202,9 +227,12 @@ class IOSSectionContent(QWidget):
         except Exception:
             model = ""
         is_iphone = model.startswith("iPhone")
+        self._device_version = device_ver
+        self._device_build = device_build
+        self._is_iphone = is_iphone
 
         def is_compatible(tweak_id: TweakID) -> bool:
-            return is_tweak_compatible(tweak_id, device_ver, is_iphone)
+            return is_tweak_compatible(tweak_id, device_ver, is_iphone, device_build)
 
         # Helper to create a switch row for boolean tweaks.
         # Every row is the same height with the same inner padding, and the
@@ -221,7 +249,7 @@ class IOSSectionContent(QWidget):
                 self.force_solarium_fallback_card = card
             # Unsupported on this iOS: visible but locked (user decision
             # 2026-10-01) instead of hidden — the switch cannot be toggled.
-            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id, device_ver, is_iphone, device_build)
             if lock_reason:
                 card.setEnabled(False)
             row_layout = QHBoxLayout(card)
@@ -262,7 +290,7 @@ class IOSSectionContent(QWidget):
                 return
             # Unsupported on this iOS: visible but locked (user decision
             # 2026-10-01) instead of skipped — the dialog cannot be opened.
-            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id, device_ver, is_iphone, device_build)
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
@@ -295,7 +323,7 @@ class IOSSectionContent(QWidget):
                 return
             # Unsupported on this iOS: visible but locked (user decision
             # 2026-10-01) instead of skipped — the dialog cannot be opened.
-            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id)
+            lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id, device_ver, is_iphone, device_build)
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
@@ -352,6 +380,11 @@ class IOSSectionContent(QWidget):
         collapsed_sections = _load_collapsed_sections()
         for section in sections_to_render:
             if section in hidden_sections:
+                continue
+            if not SPECS_BY_SECTION[section]:
+                # Wave 10 Package 1: a section whose audited specs were all
+                # killed (Feature Flags) must not render as an empty product
+                # section.
                 continue
             collapsible = IOSCollapsibleSection(
                 QCoreApplication.translate("Nugget", section.value),
@@ -423,7 +456,33 @@ class IOSSectionContent(QWidget):
         if self._solarium_visible is not None and self.force_solarium_fallback_card is not None:
             self.force_solarium_fallback_card.setVisible(self._solarium_visible)
 
+    def _current_compatible(self, tweak_id: TweakID) -> bool:
+        """Re-check deliverability at mutation time (not just render time)."""
+        try:
+            dm = self.window.device_manager
+            version = dm.get_current_device_version() or ""
+            build = dm.get_current_device_build() or ""
+            model = dm.get_current_device_model() or ""
+        except Exception:
+            version = getattr(self, "_device_version", "") or ""
+            build = getattr(self, "_device_build", "") or ""
+            model = "iPhone" if getattr(self, "_is_iphone", True) else ""
+        return is_tweak_compatible(
+            tweak_id, version, model.startswith("iPhone"), build)
+
     def _on_registry_switch(self, tweak_id: TweakID, checked: bool):
+        # State-level guard: a visible-but-locked card cannot be toggled, but
+        # programmatic signals, stale switches, and preset-synced widgets can
+        # still fire. Re-check the shared predicate before mutating the model;
+        # an unsupported tweak is forced off instead of enabled.
+        if checked and not self._current_compatible(tweak_id):
+            set_tweak_enabled(tweak_id, False)
+            sw = self._switches.get(tweak_id)
+            if sw is not None and sw.isChecked():
+                sw.blockSignals(True)
+                sw.setChecked(False)
+                sw.blockSignals(False)
+            return
         # Mutual exclusion (B26): enabling one side of an Enable/Disable or
         # RTL/LTR pair turns the other side off in the model; keep the partner
         # switches visually in sync without re-firing their toggled signals.
@@ -453,6 +512,9 @@ class IOSSectionContent(QWidget):
                 " background-color: transparent;")
 
     def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
+        if not self._current_compatible(tweak_id):
+            set_tweak_enabled(tweak_id, False)
+            return
         dialog = TextInputDialog(title, current, self)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
@@ -461,6 +523,9 @@ class IOSSectionContent(QWidget):
             row.setText(f"{title}  ({display})")
 
     def _show_number_input_dialog(self, tweak_id: TweakID, title: str, current, row: IOSSettingsRow, min_val, max_val, step: float = 1.0):
+        if not self._current_compatible(tweak_id):
+            set_tweak_enabled(tweak_id, False)
+            return
         dialog = NumberInputDialog(title, current, min_val, max_val, self, step=step)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()

@@ -68,9 +68,120 @@ class ThemeColors:
 
 
 # ---------------------------------------------------------------------------
-# Sky palette (WorkSlop Desktop): fresh light UI — comfortable white-blue
-# tech theme. Soft blue-white body, deep navy text, Apple-blue accents.
-# Flat and solid — no gradients, no blur, no translucency on text surfaces.
+# Reference-blue palette (WorkSlop Desktop, Wave 10 layout rebuild): the
+# bright-blue desktop-tool identity modeled on the user's reference —
+# strong #0B65D8 header/footer bars (deepened in v5 so the blue/white
+# identity never looks washed out), white content, light-grey device
+# panel. The user-selected accent still drives primary actions through
+# ACCENT_PRESETS.
+# ---------------------------------------------------------------------------
+WS_BLUE = ThemeColors(
+    bg_primary="#FFFFFF",
+    bg_secondary="#FFFFFF",
+    bg_tertiary="#EAF1F8",
+    bg_input="#F4F7FB",
+    bg_elevated="#FFFFFF",
+
+    text_primary="#1C2B3A",
+    text_secondary="#5A6D80",
+    text_disabled="#9DB0C1",
+    text_inverse="#FFFFFF",
+
+    accent="#0B65D8",
+    accent_hover="#005CB8",
+    accent_pressed="#004A94",
+
+    success="#2FA84F",
+    error="#E5484D",
+    error_hover="#F0666A",
+    error_pressed="#C03540",
+    warning="#E8930C",
+
+    border="#C4D6E8",
+    divider="#D8E6F2",
+
+    scrollbar="#9FBBD8",
+    scrollbar_pressed="#7CA3CC",
+    selection="#0B65D8",
+
+    card_border="#C4D6E8",
+    surface_hover="#DCEBF9",
+    danger_text="#C03540",
+
+    bg_gradient_start="#FFFFFF",
+    bg_gradient_end="#E9F3FD",
+    glass_bg="#FFFFFF",
+    glass_border="#C4D6E8",
+    bubble="rgba(11, 101, 216, 0.08)",
+
+    menu_bg="#0B65D8",
+    menu_text="#FFFFFF",
+    menu_dim="#A8D4FF",
+    menu_active_bg="#0053A8",
+    menu_active_text="#FFFFFF",
+    brand="#0B65D8",
+    brand_dim="#2E7FC4",
+)
+
+
+# ---------------------------------------------------------------------------
+# Workbench palette (Wave 10 first rebuild, rejected by the user as ugly;
+# archived under riset/wave10/archive-old-ui/workbench-v1). Kept only so
+# older constructions/imports keep working. Do not use for new UI.
+# ---------------------------------------------------------------------------
+WORKBENCH = ThemeColors(
+    bg_primary="#E8EDF4",
+    bg_secondary="#FFFFFF",
+    bg_tertiary="#DCE5F0",
+    bg_input="#F3F6FA",
+    bg_elevated="#FFFFFF",
+
+    text_primary="#101828",
+    text_secondary="#526179",
+    text_disabled="#93A1B5",
+    text_inverse="#FFFFFF",
+
+    accent="#0877FF",
+    accent_hover="#2B8BFF",
+    accent_pressed="#005BD1",
+
+    success="#12B76A",
+    error="#F04438",
+    error_hover="#F97066",
+    error_pressed="#D92D20",
+    warning="#F79009",
+
+    border="#C7D3E3",
+    divider="#D9E2EE",
+
+    scrollbar="#AFC0D6",
+    scrollbar_pressed="#849DBB",
+    selection="#0877FF",
+
+    card_border="#D3DEEB",
+    surface_hover="#EAF1FA",
+    danger_text="#D92D20",
+
+    bg_gradient_start="#E8EDF4",
+    bg_gradient_end="#F7F9FC",
+    glass_bg="#FFFFFF",
+    glass_border="#D3DEEB",
+    bubble="rgba(8, 119, 255, 0.05)",
+
+    menu_bg="#0B1220",
+    menu_text="#E6EDF7",
+    menu_dim="#8FA1B9",
+    menu_active_bg="#0877FF",
+    menu_active_text="#FFFFFF",
+    brand="#00BFA6",
+    brand_dim="#63E6D2",
+)
+
+
+# ---------------------------------------------------------------------------
+# Sky palette (retired in Wave 10): fresh light UI — comfortable white-blue
+# tech theme. Kept only so older constructions/imports keep working; the app
+# now ships WORKBENCH. Do not use for new UI.
 # ---------------------------------------------------------------------------
 SKY = ThemeColors(
     bg_primary="#F2F7FF",
@@ -178,7 +289,7 @@ DARK = ThemeColors(
 # Accent presets: (normal, hover, pressed)
 # ---------------------------------------------------------------------------
 ACCENT_PRESETS = {
-    "blue":     ("#007AFF", "#0066CC", "#0055AA"),
+    "blue":     ("#0B65D8", "#005CB8", "#004A94"),
     "purple":   ("#AF52DE", "#9B47C4", "#893DAB"),
     "pink":     ("#FF2D55", "#E6284D", "#CC2244"),
     "red":      ("#FF3B30", "#E6352B", "#CC2F26"),

@@ -34,10 +34,24 @@ _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 MAX_TENDIES_PER_RESTORE = 5
 
 from src.devicemanagement.constants import (
-    Device, Version, is_device_supported, is_gestalt_supported,
+    Device, Version, is_device_supported, mobilegestalt_decision,
+)
+from src.tweaks.capabilities import (
+    canonical_tweak_id,
+    clear_audit_research_only_state, clear_unsupported_mobilegestalt_state,
+    is_audit_research_only, is_audit_target, is_removed_tweak,
+    requires_gestalt, tweak_deliverability, validate_custom_resolution,
 )
 from src.devicemanagement.data_singleton import DataSingleton
 from .preference_manager import PreferenceManager
+
+# Wave 10 Apply Journal (separate from restore/lastapply.py, which stays
+# the sparse-signature optimization record and is never an audit record).
+from src.controllers.apply_journal import (
+    begin_journal, value_summary,
+    TW_DELIVERED, TW_FAILED, TW_NOT_DELIVERED, TW_SKIPPED, TW_STAGED,
+)
+from src.tweaks.registry import SPECS_BY_ID, Kind as _SpecKind
 
 from src.utils.alerts import ApplyAlertMessage
 from src.utils.pages import Page
@@ -146,6 +160,12 @@ class DeviceManager:
         # copy it somewhere safe.
         self.last_protective_backup_root: str | None = None
         
+        # Wave 10 Apply Journal state for the running operation.
+        self.last_apply_journal_path: str | None = None
+        self._current_journal = None
+        self._journal_error: str | None = None
+        self._hotload_forced_daemon_keys: set = set()
+
         # Test mode
         self._test_mode = "--test-mode" in sys.argv
     
@@ -280,6 +300,8 @@ class DeviceManager:
         if index == None or len(self.devices) == 0:
             self.data_singleton.current_device = None
             self.data_singleton.device_available = False
+            self.data_singleton.gestalt_path = None
+            clear_unsupported_mobilegestalt_state(mobilegestalt_decision("", ""))
             self.current_device_index = 0
         else:
             self.data_singleton.current_device = self.devices[index]
@@ -292,7 +314,8 @@ class DeviceManager:
                 self.data_singleton.device_available = False
             else:
                 self.data_singleton.device_available = True
-            if is_gestalt_supported(dev.build, dev.version):
+            gestalt_decision = mobilegestalt_decision(dev.build, dev.version)
+            if gestalt_decision.supported:
                 # Nugget's gestalt flow: reuse the saved per-UDID MobileGestalt
                 # copy when it still matches this device's build/model.
                 if self.pref_manager.has_valid_mga_data(
@@ -302,6 +325,11 @@ class DeviceManager:
                     self.data_singleton.gestalt_path = self.data_singleton.SAVED_GESTALT_STRING
                 else:
                     self.data_singleton.gestalt_path = None
+            else:
+                # Locked/unknown: no stale gestalt file or ON state from a
+                # previous device may survive this selection.
+                self.data_singleton.gestalt_path = None
+                clear_unsupported_mobilegestalt_state(gestalt_decision)
             self.current_device_index = index
         
     def get_current_device_name(self) -> str:
@@ -425,13 +453,20 @@ class DeviceManager:
                 "the device over the cable). Please use the original Nugget "
                 "for other versions."))
 
-    def get_current_device_is_gestalt_supported(self) -> bool:
-        """MobileGestalt rule: open on iOS 16.0 -> iOS 26.2 beta 1,
-        locked on 26.2 beta 2 and newer."""
+    def get_current_mobilegestalt_decision(self):
+        """Shared MobileGestalt decision for the selected device.
+
+        Build evidence is authoritative; version is only a fallback when
+        the build is unknown, and no device is fail-closed (unknown).
+        """
         device = self.data_singleton.current_device
         if device == None:
-            return False
-        return is_gestalt_supported(device.build, device.version)
+            return mobilegestalt_decision("", "")
+        return mobilegestalt_decision(device.build, device.version)
+
+    def get_current_device_is_gestalt_supported(self) -> bool:
+        """True only when the shared MobileGestalt decision is supported."""
+        return self.get_current_mobilegestalt_decision().supported
 
     def apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
         asyncio.run(self._apply_gestalt_tweaks(update_label, show_alert))
@@ -479,10 +514,15 @@ class DeviceManager:
         build = self.get_current_device_build()
         device = self.data_singleton.current_device
         version = device.version if device != None else ""
-        if not is_gestalt_supported(build, version):
+        decision = mobilegestalt_decision(build, version)
+        if not decision.supported:
+            cleared = clear_unsupported_mobilegestalt_state(decision)
+            if cleared:
+                log_warn("Cleared unsupported MobileGestalt tweak state: "
+                         + ", ".join(sorted(cleared)))
             raise NuggetException(QCoreApplication.tr(
-                "MobileGestalt tweaks are not supported on this iOS version.\n\n"
-                "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
+                "MobileGestalt tweaks are not supported on this device.\n\n")
+                + decision.user_message)
         udid = self.get_current_device_udid()
         if not udid:
             raise NuggetException(QCoreApplication.tr("No device selected."))
@@ -499,7 +539,14 @@ class DeviceManager:
         has_gestalt = any(
             isinstance(tw, gestalt_tweak_types) and tw.enabled
             for tw in tweaks.values()
-        ) or len(CustomGestaltTweaks.custom_tweaks) > 0
+        )
+        if len(CustomGestaltTweaks.custom_tweaks) > 0:
+            # Wave 10 Package 1: CustomGestaltTweaks is killed as a product
+            # surface. Stale in-memory custom keys are ignored here and never
+            # become CacheExtra payload, even on a MobileGestalt-supported
+            # device.
+            log_warn("CustomGestaltTweaks ignored: killed Wave 10 product "
+                     "surface; no custom CacheExtra payload was generated.")
         # B20 FIX (continued): the RDAR fix switch lives on the MobileGestalt
         # page but this button ignored it. Honor it here too.
         rdar_tweak = tweaks.get(TweakID.RdarFix)
@@ -516,7 +563,6 @@ class DeviceManager:
                 tweak = tweaks[tweak_name]
                 if isinstance(tweak, gestalt_tweak_types):
                     gestalt_plist = tweak.apply_tweak(gestalt_plist)
-            gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
             self.concat_file(
                 contents=plistlib.dumps(gestalt_plist),
                 path=FileLocation.mga.value,
@@ -631,6 +677,13 @@ class DeviceManager:
         original_tendies = list(pb.tendies)
         try:
             self._raise_if_unsupported()
+            # Wave 10 Apply Journal: begin the durable per-tweak record for
+            # this operation (finalized by the tweak pass, or below on the
+            # early-return/abort paths). Never read by the restore path.
+            self.last_apply_journal_path = None
+            self._journal_error = None
+            self._current_journal = begin_journal(
+                "apply", device=self._journal_device_info())
             update_label(QCoreApplication.tr("Applying changes to files..."))
             self._protective_backup_skipped = False
             self._known_backup_encryption = None  # re-established by Phase 0
@@ -762,10 +815,169 @@ class DeviceManager:
             if tendie_warn and final_alert is not None:
                 final_alert.txt = f"{final_alert.txt}\n\n{tendie_warn}"
         except Exception as e:
+            self._journal_error = f"{type(e).__name__}: {e}"
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
         finally:
+            journal = getattr(self, "_current_journal", None)
+            if journal is not None and not journal.finalized:
+                # The tweak pass finalizes the paths it owns; reaching this
+                # point unfinalized means the operation stopped before or
+                # outside the pass (early abort vs. hard failure).
+                self._finish_journal(
+                    journal,
+                    "failed" if self._journal_error else "aborted",
+                    error=self._journal_error)
+            self._current_journal = None
             pb.tendies = original_tendies
             show_alert(final_alert)
+
+    # -- Wave 10 Apply Journal helpers ------------------------------------
+    def _journal_device_info(self) -> dict:
+        return {
+            "name": self.get_current_device_name(),
+            "model": self.get_current_device_model(),
+            "ios": self.get_current_device_version(),
+            "build": self.get_current_device_build(),
+            "udid": self.get_current_device_udid(),
+        }
+
+    def _finish_journal(self, journal, status, error=None) -> None:
+        if journal is None or journal.finalized:
+            return
+        try:
+            journal.finalize(status, error=error)
+            self.last_apply_journal_path = journal.path
+            log_info(f"APPLY_JOURNAL operation_id={journal.operation_id} "
+                     f"mode={journal.mode} status={status} "
+                     f"tweaks={len(journal.data['tweaks'])} path={journal.path}")
+        except Exception as e:
+            log_warn(f"Apply Journal finalize failed: {e}")
+
+    def _journal_describe(self, journal, tweak_name, tweak) -> list:
+        """Build the journal entry (or entries) for one requested tweak.
+
+        Descriptor resolution: registry spec first, then the Status Bar
+        operation descriptors, then MobileGestalt classes, then a marked
+        fallback so no enabled tweak ever lacks an entry.
+        """
+        name = tweak_name.name if hasattr(tweak_name, "name") else str(tweak_name)
+
+        def base():
+            return {
+                "tweak_id": name,
+                "requested": True,
+                "source": ("hotload" if (tweak_name == TweakID.Daemons
+                                         and self._hotload_forced_daemon_keys)
+                           else "tweak_state"),
+                "compatibility": {"result": "compatible", "reason": None},
+                "hotload": {"result": "allowed", "reason": None},
+            }
+
+        if isinstance(tweak, StatusBarTweak):
+            entries = []
+            try:
+                ops = tweak.describe_active_operations()
+            except Exception:
+                ops = []
+            if not ops:
+                ops = [{"id": "statusbar.overrides", "name": "Status Bar",
+                        "family": "Status Bar", "count": 0}]
+            for op in ops:
+                entry = base()
+                entry.update({
+                    "id": op.get("id"),
+                    "name": op.get("name"),
+                    "family": op.get("family", "Status Bar"),
+                    "kind": "special",
+                    "operation": {k: v for k, v in op.items()
+                                  if k not in ("id", "name", "family")},
+                })
+                entries.append(journal.add_entry(entry))
+            return entries
+
+        canonical = canonical_tweak_id(tweak_name)
+        spec = SPECS_BY_ID.get(canonical)
+        if spec is not None:
+            entry = base()
+            if isinstance(tweak, AdvancedPlistTweak):
+                kind = "advanced"
+                operation = {"location": spec.location.value, "keys": []}
+            elif isinstance(tweak, FeatureFlagTweak):
+                kind = "feature_flag"
+                operation = {"location": spec.location.value,
+                             "key": spec.key}
+            else:
+                kind = "plist"
+                operation = {
+                    "location": spec.location.value,
+                    "key": spec.key,
+                    "value": value_summary(
+                        getattr(tweak, "value", spec.value),
+                        sensitive=(spec.kind == _SpecKind.TEXT)),
+                }
+            entry.update({"id": name, "name": spec.title,
+                          "family": spec.section.value, "kind": kind,
+                          "operation": operation})
+            return [journal.add_entry(entry)]
+
+        if isinstance(tweak, (MobileGestaltTweak, MobileGestaltPickerTweak,
+                              MobileGestaltMultiTweak,
+                              MobileGestaltCacheDataTweak)):
+            operation = {}
+            if getattr(tweak, "key", None):
+                operation["cache_extra_key"] = tweak.key
+            if getattr(tweak, "subkey", None):
+                operation["subkey"] = tweak.subkey
+            entry = base()
+            entry.update({"id": f"tweakid.{name.lower()}", "name": name,
+                          "family": "MobileGestalt", "kind": "special",
+                          "operation": operation})
+            return [journal.add_entry(entry)]
+
+        entry = base()
+        entry.update({"id": f"tweakid.{name.lower()}", "name": name,
+                      "family": type(tweak).__name__, "kind": "special",
+                      "descriptor_missing": True, "operation": {}})
+        return [journal.add_entry(entry)]
+
+    def _journal_attach(self, journal, side: dict) -> None:
+        """Attach staged files to entries and resolve pre-restore states.
+
+        ``side`` carries generation-time associations keyed by id(entry):
+        ``slices`` [(start, end) index ranges into files_to_restore],
+        ``plist`` (FileLocation, contributed keys), and ``bookrestore``
+        (tweak names whose only payload route was skipped).
+        """
+        slices = side.get("slices", {})
+        plist_assoc = side.get("plist", {})
+        bookrestore = side.get("bookrestore", set())
+        for entry in journal.data["tweaks"]:
+            for start, end in slices.get(id(entry), []):
+                keys = [journal.key_for_index(i)
+                        for i in range(start, end)]
+                journal.associate(entry, [k for k in keys if k])
+            assoc = plist_assoc.get(id(entry))
+            if assoc is not None:
+                location, keys = assoc
+                rel_path, domain = self.get_domain_for_path(location.value)
+                candidate = f"{domain}/{rel_path.lstrip('/')}"
+                if candidate in journal._file_keys:
+                    journal.associate(entry, [candidate])
+                if entry.get("kind") == "advanced":
+                    entry["operation"]["keys"] = sorted(keys)
+            if entry["status"] != "requested":
+                continue
+            if entry["files"]:
+                entry["status"] = TW_STAGED
+            elif entry["tweak_id"] in bookrestore:
+                entry["status"] = TW_SKIPPED
+                entry["skip_reason"] = "bookrestore_unsupported"
+            elif entry.get("operation", {}).get("no_file_reason"):
+                entry["status"] = TW_SKIPPED
+                entry["skip_reason"] = entry["operation"]["no_file_reason"]
+            else:
+                entry["status"] = TW_FAILED
+                entry["error"] = "no_file_staged"
 
     def _apply_hotload_daemon_forcing(self):
         """HotLoad "disable_daemon" rules: force their daemons into the
@@ -778,6 +990,7 @@ class DeviceManager:
             forced = hotload.disabled_daemon_keys(
                 device_version=self.get_current_device_version(),
                 device_model=self.get_current_device_model())
+            self._hotload_forced_daemon_keys = set(forced)
             if not forced:
                 return
             from src.tweaks.tweak_loader import load_daemons
@@ -1193,10 +1406,193 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         hotload_hidden_names = hotload.hidden_tweak_names(
             device_version=hotload_version, device_model=hotload_model)
 
+        # Wave 10 backend gate: one shared MobileGestalt decision for the
+        # whole pass. Locked/unknown clears any stale ON state before files
+        # are generated, and the per-tweak pre-loop below skips anything
+        # undeliverable (removed tombstones, registry version/device-class
+        # locks, MobileGestalt capability) with a logged reason instead of
+        # letting the UI/backend disagree.
+        device_build = self.get_current_device_build()
+        gestalt_decision = mobilegestalt_decision(device_build, hotload_version)
+        if not gestalt_decision.supported:
+            cleared = clear_unsupported_mobilegestalt_state(gestalt_decision)
+            if cleared:
+                log_warn("Cleared unsupported MobileGestalt tweak state before apply: "
+                         + ", ".join(sorted(cleared)))
+        # Wave 10 Package 1: audit research-only rows are contained on the
+        # audited target. Clear stale ON state before generation so it can
+        # neither produce a payload nor be counted as a ship feature; the
+        # per-tweak deliverability gate below remains as defense in depth.
+        cleared_research = clear_audit_research_only_state(
+            hotload_version, device_build)
+        if cleared_research:
+            log_warn("Cleared audit research-only tweak state before apply: "
+                     + ", ".join(sorted(cleared_research)))
+        is_iphone_device = hotload_model.startswith("iPhone") if hotload_model else True
+        backend_skipped: list[dict] = []
+
+        # Wave 10 Apply Journal snapshot: one entry per tweak enabled at
+        # snapshot time (after HotLoad daemon forcing, before the state
+        # clears below so cleared tweaks still get their skipped entry).
+        journal = getattr(self, "_current_journal", None)
+        j_side = {"slices": {}, "plist": {}, "bookrestore": set()}
+        j_entries: dict = {}
+        j_current = None
+        if journal is not None:
+            try:
+                for _jname, _jtweak in tweaks.items():
+                    if not getattr(_jtweak, "enabled", False):
+                        continue
+                    if _jname in (TweakID.PosterBoard, TweakID.Templates):
+                        try:
+                            if _jtweak.is_empty():
+                                continue
+                        except Exception:
+                            pass
+                    _jkey = _jname.name if hasattr(_jname, "name") else str(_jname)
+                    j_entries[_jkey] = self._journal_describe(
+                        journal, _jname, _jtweak)
+            except Exception as e:
+                log_warn(f"Apply Journal snapshot failed: {e}")
+                journal = None
+
+        if journal is not None:
+            # Tweaks force-cleared above (MobileGestalt lock / audit
+            # research-only containment) are disabled by snapshot time;
+            # they still earn a skipped entry with the gate's reason.
+            for _cname in list(cleared or []) + list(cleared_research or []):
+                if _cname in j_entries:
+                    continue
+                for _tid, _tw in tweaks.items():
+                    if (_tid.name if hasattr(_tid, "name") else str(_tid)) == _cname:
+                        j_entries[_cname] = self._journal_describe(
+                            journal, _tid, _tw)
+                        break
+
+        def j_skip(tname, reason, *, hotload_reason=None, compat_reason=None):
+            if journal is None:
+                return
+            key = tname.name if hasattr(tname, "name") else str(tname)
+            for entry in j_entries.get(key, []):
+                if entry["status"] != "requested":
+                    continue
+                entry["status"] = TW_SKIPPED
+                entry["skip_reason"] = reason
+                if hotload_reason is not None:
+                    entry["hotload"] = {"result": "skipped",
+                                        "reason": hotload_reason}
+                if compat_reason is not None:
+                    entry["compatibility"] = {"result": "incompatible",
+                                              "reason": compat_reason}
+
+        def j_fail(tname, err):
+            if journal is None or tname is None:
+                return
+            key = tname.name if hasattr(tname, "name") else str(tname)
+            for entry in j_entries.get(key, []):
+                if entry["status"] == "requested":
+                    entry["status"] = TW_FAILED
+                    entry["error"] = f"{type(err).__name__}: {err}"
+
+        if journal is not None:
+            for _cname in (cleared or []):
+                j_skip(_cname, "mobilegestalt_unsupported_build")
+            for _cname in (cleared_research or []):
+                j_skip(_cname, "AUDIT_RESEARCH_ONLY")
+
         try:
             # set the plist keys
             for tweak_name in tweaks:
                 tweak = tweaks[tweak_name]
+                # Backend pre-loop gate (Wave 10): an enabled tweak that is
+                # removed, version/device-class locked, or MobileGestalt-
+                # backed on a locked/unknown device is skipped before any
+                # file is generated. The reason is logged with its stable
+                # reason_code; skipped tweaks contribute no payload and so
+                # never enter the sparse signature / lastapply record.
+                if getattr(tweak, "enabled", False):
+                    deliverable, reason_code, reason = tweak_deliverability(
+                        tweak_name, device_version=hotload_version,
+                        device_build=device_build,
+                        is_iphone=is_iphone_device, tweak=tweak)
+                    if not deliverable:
+                        backend_skipped.append({
+                            "tweak_id": tweak_name.name
+                            if hasattr(tweak_name, "name") else str(tweak_name),
+                            "reason_code": reason_code,
+                            "reason": reason,
+                        })
+                        if requires_gestalt(tweak_name, tweak):
+                            j_skip(tweak_name, "mobilegestalt_unsupported_build")
+                        elif reason_code in ("VERSION_BELOW_MIN",
+                                             "VERSION_ABOVE_MAX",
+                                             "IPHONE_ONLY", "IPAD_ONLY"):
+                            j_skip(tweak_name, "registry_incompatible",
+                                   compat_reason=reason)
+                        else:
+                            j_skip(tweak_name, reason_code)
+                        log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
+                                 f"{reason_code} — {reason}")
+                        continue
+                    # Hard delivery-model guard: a plain plist tweak must
+                    # never write the MobileGestalt cache file directly.
+                    # MobileGestalt content only ever rides the validated
+                    # CacheExtra merge below (FileLocation.mga there).
+                    if (isinstance(tweak, BasicPlistTweak)
+                            and getattr(tweak, "file_location", None) == FileLocation.mga):
+                        backend_skipped.append({
+                            "tweak_id": tweak_name.name
+                            if hasattr(tweak_name, "name") else str(tweak_name),
+                            "reason_code": "WRONG_DELIVERY_MODEL",
+                            "reason": "BasicPlistTweak may not write FileLocation.mga.",
+                        })
+                        j_skip(tweak_name, "WRONG_DELIVERY_MODEL")
+                        log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
+                                 "WRONG_DELIVERY_MODEL — BasicPlistTweak may not "
+                                 "write FileLocation.mga.")
+                        continue
+                    # Risky CustomResolution backend gate (Wave 10 P0): the
+                    # GUI only checks that the fields parse as ints. The
+                    # backend is authoritative — canvas keys only, integer
+                    # dimensions inside the existing RDAR canvas envelope,
+                    # otherwise the tweak is skipped before any payload is
+                    # generated. Passing this gate is a safety check, not a
+                    # claim the resolution works on this device.
+                    if tweak_name == TweakID.CustomResolution:
+                        res_ok, res_code, res_reason = validate_custom_resolution(
+                            getattr(tweak, "value", None))
+                        if not res_ok:
+                            backend_skipped.append({
+                                "tweak_id": tweak_name.name
+                                if hasattr(tweak_name, "name") else str(tweak_name),
+                                "reason_code": res_code,
+                                "reason": res_reason,
+                            })
+                            j_skip(tweak_name, res_code)
+                            log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
+                                     f"{res_code} — {res_reason}")
+                            continue
+                # Data-driven research-only families (PosterBoard /
+                # Templates) select work by queued files rather than the
+                # enabled flag, so the enabled-only gate above is not enough
+                # for them. On the audited target they are skipped before
+                # any payload is generated; queued user data is left intact.
+                if (tweak_name in (TweakID.PosterBoard, TweakID.Templates)
+                        and is_audit_research_only(tweak_name)
+                        and is_audit_target(hotload_version, device_build)
+                        and not tweak.is_empty()):
+                    backend_skipped.append({
+                        "tweak_id": tweak_name.name
+                        if hasattr(tweak_name, "name") else str(tweak_name),
+                        "reason_code": "AUDIT_RESEARCH_ONLY",
+                        "reason": "Research-only in the Wave 10 audit; not a "
+                                  "supported iOS 26.6.1 ship feature.",
+                    })
+                    j_skip(tweak_name, "AUDIT_RESEARCH_ONLY")
+                    log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
+                             "AUDIT_RESEARCH_ONLY — Research-only in the Wave 10 "
+                             "audit; not a supported iOS 26.6.1 ship feature.")
+                    continue
                 # HotLoad: never apply tweaks flagged as dangerous/broken for
                 # this device / iOS version (kill switch off -> no rules match),
                 # and never apply tweaks of a hidden feature.
@@ -1210,7 +1606,19 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                             device_version=hotload_version,
                                             device_model=hotload_model) is not None):
                     hotload_skipped.append(tweak_name)
+                    if getattr(tweak, "enabled", False):
+                        j_skip(tweak_name,
+                               "hotload_hidden_feature"
+                               if tweak_name.name in hotload_hidden_names
+                               else "hotload_rule",
+                               hotload_reason="HotLoad safety rules flagged "
+                                              "this tweak for this device.")
                     continue
+                j_current = tweak_name
+                j_start = len(files_to_restore)
+                j_plist_before = {loc: dict(d) for loc, d in basic_plists.items()}
+                j_flag_before = {c: (dict(v) if isinstance(v, dict) else v)
+                                 for c, v in flag_plist.items()}
                 if isinstance(tweak, FeatureFlagTweak):
                     # ported from leminlimez/Nugget: collect every enabled
                     # feature flag into one plist, written to
@@ -1272,6 +1680,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         tweak.apply_ios27_tweak(files_to_restore)
                         if tweak.enabled:
                             uses_domains = True
+                            # Defense in depth (Wave 10): the classic-binary
+                            # no-SIM feature never delivers on iOS 27.
+                            if journal is not None:
+                                for entry in j_entries.get("StatusBar", []):
+                                    if (entry.get("id") == "statusbar.full_signal_bars_no_sim"
+                                            and entry["status"] == "requested"):
+                                        entry["status"] = TW_SKIPPED
+                                        entry["skip_reason"] = "statusbar_unsupported_ios"
                     else:
                         # iOS 26 and below: classic binary statusBarOverrides
                         # in HomeDomain.
@@ -1288,11 +1704,52 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     # base plist file, like the MobileGestalt page flow).
                     if tweak.enabled:
                         gestalt_tweaks.append(tweak)
+                # Wave 10 Apply Journal: record what this tweak generated
+                # (file slice + merged-plist contributions) for the attach
+                # step. Entries stay "requested" until files are attached.
+                if journal is not None:
+                    _jkey = (tweak_name.name if hasattr(tweak_name, "name")
+                             else str(tweak_name))
+                    _jentries = j_entries.get(_jkey, [])
+                    if _jentries and len(files_to_restore) > j_start:
+                        for _entry in _jentries:
+                            j_side["slices"].setdefault(id(_entry), []).append(
+                                (j_start, len(files_to_restore)))
+                    if _jentries and getattr(tweak, "enabled", False):
+                        if isinstance(tweak, (BasicPlistTweak, AdvancedPlistTweak)):
+                            _loc = tweak.file_location
+                            _after = basic_plists.get(_loc, {})
+                            _before = j_plist_before.get(_loc, {})
+                            _keys = [k for k, v in _after.items()
+                                     if k not in _before or _before[k] != v]
+                            if _keys:
+                                for _entry in _jentries:
+                                    j_side["plist"][id(_entry)] = (_loc, _keys)
+                        elif isinstance(tweak, FeatureFlagTweak):
+                            _after = flag_plist
+                            _before = j_flag_before
+                            _keys = [k for k, v in _after.items()
+                                     if k not in _before or _before[k] != v]
+                            if _keys:
+                                for _entry in _jentries:
+                                    j_side["plist"][id(_entry)] = (
+                                        FileLocation.featureflags, _keys)
+                        elif isinstance(tweak, NullifyFileTweak):
+                            for _entry in _jentries:
+                                j_side["plist"][id(_entry)] = (
+                                    tweak.file_location, [])
 
             if hotload_skipped:
                 names = sorted(t.name if hasattr(t, "name") else str(t) for t in hotload_skipped)
                 update_label(QCoreApplication.tr(
                     "Skipped HotLoad-flagged tweaks: ") + ", ".join(names))
+
+            if backend_skipped:
+                summary = ", ".join(
+                    f"{entry['tweak_id']} ({entry['reason_code']})"
+                    for entry in backend_skipped)
+                update_label(QCoreApplication.tr(
+                    "Skipped unsupported/removed tweaks: ") + summary)
 
             # Eligibility / Apple Intelligence files (ported from Nugget).
             # /var/db/... paths are DatabaseDomain and go through the normal
@@ -1313,6 +1770,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         update_label(QCoreApplication.tr(
                             "Skipped (needs BookRestore, not supported by this fork): ")
                             + elig_file.restore_path)
+                        j_side["bookrestore"].add(TweakID.EUEnabler.name)
             if ai_file is not None:
                 self.concat_file(
                     contents=ai_file.contents,
@@ -1326,29 +1784,48 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # CacheData), so the user's base plist file is required — the
             # same file the MobileGestalt page uses. Without it this raises
             # a clear error instead of silently applying nothing.
-            if gestalt_tweaks or len(CustomGestaltTweaks.custom_tweaks) > 0:
-                if not is_gestalt_supported(self.get_current_device_build(),
-                                            self.get_current_device_version()):
+            if gestalt_tweaks:
+                if not gestalt_decision.supported:
                     # B14 FIX: never poison the whole apply. Locked gestalt
                     # builds used to raise here, failing EVERYTHING (including
                     # unrelated tweaks). Skip the gestalt tweaks with a clear
-                    # warning and apply the rest.
-                    log_warn("MobileGestalt tweaks are not supported on this iOS version "
-                             "(open on iOS 16.0 through iOS 26.2 beta 1 only) — "
-                             "skipping them, applying everything else.")
+                    # warning and apply the rest. Enabled gestalt tweaks were
+                    # already skipped per-tweak in the pre-loop.
+                    log_warn("MobileGestalt tweaks skipped: "
+                             f"{gestalt_decision.reason_code} — "
+                             f"{gestalt_decision.user_message}")
+                    if journal is not None:
+                        for _gname, _gtweak in tweaks.items():
+                            if any(_gtweak is _g for _g in gestalt_tweaks):
+                                j_skip(_gname, "mobilegestalt_unsupported_build")
                     update_label(QCoreApplication.tr(
                         "Note: MobileGestalt tweaks were skipped (not supported on this iOS version)."))
                 else:
                     gestalt_plist = self._load_gestalt_plist(update_label)
                     for gtweak in gestalt_tweaks:
                         gestalt_plist = gtweak.apply_tweak(gestalt_plist)
-                    gestalt_plist = CustomGestaltTweaks.apply_tweaks(gestalt_plist)
                     self.concat_file(
                         contents=plistlib.dumps(gestalt_plist),
                         path=FileLocation.mga.value,
                         files_to_restore=files_to_restore,
                         owner=501, group=501,
                     )
+                    if journal is not None:
+                        _mga_idx = len(files_to_restore) - 1
+                        for _gname, _gtweak in tweaks.items():
+                            if any(_gtweak is _g for _g in gestalt_tweaks):
+                                _gkey = (_gname.name if hasattr(_gname, "name")
+                                         else str(_gname))
+                                for _entry in j_entries.get(_gkey, []):
+                                    j_side["slices"].setdefault(
+                                        id(_entry), []).append(
+                                        (_mga_idx, _mga_idx + 1))
+            if len(CustomGestaltTweaks.custom_tweaks) > 0:
+                # Wave 10 Package 1: killed product surface. A stale
+                # in-memory custom-key list never triggers the MobileGestalt
+                # merge and never contributes CacheExtra payload.
+                log_warn("CustomGestaltTweaks ignored: killed Wave 10 product "
+                         "surface; no custom CacheExtra payload was generated.")
 
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
@@ -1416,6 +1893,17 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     owner=501, group=501
                 )
 
+            # Wave 10 Apply Journal: staging is complete — attach the file
+            # records, resolve per-tweak staged/skipped/failed states, and
+            # persist the post-staging state before the restore begins.
+            if journal is not None:
+                journal.attach_files(files_to_restore)
+                self._journal_attach(journal, j_side)
+                try:
+                    journal.write()
+                except Exception as e:
+                    log_warn(f"Apply Journal staging write failed: {e}")
+
             # Check if backup encryption is enabled and handle it
             backup_password = ""
             if Version(self.get_current_device_version()) >= Version("27.0"):
@@ -1474,15 +1962,48 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # include_keychain only when backup encryption is active — iOS rejects
             # keychain entries in an unencrypted backup, and the keychain is what
             # preserves Apple Watch pairing / iMessage identity across the wipe.
-            final_alert = await self.start_restore(
-                files_to_restore, update_label, backup_password=backup_password,
-                prepared_backup_root=prepared_backup_root,
-                skip_protective_backup=skip_protective_backup,
-                include_keychain=bool(backup_password),
-                prompt_choice=prompt_choice,
-                supervised=self.pref_manager.supervised,
-                organization_name=self.pref_manager.organization_name)
+            try:
+                final_alert = await self.start_restore(
+                    files_to_restore, update_label, backup_password=backup_password,
+                    prepared_backup_root=prepared_backup_root,
+                    skip_protective_backup=skip_protective_backup,
+                    include_keychain=bool(backup_password),
+                    prompt_choice=prompt_choice,
+                    supervised=self.pref_manager.supervised,
+                    organization_name=self.pref_manager.organization_name)
+            except Exception as restore_err:
+                # The restore call raised: staged tweaks were not delivered.
+                if journal is not None and not journal.finalized:
+                    for _entry in journal.data["tweaks"]:
+                        if _entry["status"] == TW_STAGED:
+                            _entry["status"] = TW_NOT_DELIVERED
+                    self._finish_journal(
+                        journal, "failed",
+                        error=f"{type(restore_err).__name__}: {restore_err}")
+                raise
+            if journal is not None and not journal.finalized:
+                for _entry in journal.data["tweaks"]:
+                    if _entry["status"] == TW_STAGED:
+                        _entry["status"] = TW_DELIVERED
+                _partial = any(
+                    _entry["status"] in (TW_FAILED, TW_NOT_DELIVERED)
+                    for _entry in journal.data["tweaks"])
+                self._finish_journal(
+                    journal, "partial" if _partial else "success")
             return final_alert, files_to_restore
+        except Exception as pass_err:
+            # Generation (or an unexpected mid-pass failure): the entry for
+            # the tweak being generated is marked failed; the operation ends
+            # failed. Restore failures already finalized above.
+            if journal is not None and not journal.finalized:
+                j_fail(j_current, pass_err)
+                for _entry in journal.data["tweaks"]:
+                    if _entry["status"] == TW_STAGED:
+                        _entry["status"] = TW_NOT_DELIVERED
+                self._finish_journal(
+                    journal, "failed",
+                    error=f"{type(pass_err).__name__}: {pass_err}")
+            raise
         finally:
             if len(tmp_dirs) > 0:
                 for tmp_dir in tmp_dirs:
@@ -1496,10 +2017,35 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
     def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
         asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice))
     async def _reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        journal = None
+        j_page_paths: dict = {}
+        final_alert = None
+        files_to_restore: list = []
         try:
             self._raise_if_unsupported()
+            # Wave 10 Apply Journal: one entry per requested reset page.
+            self.last_apply_journal_path = None
+            self._journal_error = None
+            try:
+                journal = begin_journal("reset", device=self._journal_device_info())
+            except Exception as e:
+                # The journal is auxiliary logging; it must never block a reset.
+                log_warn(f"Apply Journal reset init failed: {e}")
+                journal = None
+            self._current_journal = journal
+            if journal is not None:
+                for _page in reset_pages:
+                    journal.add_entry({
+                        "id": f"reset.{_page.name.lower()}",
+                        "tweak_id": None,
+                        "name": _page.getPageName(),
+                        "family": "Reset",
+                        "kind": "reset_page",
+                        "requested": True,
+                        "source": "reset_page",
+                        "operation": {"page": _page.name},
+                    })
             # create the restore file list
-            files_to_restore: list[FileToRestore] = []
             udid = self.get_current_device_udid()
             if not udid:
                 raise NuggetException(QCoreApplication.tr("No device connected."))
@@ -1512,10 +2058,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # "original" re-wrote the very tweaks the user asked to remove.
             files_to_null: list[str] = []
             uses_domains = False
+            _page_starts: list = []
+            _null_starts: list = []
 
             # plain if-chains, not match: the page set is a long, stable list
             # and a flat chain keeps the diff readable when pages are added
             for page in reset_pages:
+                _page_starts.append(len(files_to_restore))
+                _null_starts.append(len(files_to_null))
                 if page == Page.StatusBar:
                     ## STATUS BAR
                     dev_version = self.get_current_device_version()
@@ -1684,31 +2234,69 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     except NuggetException as e:
                         log_warn(f"MobileGestalt reset skipped: {e}")
 
-            # add the files to null from the list
+            _direct_total = len(files_to_restore)
+
+            # Add the files to null from the list. Wave 10 P0: NEVER stage a
+            # zero-byte plist on iOS 26.x (or any other version). A truncated
+            # com.apple.springboard.plist can crash SpringBoard at boot on
+            # iOS 26.2+, and a forced restore from there lands on iOS 27
+            # because iOS 26.x is no longer signed. A valid empty plist is
+            # the safe reset payload for every file in this list: it parses
+            # and makes the system fall back to its default values. This
+            # replaces the old iOS 26 zero-byte branch outright; there is no
+            # version-dependent byte content anymore.
+            reset_contents = plistlib.dumps({})
             for file_path in files_to_null:
-                if dev_version and Version(dev_version) >= Version("27.0"):
-                    # Restore a valid empty plist instead of a zero-byte
-                    # file: on iOS 26.2+ a truncated plist (e.g. an empty
-                    # com.apple.springboard.plist) makes SpringBoard crash
-                    # at boot, which sends the device into a boot loop. An
-                    # empty dict parses fine and makes the system fall back
-                    # to its default values.
-                    contents = plistlib.dumps({})
-                else:
-                    # iOS 26: reset matches the original Nugget, which writes
-                    # empty (zero-byte) files without any capture.
-                    contents = b""
                 self.concat_file(
-                    contents=contents,
+                    contents=reset_contents,
                     path=file_path,
                     files_to_restore=files_to_restore
                 )
 
             await self.add_skip_setup(files_to_restore, uses_domains)
 
+            # Wave 10 Apply Journal: attach the staged reset artifacts to
+            # their page entries before the restore begins.
+            if journal is not None:
+                keys = journal.attach_files(files_to_restore)
+                direct_end = _direct_total
+                for _idx, _page in enumerate(reset_pages):
+                    entry = journal.data["tweaks"][_idx]
+                    start = _page_starts[_idx]
+                    end = (_page_starts[_idx + 1]
+                           if _idx + 1 < len(reset_pages) else direct_end)
+                    page_keys = [keys[i] for i in range(start, end)]
+                    null_end = (_null_starts[_idx + 1]
+                                if _idx + 1 < len(reset_pages)
+                                else len(files_to_null))
+                    for _path in files_to_null[_null_starts[_idx]:null_end]:
+                        _rel, _domain = self.get_domain_for_path(_path)
+                        _key = f"{_domain}/{_rel.lstrip('/')}"
+                        if _key in keys:
+                            page_keys.append(_key)
+                    # add_skip_setup files belong to no single page; they
+                    # ride the last segment boundary and are left in the
+                    # top-level file list only.
+                    journal.associate(entry, page_keys)
+                    entry["status"] = TW_STAGED if page_keys else TW_FAILED
+                    if not page_keys:
+                        entry["error"] = "no_file_staged"
+                try:
+                    journal.write()
+                except Exception as e:
+                    log_warn(f"Apply Journal reset staging write failed: {e}")
+
             # restore to the device
             final_alert = await self.start_restore(files_to_restore, update_label,
                                                    prompt_choice=prompt_choice)
+            if journal is not None:
+                for _entry in journal.data["tweaks"]:
+                    if _entry["status"] == TW_STAGED:
+                        _entry["status"] = TW_DELIVERED
+                _partial = any(_entry["status"] == TW_FAILED
+                               for _entry in journal.data["tweaks"])
+                self._finish_journal(
+                    journal, "partial" if _partial else "success")
             # the device is back to stock — drop the apply record so a future
             # apply never skips Phase 2 against a reset device. The pristine
             # GP base goes too: it described the pre-tweak device, which the
@@ -1720,6 +2308,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 clear_gp_base(udid)
             update_label(QCoreApplication.tr("Success!"))
         except Exception as e:
+            if journal is not None and not journal.finalized:
+                for _entry in journal.data["tweaks"]:
+                    if _entry["status"] == TW_STAGED:
+                        _entry["status"] = TW_NOT_DELIVERED
+                self._finish_journal(
+                    journal, "failed", error=f"{type(e).__name__}: {e}")
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
         finally:
+            self._current_journal = None
             show_alert(final_alert)

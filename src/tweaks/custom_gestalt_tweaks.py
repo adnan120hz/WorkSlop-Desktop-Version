@@ -1,3 +1,7 @@
+# Wave 10 Package 1: CustomGestaltTweaks is killed as a product surface.
+# This module is retained only so the backend can detect and ignore a stale
+# in-memory custom-key list left by an older build; the GUI no longer
+# renders it and no apply path calls apply_tweaks() anymore.
 # Ported verbatim from leminlimez/Nugget
 # (src/tweaks/custom_gestalt_tweaks.py).
 from enum import Enum

@@ -6,6 +6,19 @@ from src.utils.file_to_restore import FileToRestore
 from cffi import FFI
 ffi = FFI()
 
+# --- Full Signal Bars (No SIM Visual) -------------------------------------
+# Named v1 candidate recipe (Wave 10 buildspec §2.2): primary GSM bar count
+# plus the signal-strength item (index 4) and cellular-service item (index 6)
+# forced visible. The value 4 is provisional — it follows the only in-repo
+# full-scale precedent (the iOS 27 archive cellular displayValue); whether
+# the classic renderer wants 4 or 5 is decided by the device matrix, not by
+# the generic GUI range. Research-only/unproven on iOS 26.6.1: this is a
+# visual override candidate, never a claim of real cellular service.
+FULL_SIGNAL_BARS = 4
+FULL_SIGNAL_FILE = "HomeDomain/Library/SpringBoard/statusBarOverrides"
+FULL_SIGNAL_FEATURE_ID = "statusbar.full_signal_bars_no_sim"
+FULL_SIGNAL_FEATURE_NAME = "Full Signal Bars (No SIM Visual)"
+
 def _truncate_utf8(text: str, max_bytes: int) -> bytes:
     """Encode *text* as UTF-8, cutting at a character boundary so the result
     is at most *max_bytes* bytes.
@@ -160,6 +173,71 @@ class StatusBarTweak(Tweak):
         self._set_flag("overrideGSMSignalStrengthBars", "GSMSignalStrengthBars", id)
     def unset_gsm_signal_strength_bars(self) -> None:
         self._unset_flag("overrideGSMSignalStrengthBars")
+
+    # FULL SIGNAL BARS (NO SIM VISUAL)
+    # Dedicated recipe: bar count + item visibility combined. This is the
+    # ONLY caller allowed to combine them; the generic setter above must
+    # keep respecting the user's own item-visibility choices (audit B29).
+    def set_full_signal_bars_no_sim(self) -> None:
+        self.set_gsm_signal_strength_bars(FULL_SIGNAL_BARS)
+        self.set_item_override(StatusBarItem.CellularSignalStrengthStatusBarItem, True)
+        self.set_item_override(StatusBarItem.CellularServiceStatusBarItem, True)
+
+    def unset_full_signal_bars_no_sim(self) -> None:
+        # Clears only the owned override flags; values stay in the struct
+        # (existing _unset_flag semantics: no flag = stock rendering) and
+        # every unrelated override is untouched.
+        self.unset_gsm_signal_strength_bars()
+        self.unset_item_override(StatusBarItem.CellularSignalStrengthStatusBarItem)
+        self.unset_item_override(StatusBarItem.CellularServiceStatusBarItem)
+
+    def is_full_signal_bars_no_sim_enabled(self) -> bool:
+        return (
+            self.is_gsm_signal_strength_bars_overridden()
+            and self.get_gsm_signal_strength_bars_override() == FULL_SIGNAL_BARS
+            and self.is_item_overridden(StatusBarItem.CellularSignalStrengthStatusBarItem)
+            and self.get_item_override(StatusBarItem.CellularSignalStrengthStatusBarItem)
+            and self.is_item_overridden(StatusBarItem.CellularServiceStatusBarItem)
+            and self.get_item_override(StatusBarItem.CellularServiceStatusBarItem)
+        )
+
+    def describe_full_signal_bars_no_sim(self) -> dict:
+        return {
+            "id": FULL_SIGNAL_FEATURE_ID,
+            "name": FULL_SIGNAL_FEATURE_NAME,
+            "family": "Status Bar",
+            "bars": FULL_SIGNAL_BARS,
+            "items": [
+                StatusBarItem.CellularSignalStrengthStatusBarItem.value,
+                StatusBarItem.CellularServiceStatusBarItem.value,
+            ],
+            "file": FULL_SIGNAL_FILE,
+        }
+
+    def describe_active_operations(self) -> list:
+        """Active Status Bar operations for summaries/journals.
+
+        The no-SIM feature gets its own named entry; the generic entry's
+        count excludes the feature-owned flags so an apply summary never
+        double-counts them.
+        """
+        ops = []
+        feature_on = self.is_full_signal_bars_no_sim_enabled()
+        if feature_on:
+            ops.append(self.describe_full_signal_bars_no_sim())
+        generic = self.count_overrides()
+        if feature_on:
+            # Owned contributions: overrideGSMSignalStrengthBars plus the
+            # two overrideItemIsEnabled entries (indices 4 and 6).
+            generic -= 3
+        if generic > 0:
+            ops.append({
+                "id": "statusbar.overrides",
+                "name": "Status Bar",
+                "family": "Status Bar",
+                "count": generic,
+            })
+        return ops
 
 
     ### SECONDARY CARRIER

@@ -4,7 +4,8 @@ from PySide6.QtCore import QSize
 
 from webbrowser import open_new_tab
 
-from src.controllers.web_request_handler import Nugget_Repo, get_latest_version
+from src.controllers.web_request_handler import (
+    WORKSLOP_LATEST_URL, get_latest_version)
 
 class PBHelpDialog(QDialog):
     def __init__(self, parent=None):
@@ -46,8 +47,6 @@ from PySide6.QtGui import QFont, QIcon, QPixmap, QDesktopServices
 from PySide6.QtCore import QSize, Qt, QUrl
 
 from webbrowser import open_new_tab
-
-from src.controllers.web_request_handler import Nugget_Repo, get_latest_version
 
 # App version
 from src.gui.version import App_Version, App_Build
@@ -154,6 +153,7 @@ class AboutProgramDialog(QDialog):
             ("AAR Handling", "Snoolie", "https://github.com/0xilis/python-aar-stuff"),
             ("AI Eligibility", "f1shy-dev", "https://github.com/f1shy-dev"),
             ("PosterBoard Icons", "JJTech", "https://github.com/JJTech0130"),
+            ("UI reference", "3uTools", "https://www.3u.com"),
         ]
         
         for title, name, url in credits:
@@ -241,8 +241,12 @@ class AboutProgramDialog(QDialog):
 
 
 class UpdateAppDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, result=None, parent=None):
         super().__init__(parent)
+        # Wave 10: the dialog is driven by the structured update result and
+        # opens the selected release's exact html_url, never a rebuilt
+        # /releases/latest guess.
+        self._result = result
 
         QBtn = (
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
@@ -259,10 +263,16 @@ class UpdateAppDialog(QDialog):
         title.setFont(title_font)
 
         message_text = ""
-        latest_version = get_latest_version()
+        latest_version = None
+        if result is not None and result.latest is not None:
+            latest_version = result.latest.version
+        if latest_version is None:
+            latest_version = get_latest_version()
         if latest_version != None:
             # REAUDIT FIX: was "Nugget v{0}" — user-visible dialog text.
             message_text += self.tr("WorkSlop Desktop v{0} is available. ").format(latest_version)
+        if result is not None and result.latest is not None and result.latest.prerelease:
+            message_text += self.tr("This is a beta / prerelease build.") + " "
         message_text += self.tr("Would you like to go to the download on GitHub?")
         message = QLabel(message_text)
 
@@ -272,6 +282,10 @@ class UpdateAppDialog(QDialog):
         self.setLayout(layout)
 
     def accept(self):
-        # open up the repo page
-        open_new_tab(f"https://github.com/{Nugget_Repo}")
+        # open the exact release page the checker selected
+        if (self._result is not None and self._result.latest is not None
+                and self._result.latest.html_url):
+            open_new_tab(self._result.latest.html_url)
+        else:
+            open_new_tab(WORKSLOP_LATEST_URL)
         super().accept()

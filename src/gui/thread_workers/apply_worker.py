@@ -110,6 +110,9 @@ class ApplyThread(QThread):
             self._do_work()
             self.success = True
             self._error_msg = ""
+            _journal_path = getattr(self.manager, "last_apply_journal_path", None)
+            if _journal_path:
+                log_context("APPLY JOURNAL", path=_journal_path)
             log_context(f"FINISH {mode} OK")
             self.finished_with_result.emit(True, "")
         except Exception as e:

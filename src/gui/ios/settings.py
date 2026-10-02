@@ -252,6 +252,14 @@ class IOSSettingsPage(QWidget):
             self._hotload.is_enabled(), self._make_hotload_handler(),
             first=True)
 
+        # --- Updates ---
+        up_lay = self._ws_section("Updates")
+        self._make_update_channel_combo(
+            self._ws_control_row(up_lay, "UP", tr("Update channel"),
+                                 first=True))
+        self._ws_action_row(up_lay, "CK", tr("Check for Updates"),
+                            self._on_check_updates_clicked)
+
         # --- Language ---
         ln_lay = self._ws_section("App Language")
         lang_body = self._ws_control_row(ln_lay, "LN", tr("App Language"), first=True)
@@ -336,6 +344,76 @@ class IOSSettingsPage(QWidget):
         ab_lay = self._ws_section("About")
         self._ws_action_row(ab_lay, "AB", tr("About WorkSlop Desktop"),
                             self.show_about, first=True)
+
+    def _make_update_channel_combo(self, lay):
+        from src.controllers.web_request_handler import (
+            CHANNEL_BETA, CHANNEL_STABLE, get_update_channel,
+            set_update_channel)
+        tr = lambda s: QCoreApplication.translate("Nugget", s)
+        self.update_channel_drp = QComboBox()
+        self._update_channels = [CHANNEL_STABLE, CHANNEL_BETA]
+        # Static literals only — the translation extractor cannot match a
+        # variable argument (see AGENTS.md i18n rules).
+        self.update_channel_drp.addItem(tr("Release (non-prerelease)"))
+        self.update_channel_drp.addItem(tr("Beta / prerelease"))
+        try:
+            self.update_channel_drp.setCurrentIndex(
+                self._update_channels.index(get_update_channel()))
+        except ValueError:
+            self.update_channel_drp.setCurrentIndex(0)
+        self.update_channel_drp.currentIndexChanged.connect(
+            lambda idx: set_update_channel(self._update_channels[idx]))
+        lay.addWidget(self.update_channel_drp)
+
+    def _on_check_updates_clicked(self):
+        # Manual check: network runs on a worker thread, never the GUI
+        # thread; dedupe is bypassed so the outcome is always reported.
+        from PySide6.QtCore import QObject, QThread, Signal
+
+        if (getattr(self, "_update_thread", None) is not None
+                and self._update_thread.isRunning()):
+            return
+
+        class _UpdateWorker(QObject):
+            done = Signal(object)
+
+            def run(self):
+                try:
+                    from src.controllers.web_request_handler import (
+                        check_for_update, get_update_channel)
+                    from src.gui.version import App_Version, App_Build
+                    result = check_for_update(
+                        App_Version, App_Build, get_update_channel(),
+                        force=True)
+                except Exception:
+                    result = None
+                self.done.emit(result)
+
+        tr = lambda s: QCoreApplication.translate("Nugget", s)
+        thread = QThread(self)
+        worker = _UpdateWorker()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.done.connect(thread.quit)
+        worker.done.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+
+        def _report(result):
+            if result is not None and result.outcome == "update_available":
+                from src.gui.dialogs import UpdateAppDialog
+                UpdateAppDialog(result, self).exec()
+            elif result is not None and result.outcome == "up_to_date":
+                QMessageBox.information(self, tr("Check for Updates"),
+                                        tr("You are up to date."))
+            else:
+                QMessageBox.warning(self, tr("Check for Updates"),
+                                    tr("Couldn't check for updates. "
+                                       "Please try again later."))
+
+        worker.done.connect(_report)
+        self._update_thread = thread
+        self._update_worker = worker
+        thread.start()
 
     def _make_language_combo(self, lay):
         self.lang_drp = QComboBox()

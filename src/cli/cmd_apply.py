@@ -126,6 +126,8 @@ def run(args) -> int:
                      show_alert=print_alert,
                      prompt_password=prompt_password,
                      prompt_choice=prompt_choice)
+    if getattr(dm, "last_apply_journal_path", None):
+        print(f"Apply journal: {dm.last_apply_journal_path}")
     print("Apply finished.")
     return 0
 

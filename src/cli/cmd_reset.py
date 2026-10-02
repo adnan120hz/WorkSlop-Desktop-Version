@@ -77,6 +77,8 @@ def run(args) -> int:
     dm.reset_tweaks(pages, settings,
                     update_label=print_status,
                     show_alert=print_alert)
+    if getattr(dm, "last_apply_journal_path", None):
+        print(f"Apply journal: {dm.last_apply_journal_path}")
     print("Reset finished.")
     return 0
 

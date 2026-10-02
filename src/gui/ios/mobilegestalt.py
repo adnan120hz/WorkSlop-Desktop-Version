@@ -9,7 +9,7 @@ import plistlib
 from PySide6.QtCore import QCoreApplication, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QComboBox,
-    QLineEdit, QFileDialog, QMessageBox, QSizePolicy, QToolButton,
+    QLineEdit, QFileDialog, QMessageBox, QSizePolicy,
 )
 
 from src.gui.ios.components import (
@@ -18,8 +18,8 @@ from src.gui.ios.components import (
 from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
 from src.tweaks.tweak_loader import load_mobilegestalt, load_rdar_fix
-from src.tweaks.custom_gestalt_tweaks import CustomGestaltTweaks, ValueTypeStrings
-from src.devicemanagement.constants import is_gestalt_supported
+from src.devicemanagement.constants import mobilegestalt_decision
+from src.tweaks.capabilities import clear_unsupported_mobilegestalt_state
 
 
 def tr(s: str) -> str:
@@ -142,19 +142,30 @@ class _GestaltContent(QWidget):
         self._built = False
 
     # -- page lifecycle ----------------------------------------------------
+    def _current_decision(self):
+        try:
+            device = self.window.device_manager.data_singleton.current_device
+        except Exception:
+            device = None
+        if device is None:
+            return mobilegestalt_decision("", "")
+        return mobilegestalt_decision(
+            getattr(device, "build", "") or "",
+            getattr(device, "version", "") or "")
+
     def refresh(self):
         dm = self.window.device_manager
         device = dm.data_singleton.current_device
         version = device.version if device is not None else ""
         build = device.build if device is not None else ""
-        # B33 FIX: the page gate must match the apply gate
-        # (device_manager.get_current_device_is_gestalt_supported), which uses
-        # build-OR-version. Build-only here used to disable the controls on a
-        # device the apply pass would still accept (e.g. a valid iOS 26.0 build
-        # missing from the 106-build allowlist).
-        gestalt_ok = is_gestalt_supported(build, version)
-        load_mobilegestalt(build)
-        load_rdar_fix(device)
+        # One shared decision everywhere (Home, Tweaks, Eligibility, presets,
+        # backend). Exact build is authoritative; unknown is fail-closed.
+        decision = mobilegestalt_decision(build, version)
+        gestalt_ok = decision.supported
+        if not gestalt_ok:
+            clear_unsupported_mobilegestalt_state(decision)
+        load_mobilegestalt(build, version, decision)
+        load_rdar_fix(device, decision)
         self._build_tweaks_ui()
         self._update_mga_label()
         self._sync_switches()
@@ -167,9 +178,7 @@ class _GestaltContent(QWidget):
             # Device is connected but its build is outside iOS 16.0 - 26.2b1.
             # (Checked separately from device_available so a connected device
             # on an unsupported build gets the build reason, not "connect".)
-            self._show_notice(tr(
-                "MobileGestalt tweaks are not supported on this iOS build. "
-                "MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only."))
+            self._show_notice(tr(decision.user_message))
         else:
             self._notice_card.hide()
         self._set_controls_enabled(device is not None and gestalt_ok)
@@ -209,7 +218,15 @@ class _GestaltContent(QWidget):
         self._switches[tweak_id] = sw
         return sw
 
-    def _on_switch(self, tweak_id, checked: bool, on_change):
+    def _on_switch(self, tweak_id, checked: bool, on_change=None):
+        # State-level guard: disabled widgets are presentation only. A stale
+        # or programmatic toggle must not enable a MobileGestalt tweak while
+        # the shared decision is locked/unknown.
+        if checked and not self._current_decision().supported:
+            if tweak_id in tweaks:
+                set_tweak_enabled(tweak_id, False)
+            self._sync_switches()
+            return
         # Mutual exclusion (B19): the "Enable LGLPM" / "Disable LGLPM" pair
         # writes the same MobileGestalt key with value 1 vs 0, so turning one
         # on turns the other off; _sync_switches() below redraws every switch.
@@ -302,14 +319,10 @@ class _GestaltContent(QWidget):
         self._add_switch("SRD", TweakID.SRD)
         self._add_switch("Collision SOS", TweakID.CollisionSOS)
 
-        # Custom gestalt keys
-        self._tweaks_layout.addWidget(IOSSectionHeader(tr("Custom Gestalt Keys")))
-        self._custom_keys_layout = QVBoxLayout()
-        self._custom_keys_layout.setSpacing(8)
-        self._tweaks_layout.addLayout(self._custom_keys_layout)
-        add_btn = IOSPrimaryButton(tr("Add Custom Key"))
-        add_btn.clicked.connect(self._on_add_custom_key)
-        self._tweaks_layout.addWidget(add_btn)
+        # Wave 10 Package 1: the former custom-key editor product surface
+        # is killed. Arbitrary user-typed MobileGestalt keys have no reader
+        # evidence and are never rendered or applied as a normal tweak
+        # surface again.
 
     def _show_notice(self, text: str):
         self._notice_lbl.setText(text)
@@ -351,6 +364,11 @@ class _GestaltContent(QWidget):
             self._rdar_label.setText(f"{rdar_title} ({res_title})")
 
     def _on_di_activated(self, index: int):
+        if not self._current_decision().supported:
+            if TweakID.DynamicIsland in tweaks:
+                tweaks[TweakID.DynamicIsland].set_enabled(False)
+            self._sync_switches()
+            return
         # Ported from leminlimez/Nugget's gestalt.py::on_dynamicIslandDrp_activated.
         if TweakID.DynamicIsland not in tweaks:
             return
@@ -388,8 +406,9 @@ class _GestaltContent(QWidget):
 
     def _update_support_banner(self, version: str, build: str = ""):
         """Persistent banner stating the supported iOS range."""
-        # B33 FIX: same build-OR-version gate as the apply pass (see refresh).
-        ok = is_gestalt_supported(build, version) if build else False
+        # Same shared decision as refresh/apply (exact build authoritative).
+        decision = mobilegestalt_decision(build, version)
+        ok = decision.supported
         ver_txt = f"iOS {version}" if version else "no device"
         state = (tr("This device ({ver}) is supported.")
                  if ok else tr("This device ({ver}) is NOT supported — "
@@ -443,53 +462,6 @@ class _GestaltContent(QWidget):
         dm.pref_manager.remove_mga_data(dm.get_current_device_udid())
         dm.data_singleton.gestalt_path = None
         self._update_mga_label()
-
-    # -- custom gestalt keys ---------------------------------------------------
-    def _on_add_custom_key(self):
-        # Row layout ported from Nugget's on_addGestaltKeyBtn_clicked.
-        key_id = CustomGestaltTweaks.create_tweak()
-
-        widget = QWidget()
-        lay = QHBoxLayout(widget)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(8)
-
-        key_field = QLineEdit()
-        key_field.setPlaceholderText(tr("Key"))
-        key_field.setStyleSheet(self._lineedit_style())
-        key_field.textEdited.connect(
-            lambda txt, kid=key_id: CustomGestaltTweaks.set_tweak_key(kid, txt))
-        lay.addWidget(key_field, 3)
-
-        type_combo = QComboBox()
-        type_combo.addItems(ValueTypeStrings)
-        type_combo.setStyleSheet(t("combo_dropdown"))
-        lay.addWidget(type_combo, 2)
-
-        value_field = QLineEdit()
-        value_field.setPlaceholderText(tr("Value"))
-        value_field.setText("1")
-        value_field.setStyleSheet(self._lineedit_style())
-        value_field.textEdited.connect(
-            lambda txt, kid=key_id: CustomGestaltTweaks.set_tweak_value(kid, txt))
-        type_combo.activated.connect(
-            lambda idx, kid=key_id, vf=value_field:
-                vf.setText(CustomGestaltTweaks.set_tweak_value_type(kid, idx)))
-        lay.addWidget(value_field, 2)
-
-        del_btn = QToolButton()
-        del_btn.setText("\u2715")
-        del_btn.setCursor(Qt.PointingHandCursor)
-        del_btn.clicked.connect(
-            lambda _, kid=key_id, w=widget: self._delete_custom_key(kid, w))
-        lay.addWidget(del_btn)
-
-        self._custom_keys_layout.addWidget(widget)
-
-    def _delete_custom_key(self, key_id: int, widget: QWidget):
-        CustomGestaltTweaks.deactivate_tweak(key_id)
-        self._custom_keys_layout.removeWidget(widget)
-        widget.setParent(None)
 
     # -- apply -----------------------------------------------------------------
     def _on_apply(self):

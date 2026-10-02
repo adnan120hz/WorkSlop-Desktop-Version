@@ -1,36 +1,34 @@
 """Device compatibility for tweaks.
 
 The constraints themselves live in the tweak registry
-(``TweakSpec.min_version`` / ``iphone_only`` / ``ipad_only``); this module
-only evaluates them.
+(``TweakSpec.min_version`` / ``iphone_only`` / ``ipad_only`` /
+``requires_gestalt``); this module only evaluates them, together with the
+one shared MobileGestalt capability decision. The backend apply pass uses
+the same predicate via ``src.tweaks.capabilities`` so the UI and the apply
+path cannot disagree.
 """
-from src.devicemanagement.constants import Version
-from src.tweaks.registry import SPECS_BY_ID
+from src.tweaks.capabilities import tweak_deliverability
 
 
-def is_tweak_compatible(tweak_id, device_version: str, is_iphone: bool) -> bool:
+def is_tweak_compatible(tweak_id, device_version: str, is_iphone: bool,
+                        device_build: str = "") -> bool:
     """Return True if the tweak makes sense on the given device.
 
-    Tweak IDs outside the registry (special tweaks like PosterBoard) carry no
-    constraints here and are always compatible.
+    Registry version/device-class constraints and, for MobileGestalt-backed
+    tweaks, the shared MobileGestalt decision must all pass. Unknown device
+    evidence never blocks ordinary tweaks, but always blocks
+    MobileGestalt-backed ones (fail-closed).
     """
-    spec = SPECS_BY_ID.get(tweak_id)
-    if spec is None:
-        return True
-    if device_version and spec.min_version:
-        try:
-            if Version(device_version) < Version(spec.min_version):
-                return False
-        except Exception:
-            pass
-    if device_version and spec.max_version:
-        try:
-            if Version(device_version) > Version(spec.max_version):
-                return False
-        except Exception:
-            pass
-    if spec.ipad_only and is_iphone:
-        return False
-    if spec.iphone_only and not is_iphone:
-        return False
-    return True
+    deliverable, _reason, _message = tweak_deliverability(
+        tweak_id, device_version=device_version, device_build=device_build,
+        is_iphone=is_iphone)
+    return deliverable
+
+
+def tweak_incompatibility_reason(tweak_id, device_version: str,
+                                 is_iphone: bool, device_build: str = "") -> str:
+    """User-facing reason a tweak is locked, or "" when it is compatible."""
+    deliverable, _reason, message = tweak_deliverability(
+        tweak_id, device_version=device_version, device_build=device_build,
+        is_iphone=is_iphone)
+    return "" if deliverable else message

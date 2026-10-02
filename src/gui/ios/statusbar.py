@@ -56,6 +56,30 @@ class IOSStatusBarPage(QWidget):
             survives_ios27=True,
         )
 
+        # Named no-SIM feature (Wave 10): one recipe combining bar count +
+        # item visibility on the classic binary path. Research-only and
+        # unproven on iOS 26.6.1 — the copy says so, and the row stays
+        # disabled wherever the shared capability gate contains Status Bar.
+        self._header(QCoreApplication.translate("Nugget", "Signal"))
+        self.full_signal_switch = self._make_switch(
+            QCoreApplication.translate("Nugget", "Full Signal Bars (No SIM Visual)"),
+            self.status_manager.is_full_signal_bars_no_sim_enabled(),
+            self._on_full_signal_toggled,
+        )
+        self._signal_desc = QLabel(QCoreApplication.translate(
+            "Nugget",
+            "Visual only. Shows filled cellular bars when no SIM is detected; "
+            "it does not restore cellular service. Research-only: unverified "
+            "on iOS 26.6.1."
+        ))
+        self._signal_desc.setWordWrap(True)
+        self.content_layout.addWidget(self._signal_desc)
+        self._rows.append((self._signal_desc, False))
+        self._signal_note = QLabel("")
+        self._signal_note.setWordWrap(True)
+        self.content_layout.addWidget(self._signal_note)
+        self._rows.append((self._signal_note, False))
+
         # Text rows
         self._header(QCoreApplication.translate("Nugget", "Text"), survives_ios27=True)
         self.time_row = self._make_text_row(
@@ -183,6 +207,7 @@ class IOSStatusBarPage(QWidget):
 
         # Item show/hide toggles
         self._header(QCoreApplication.translate("Nugget", "Items"))
+        self._item_switches = {}
         for name, item in [
             (QCoreApplication.translate("Nugget", "Disable Focus Mode icon"), StatusBarItem.QuietModeStatusBarItem),
             (QCoreApplication.translate("Nugget", "Disable Airplane Mode icon"), StatusBarItem.AirplaneModeStatusBarItem),
@@ -201,7 +226,7 @@ class IOSStatusBarPage(QWidget):
         ]:
             overridden = self.status_manager.is_item_overridden(item)
             hidden = overridden and self.status_manager.get_item_override(item) == 0
-            self._make_switch(
+            self._item_switches[item] = self._make_switch(
                 name,
                 hidden,
                 self._make_item_handler(item),
@@ -244,6 +269,78 @@ class IOSStatusBarPage(QWidget):
         except Exception:
             return ""
 
+    def _current_build(self) -> str:
+        try:
+            return self.window.device_manager.get_current_device_build() or ""
+        except Exception:
+            return ""
+
+    def _sync_full_signal_switch(self):
+        """Reflect the backend predicate on the feature switch (no signals,
+        so re-syncing can never fight the item rows over shared fields)."""
+        try:
+            self.full_signal_switch.blockSignals(True)
+            self.full_signal_switch.setChecked(
+                self.status_manager.is_full_signal_bars_no_sim_enabled())
+            self.full_signal_switch.blockSignals(False)
+        except Exception:
+            pass
+
+    def _refresh_full_signal_gate(self, is_ios27: bool = False):
+        """Enable the named feature only where it may honestly be tried:
+        master on, a connected iOS 26.x device, and the shared capability
+        gate not containing Status Bar as research-only on this target."""
+        version = self._current_version()
+        classic_ok = False
+        if version:
+            try:
+                classic_ok = Version("26.0") <= Version(version) < Version("27.0")
+            except InvalidVersion:
+                classic_ok = False
+        deliverable = False
+        if classic_ok:
+            try:
+                from src.tweaks.capabilities import tweak_deliverability
+                deliverable, _code, _msg = tweak_deliverability(
+                    TweakID.StatusBar, device_version=version,
+                    device_build=self._current_build(),
+                    tweak=self.status_manager)
+            except Exception:
+                deliverable = False
+        enabled = bool(self.status_manager.enabled and classic_ok and deliverable)
+        try:
+            self.full_signal_switch.setEnabled(enabled)
+        except Exception:
+            pass
+        if is_ios27:
+            # Hidden with the classic rows; the iOS 27 note explains why.
+            self._signal_note.setVisible(False)
+        elif classic_ok and deliverable:
+            self._signal_note.setText("")
+            self._signal_note.setVisible(False)
+        else:
+            self._signal_note.setText(QCoreApplication.translate(
+                "Nugget",
+                "Available on iOS 26.x with the classic status bar override "
+                "file. iOS 27 is not supported yet."))
+            self._signal_note.setVisible(True)
+        self._sync_full_signal_switch()
+
+    def _on_full_signal_toggled(self, checked: bool):
+        if checked:
+            self.status_manager.set_full_signal_bars_no_sim()
+            # The feature owns index 6 as "shown"; the conflicting Disable
+            # Cellular Service icon switch must visibly turn off (display
+            # only — backend state stays the source of truth).
+            conflict = self._item_switches.get(
+                StatusBarItem.CellularServiceStatusBarItem)
+            if conflict is not None:
+                conflict.blockSignals(True)
+                conflict.setChecked(False)
+                conflict.blockSignals(False)
+        else:
+            self.status_manager.unset_full_signal_bars_no_sim()
+
     def _apply_ios27_gating(self):
         is_ios27 = False
         version = self._current_version()
@@ -255,6 +352,7 @@ class IOSStatusBarPage(QWidget):
         for widget, survives in self._rows:
             widget.setVisible(not is_ios27 or survives)
         self._ios27_note.setVisible(is_ios27)
+        self._refresh_full_signal_gate(is_ios27=is_ios27)
 
     def _header(self, title: str, survives_ios27: bool = False):
         header = IOSSectionHeader(title)
@@ -269,6 +367,9 @@ class IOSStatusBarPage(QWidget):
         # because it is a note rather than a value.
         self._ios27_note.setStyleSheet(
             f"background-color: transparent; color: {c.text_secondary}; font-size: 14px;")
+        for _lbl in (self._signal_desc, self._signal_note):
+            _lbl.setStyleSheet(
+                f"background-color: transparent; color: {c.text_secondary}; font-size: 14px;")
         for i in range(self.content_layout.count()):
             item = self.content_layout.itemAt(i)
             if item is None:
@@ -314,6 +415,10 @@ class IOSStatusBarPage(QWidget):
             elif self.status_manager.is_item_overridden(item):
                 # switch OFF → back to the stock default visibility
                 self.status_manager.unset_item_override(item)
+            # Conflict rule: hiding the cellular service item (or changing
+            # the signal item) can dissolve the named no-SIM feature; the
+            # feature switch must reflect the backend predicate.
+            self._sync_full_signal_switch()
         return handler
 
     def _make_switch(self, title: str, checked: bool, on_toggled, survives_ios27: bool = False):
@@ -435,3 +540,6 @@ class IOSStatusBarPage(QWidget):
 
     def _on_enabled_toggled(self, checked: bool):
         self.status_manager.set_enabled(checked)
+        # Master off stops staging but must not clear owned fields; it only
+        # disables the feature row like every other row's staging gate.
+        self._refresh_full_signal_gate()

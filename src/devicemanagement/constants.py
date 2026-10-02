@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from packaging.version import Version
 
 
@@ -77,7 +79,106 @@ def is_gestalt_supported_version(version: str) -> bool:
 
 
 def is_gestalt_supported(build: str, version: str) -> bool:
-    return is_gestalt_supported_build(build) or is_gestalt_supported_version(version)
+    return mobilegestalt_decision(build, version).supported
+
+
+@dataclass(frozen=True)
+class MobileGestaltDecision:
+    """The one MobileGestalt capability decision shared by every surface.
+
+    ``supported`` is true only for the explicit ``supported`` state. Locked
+    and unknown states are both fail-closed: callers must not enable, restore,
+    count, or deliver a MobileGestalt-backed tweak from either one.
+    """
+
+    state: str              # "supported", "locked", or "unknown"
+    supported: bool         # True only when state == "supported"
+    reason_code: str        # stable machine-readable code (never localized)
+    user_message: str       # short user-facing explanation
+    source: str             # "build", "version", or "none"
+    build: str              # normalized build used for the decision
+    version: str            # normalized version used for the decision
+
+    @property
+    def known(self) -> bool:
+        return self.state != "unknown"
+
+
+def _norm_version(version) -> str:
+    try:
+        return str(version or "").strip()
+    except Exception:
+        return ""
+
+
+def mobilegestalt_decision(build: str = "", version: str = "") -> MobileGestaltDecision:
+    """Return the single MobileGestalt capability decision.
+
+    Exact build evidence is authoritative because ProductVersion cannot tell
+    iOS 26.2 beta 1 from beta 2 or later. The version branch is only a
+    fallback when the exact build is absent or unknown to every relevant
+    build set. No device / no usable evidence is ``unknown``, never
+    compatible.
+    """
+    norm_build = _norm_build(build)
+    norm_version = _norm_version(version)
+    parsed_version = _parse_version(norm_version)
+
+    if not norm_build and parsed_version is None:
+        if not norm_version:
+            return MobileGestaltDecision(
+                state="unknown", supported=False, reason_code="NO_DEVICE",
+                user_message="Connect a device to check MobileGestalt support.",
+                source="none", build=norm_build, version=norm_version)
+        return MobileGestaltDecision(
+            state="unknown", supported=False,
+            reason_code="UNKNOWN_BUILD_AND_VERSION",
+            user_message="MobileGestalt support cannot be determined for this device yet.",
+            source="none", build=norm_build, version=norm_version)
+
+    if norm_build in MOBILEGESTALT_BUILDS:
+        if parsed_version is not None and parsed_version >= Version("26.2"):
+            return MobileGestaltDecision(
+                state="supported", supported=True,
+                reason_code="BUILD_VERSION_CONFLICT",
+                user_message="MobileGestalt is supported on this iOS build.",
+                source="build", build=norm_build, version=norm_version)
+        return MobileGestaltDecision(
+            state="supported", supported=True, reason_code="BUILD_ALLOWLISTED",
+            user_message="MobileGestalt is supported on this iOS build.",
+            source="build", build=norm_build, version=norm_version)
+
+    if norm_build in _POST_262B1_BUILDS:
+        return MobileGestaltDecision(
+            state="locked", supported=False,
+            reason_code="BUILD_LOCKED_POST_26_2_BETA_1",
+            user_message="MobileGestalt is locked on this iOS build (supported through iOS 26.2 beta 1 only).",
+            source="build", build=norm_build, version=norm_version)
+
+    if norm_build in SUPPORTED_BUILDS:
+        return MobileGestaltDecision(
+            state="locked", supported=False, reason_code="BUILD_NOT_ALLOWLISTED",
+            user_message="MobileGestalt is not supported on this iOS build.",
+            source="build", build=norm_build, version=norm_version)
+
+    # Exact build was empty or unknown to all relevant sets: version fallback.
+    if parsed_version is not None and parsed_version < Version("26.2"):
+        return MobileGestaltDecision(
+            state="supported", supported=True, reason_code="VERSION_BEFORE_26_2",
+            user_message="MobileGestalt is supported on this iOS version.",
+            source="version", build=norm_build, version=norm_version)
+    if parsed_version is not None and parsed_version >= Version("26.2"):
+        return MobileGestaltDecision(
+            state="locked", supported=False,
+            reason_code="VERSION_26_2_OR_NEWER_LOCKED",
+            user_message="MobileGestalt is locked on iOS 26.2 and newer unless a supported exact build is known.",
+            source="version", build=norm_build, version=norm_version)
+
+    return MobileGestaltDecision(
+        state="unknown", supported=False,
+        reason_code="UNKNOWN_BUILD_AND_VERSION",
+        user_message="MobileGestalt support cannot be determined for this device yet.",
+        source="none", build=norm_build, version=norm_version)
 
 
 def is_ios27_build(build: str) -> bool:

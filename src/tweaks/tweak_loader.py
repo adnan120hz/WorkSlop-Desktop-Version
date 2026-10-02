@@ -5,11 +5,15 @@ from .tweak_classes import (
     BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak,
     MobileGestaltTweak, MobileGestaltPickerTweak,
     MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
-    RdarFixTweak, FeatureFlagTweak,
+    RdarFixTweak,
 )
 from .eligibility_tweak import EligibilityTweak, AITweak, BookRestoreFileTweak
 from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS, UPSTREAM_DEFAULT_DAEMONS
-from src.devicemanagement.constants import is_gestalt_supported_build
+from src.devicemanagement.constants import mobilegestalt_decision
+from src.tweaks.capabilities import (
+    canonical_tweak_id, clear_unsupported_mobilegestalt_state,
+    is_removed_tweak, requires_gestalt,
+)
 
 
 def get_mobilegestalt_tweaks() -> dict:
@@ -48,43 +52,78 @@ def get_mobilegestalt_tweaks() -> dict:
     }
 
 
-def load_rdar_fix(dev=None):
+def load_rdar_fix(dev=None, decision=None):
     """Ported from leminlimez/Nugget's load_rdar_fix()
     (src/tweaks/tweak_loader.py). In Nugget this is called from
     load_mobilegestalt(dev); here it is called from the MobileGestalt page's
     refresh() right after load_mobilegestalt(), because this fork's loader
     takes a build string (build gate) instead of the device.
+
+    Wave 10 P0: RdarFix is presented through the MobileGestalt flow, so it
+    follows the same shared MobileGestalt decision even though it writes the
+    resolution plist. Locked/unknown targets never register a deliverable
+    instance; a previously registered instance is forced off instead.
     """
-    if TweakID.RdarFix in tweaks:
+    if decision is None:
+        build = getattr(dev, "build", "") if dev is not None else ""
+        version = getattr(dev, "version", "") if dev is not None else ""
+        decision = mobilegestalt_decision(build, version)
+    if not decision.supported:
+        existing = tweaks.get(TweakID.RdarFix)
+        if existing is not None:
+            try:
+                existing.set_enabled(False)
+            except Exception:
+                existing.enabled = False
         return
-    tweaks.update({TweakID.RdarFix: RdarFixTweak()})
+    if TweakID.RdarFix not in tweaks:
+        tweaks.update({TweakID.RdarFix: RdarFixTweak()})
     if dev is not None:
         # load settings
         model = getattr(dev, "model", "") or ""
         tweaks[TweakID.RdarFix].get_rdar_mode(model)
 
 
-def load_mobilegestalt(build: str = ""):
+def load_mobilegestalt(build: str = "", version: str = "", decision=None):
     """Register Nugget's MobileGestalt tweaks (idempotent).
 
-    Build rule (user decision 2026-09-30): tweaks register only on
-    iOS 16.0 -> iOS 26.2 beta 1 builds. Build-based (not version-based)
-    so 26.2 beta 1 stays included while later 26.2 builds stay out.
+    Wave 10 gating: registration is driven by the one shared
+    ``mobilegestalt_decision`` (exact build authoritative, version only as
+    fallback, unknown fail-closed). Locked/unknown devices never get
+    deliverable instances; if the family was registered earlier for a
+    supported device, any enabled state is forced off instead.
     """
-    if TweakID.DynamicIsland in tweaks:
+    if decision is None:
+        decision = mobilegestalt_decision(build, version)
+    if not decision.supported:
+        if TweakID.DynamicIsland in tweaks:
+            clear_unsupported_mobilegestalt_state(decision, tweaks_dict=tweaks)
         return
-    try:
-        if build and not is_gestalt_supported_build(build):
-            return
-    except Exception:
+    if TweakID.DynamicIsland in tweaks:
         return
     tweaks.update(get_mobilegestalt_tweaks())
 
 
 def _build_spec(spec):
     if spec.factory is not None:
-        return spec.factory()
-    return BasicPlistTweak(spec.location, spec.key, value=spec.value)
+        tweak = spec.factory()
+    else:
+        # Wave 10 invariant: a plain plist tweak must never write a
+        # top-level key into the MobileGestalt cache file. MobileGestalt
+        # delivery patches CacheExtra via the MobileGestalt tweak classes.
+        if spec.location == FileLocation.mga:
+            raise ValueError(
+                f"Registry spec {spec.id} targets FileLocation.mga without "
+                "a MobileGestalt factory; refusing to build a BasicPlistTweak "
+                "for the MobileGestalt cache.")
+        tweak = BasicPlistTweak(spec.location, spec.key, value=spec.value)
+    if getattr(spec, "requires_gestalt", False) and not isinstance(
+            tweak, (MobileGestaltTweak, MobileGestaltPickerTweak,
+                    MobileGestaltMultiTweak, MobileGestaltCacheDataTweak)):
+        raise ValueError(
+            f"Registry spec {spec.id} requires MobileGestalt but its factory "
+            f"built {type(tweak).__name__}, not a MobileGestalt tweak.")
+    return tweak
 
 
 def load_plist_tweaks():
@@ -92,7 +131,22 @@ def load_plist_tweaks():
 
     Specs marked ``disabled`` are cut off entirely: they are never registered,
     so they neither render nor apply.
+
+    Wave 10 Package 1: a same-process stale instance of a removed kill-list
+    ID, or of one of the five redundant duplicate IDs, is disabled and
+    dropped here. Removed IDs must never apply; duplicate IDs must never
+    become a second writer next to their canonical ID.
     """
+    for stale_id in list(tweaks):
+        if is_removed_tweak(stale_id) or canonical_tweak_id(stale_id) != stale_id:
+            stale = tweaks.pop(stale_id)
+            try:
+                stale.set_enabled(False)
+            except Exception:
+                try:
+                    stale.enabled = False
+                except Exception:
+                    pass
     tweaks.update({spec.id: _build_spec(spec) for spec in SPECS
                    if spec.id not in tweaks and not spec.disabled})
 
@@ -124,6 +178,11 @@ def load_risky():
     risky gating (GoldenNugget removed it), so the flag is dropped and the
     tweaks apply like any other enabled tweak. The key/value payloads are
     identical to upstream.
+
+    Wave 10 P0: CustomResolution is additionally fenced at the backend by
+    ``capabilities.validate_custom_resolution`` (canvas keys only, integer
+    dimensions inside the existing RDAR canvas envelope). Passing that gate
+    is a safety check, not a device-support claim.
     """
     if TweakID.CustomResolution in tweaks:
         return
@@ -143,12 +202,13 @@ def load_risky():
         TweakID.CustomResolution: AdvancedPlistTweak(
             FileLocation.resolution,
             {}, # empty as to not cause issues when only 1 value is inputted
+            allowed_keys={"canvas_width", "canvas_height"},
         )
     }
     tweaks.update(additional_tweaks)
 
 
-def load_eligibility(dev=None):
+def load_eligibility(dev=None, decision=None):
     """Ported from leminlimez/Nugget's load_eligibility()
     (src/tweaks/tweak_loader.py). Tweak definitions are verbatim.
 
@@ -159,14 +219,34 @@ def load_eligibility(dev=None):
     - TweakID.AIGestalt is not re-added here: it already comes from
       get_mobilegestalt_tweaks() with the identical definition. Re-adding
       would replace the instance and clobber the switch state.
+
+    Wave 10 gating: the MobileGestalt-backed members (SpoofModel /
+    SpoofHardware / SpoofCPU / AIGestalt) are only registered as deliverable
+    when the shared MobileGestalt decision supports this device. On a
+    locked/unknown device the non-gestalt eligibility tweaks still load,
+    and any previously registered gestalt state is forced off.
+
+    Wave 10 P0: AIFeatureFlags / AIFeatureFlagsUI are removed tombstones.
+    They wrote the FeatureFlags Global.plist channel with no version cap;
+    that channel is dead past iOS 26.1, so they are never registered here.
     """
-    if TweakID.EUEnabler in tweaks:
-        return
+    if decision is None:
+        build = getattr(dev, "build", "") if dev is not None else ""
+        version = getattr(dev, "version", "") if dev is not None else ""
+        decision = mobilegestalt_decision(build, version)
+    gestalt_ok = decision.supported
+    # Tombstone cleanup for a same-process stale registration: removed IDs
+    # must not remain enabled or deliverable after this loader runs.
+    for removed_id in (TweakID.AIFeatureFlags, TweakID.AIFeatureFlagsUI):
+        stale = tweaks.pop(removed_id, None)
+        if stale is not None:
+            try:
+                stale.set_enabled(False)
+            except Exception:
+                stale.enabled = False
     additional_tweaks = {
         TweakID.EUEnabler: EligibilityTweak(),
         TweakID.AIEligibility: AITweak(),
-        TweakID.AIFeatureFlags: FeatureFlagTweak(flag_category="Siri", flag_names=['sae_override', 'assistant_engine_override']),
-        TweakID.AIFeatureFlagsUI: FeatureFlagTweak(flag_category="SiriUI", flag_names=["sae"]),
         TweakID.SpoofModel: MobileGestaltPickerTweak("h9jDsbgj7xIVeIQ8S3/X3Q", values=[
             # Default
             "Placeholder", # 0 | Original
@@ -296,11 +376,22 @@ def load_eligibility(dev=None):
         additional_tweaks[TweakID.SpoofModel].value[0] = dev.model
         additional_tweaks[TweakID.SpoofHardware].value[0] = dev.hardware
         additional_tweaks[TweakID.SpoofCPU].value[0] = dev.cpu
-    # add to tweaks
-    tweaks.update(additional_tweaks)
+    # Add only what is missing (never clobber live switch state), and never
+    # register deliverable MobileGestalt-backed tweaks on a locked/unknown
+    # device.
+    for tid, tw in additional_tweaks.items():
+        if is_removed_tweak(tid):
+            continue
+        if requires_gestalt(tid, tw) and not gestalt_ok:
+            continue
+        if tid not in tweaks:
+            tweaks[tid] = tw
     # AIGestalt is Nugget's eligibility-page switch for Apple Intelligence;
     # this fork provides it via get_mobilegestalt_tweaks(). Ensure it exists
     # so the Eligibility section works even if the MobileGestalt page never
-    # loaded (identical verbatim definition, only added when missing).
-    if TweakID.AIGestalt not in tweaks:
+    # loaded (identical verbatim definition, only added when missing) — but
+    # only on a device whose shared decision supports MobileGestalt.
+    if gestalt_ok and TweakID.AIGestalt not in tweaks:
         tweaks[TweakID.AIGestalt] = MobileGestaltTweak("A62OafQ85EJAiiqKn4agtg")
+    if not gestalt_ok:
+        clear_unsupported_mobilegestalt_state(decision, tweaks_dict=tweaks)

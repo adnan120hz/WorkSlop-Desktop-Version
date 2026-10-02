@@ -20,7 +20,10 @@ from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSSwitch,
 )
 from src.gui.theme import t
-from src.devicemanagement.constants import is_gestalt_supported
+from src.devicemanagement.constants import mobilegestalt_decision
+from src.tweaks.capabilities import (
+    clear_unsupported_mobilegestalt_state, requires_gestalt,
+)
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_eligibility
 
@@ -79,11 +82,28 @@ class EligibilitySection(QWidget):
         self._layout.setSpacing(8)
 
     # -- lifecycle ---------------------------------------------------------
+    def _current_decision(self):
+        try:
+            device = self.window.device_manager.data_singleton.current_device
+        except Exception:
+            device = None
+        if device is None:
+            return mobilegestalt_decision("", "")
+        return mobilegestalt_decision(
+            getattr(device, "build", "") or "",
+            getattr(device, "version", "") or "")
+
     def refresh(self):
         dm = self.window.device_manager
         device = dm.data_singleton.current_device
-        load_eligibility(device)
+        decision = self._current_decision()
+        load_eligibility(device, decision)
+        if not decision.supported:
+            clear_unsupported_mobilegestalt_state(decision)
         self._build_ui(device)
+        # Locks are re-evaluated on every refresh, not frozen at first build:
+        # a device switch must lock (and clear) these controls in place.
+        self._apply_gestalt_locks(decision)
         self._sync_controls()
 
     # -- ui ----------------------------------------------------------------
@@ -130,22 +150,10 @@ class EligibilitySection(QWidget):
             return
         self._built = True
 
-        # MobileGestalt-family controls (AIGestalt + spoofing) follow the same
-        # support range as the MobileGestalt page: iOS 16.0 – 26.2 beta 1.
-        # User decision 2026-10-01: locked (not hidden, not toggleable) when
-        # the connected iOS is outside that range.
-        version = ""
-        build = ""
-        try:
-            if device is not None:
-                version = device.version or ""
-                build = device.build or ""
-        except Exception:
-            pass
-        # No device yet: support is unknown, so keep the controls open —
-        # same as the registry sections, which treat "no version" as
-        # compatible.
-        gestalt_ok = is_gestalt_supported(build, version) if (build and version) else True
+        # MobileGestalt-family controls (AIGestalt + spoofing) follow the one
+        # shared MobileGestalt decision. The lock is applied by refresh() on
+        # every pass via _apply_gestalt_locks(); unknown (no device) is
+        # fail-closed, never treated as compatible.
 
         # EU Enabler (Nugget: euEnablerEnabledChk / regionCodeTxt).
         # B17 honesty fix: Nugget's "Method 1 / Method 2" dropdown only chose
@@ -211,24 +219,29 @@ class EligibilitySection(QWidget):
         self._add_switch("Spoof Hardware Model", TweakID.SpoofHardware)
         self._add_switch("Spoof CPU Model", TweakID.SpoofCPU)
 
-        self._apply_gestalt_locks(gestalt_ok)
+        self._apply_gestalt_locks(self._current_decision())
 
-    def _apply_gestalt_locks(self, gestalt_ok: bool):
-        """Lock the MobileGestalt-family controls when the connected iOS is
-        outside the supported range. Visible but disabled, with the reason
-        as tooltip — never silently toggleable."""
-        if gestalt_ok:
-            return
-        reason = tr("Locked: MobileGestalt tweaks are not supported on this iOS version")
-        for tweak_id in (TweakID.AIGestalt, TweakID.SpoofHardware, TweakID.SpoofCPU):
+    def _apply_gestalt_locks(self, decision):
+        """Lock the MobileGestalt-family controls when the shared decision
+        does not support this device. Visible but disabled, with the shared
+        reason as tooltip — never silently toggleable. Re-run on every
+        refresh so switching devices locks/unlocks in place, and force any
+        enabled MobileGestalt-backed state off while locked/unknown."""
+        supported = bool(getattr(decision, "supported", False))
+        if not supported:
+            clear_unsupported_mobilegestalt_state(decision)
+        reason = tr(getattr(decision, "user_message", "") or
+                    "MobileGestalt tweaks are not supported on this iOS version")
+        for tweak_id in (TweakID.AIGestalt, TweakID.SpoofModel,
+                         TweakID.SpoofHardware, TweakID.SpoofCPU):
             card = self._cards.get(tweak_id)
             if card is not None:
-                card.setEnabled(False)
-                card.setToolTip(reason)
+                card.setEnabled(supported)
+                card.setToolTip("" if supported else reason)
         spoof_card = getattr(self, "_spoof_card", None)
         if spoof_card is not None:
-            spoof_card.setEnabled(False)
-            spoof_card.setToolTip(reason)
+            spoof_card.setEnabled(supported)
+            spoof_card.setToolTip("" if supported else reason)
 
     def _setup_spoof_models(self, device):
         """Fill the spoof dropdown like Nugget's setup_spoofedModelDrp_models.
@@ -263,6 +276,17 @@ class EligibilitySection(QWidget):
         if tweak_id == "elig_file_group":
             self._on_elig_file_toggled(checked)
             return
+        # State-level guard: the widget lock is presentation only. A
+        # MobileGestalt-backed tweak can never be switched on while the
+        # shared decision is locked/unknown.
+        if checked and requires_gestalt(tweak_id, tweaks.get(tweak_id)):
+            decision = self._current_decision()
+            if not decision.supported:
+                if tweak_id in tweaks:
+                    tweaks[tweak_id].set_enabled(False)
+                self._apply_gestalt_locks(decision)
+                self._sync_controls()
+                return
         if tweak_id in tweaks:
             # Nugget: the hardware/CPU checkboxes only take effect when a
             # spoof model is actually selected (selected_option != 0).
@@ -293,6 +317,19 @@ class EligibilitySection(QWidget):
                 tweaks[tid].set_enabled(checked)
 
     def _on_spoof_activated(self, index: int):
+        # MobileGestalt-backed: a stale dropdown selection must not enable
+        # spoofing on a locked/unknown device.
+        decision = self._current_decision()
+        if not decision.supported:
+            for tid in (TweakID.SpoofModel, TweakID.SpoofHardware, TweakID.SpoofCPU):
+                if tid in tweaks:
+                    try:
+                        tweaks[tid].set_selected_option(0, is_enabled=False)
+                    except Exception:
+                        tweaks[tid].set_enabled(False)
+            self._apply_gestalt_locks(decision)
+            self._sync_controls()
+            return
         # Nugget: on_spoofedModelDrp_activated. The hardware/CPU tweaks follow
         # the model selection, gated on their own checkboxes.
         if index < 0 or index >= len(self._spoof_map):

@@ -5,9 +5,10 @@ Guards the removal of the pre-reset original-plist capture (``psysbackup``):
 reset must write stock values straight to the device on every iOS version,
 without opening a lockdown session or pulling a single plist off the device.
 
-The one thing that must NOT become uniform across versions is the byte
-content: iOS 26.2+ (so iOS 27 too) needs a *parseable* empty plist, because a
-zero-byte com.apple.springboard.plist crashes SpringBoard at boot.
+The byte content is uniform and safe across versions: every nulled plist is
+written as a *parseable* empty plist. A zero-byte
+``com.apple.springboard.plist`` can crash SpringBoard at boot on iOS 26.2+,
+so Wave 10 P0 removed the historical iOS 26 zero-byte branch outright.
 
 Run: python tools/test_reset_no_capture.py
 """
@@ -152,14 +153,22 @@ def test_ios27_writes_valid_empty_plists():
               f"{len(data) if data else 0} bytes")
 
 
-def test_ios26_keeps_zero_byte_files():
-    print("\niOS 26 reset: unchanged zero-byte behaviour")
-    fake, errors, _ = run_reset("26.2", [Page.Springboard])
+def test_ios26_writes_valid_empty_plists():
+    print("\niOS 26 reset: parseable empty plists (Wave 10 P0)")
+    fake, errors, _ = run_reset("26.6.1", [Page.Springboard])
     check("no exception escaped the reset", not errors, repr(errors[:1]))
     check("no lockdown session was opened", not fake.session_opened)
     for path in (FileLocation.springboard.value, FileLocation.uikit.value):
-        check(f"{path} is zero-byte (original Nugget behaviour)",
-              fake.written.get(path) == b"", repr(fake.written.get(path)))
+        data = fake.written.get(path)
+        parsed = None
+        if data:
+            try:
+                parsed = plistlib.loads(data)
+            except Exception as e:
+                parsed = f"unparseable: {e}"
+        check(f"{path} is a valid empty plist", parsed == {}, repr(parsed))
+        check(f"{path} is not a zero-byte file", bool(data),
+              f"{len(data) if data else 0} bytes")
 
 
 def test_ios26_daemons_page_still_written():
@@ -211,7 +220,7 @@ def test_ios26_status_bar_still_resets_the_classic_file():
 # =============================================================================
 test_capture_is_gone()
 test_ios27_writes_valid_empty_plists()
-test_ios26_keeps_zero_byte_files()
+test_ios26_writes_valid_empty_plists()
 test_ios26_daemons_page_still_written()
 test_ios27_status_bar_resets_the_archive()
 test_ios26_status_bar_still_resets_the_classic_file()

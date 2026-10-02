@@ -18,6 +18,10 @@ from src.tweaks.status_bar.status_setter import _deserialize_override, _serializ
 from src.tweaks.icon_themes.icon_themes_tweak import IconThemesTweak
 from src.tweaks.icon_themes.icon_theme import IconTheme
 from src.controllers.hotload import HotLoad
+from src.devicemanagement.constants import mobilegestalt_decision
+from src.tweaks.capabilities import (
+    canonical_tweak_id, tweak_deliverability,
+)
 
 PRESETS_DIR_NAME = "Presets"
 PRESET_VERSION = 2
@@ -30,6 +34,9 @@ class PresetManager:
             base_dir = os.path.join(base_dir, "GoldenNugget")
         self.presets_dir = os.path.join(base_dir, PRESETS_DIR_NAME)
         os.makedirs(self.presets_dir, exist_ok=True)
+        # Structured record of the tweaks the last load skipped (and why),
+        # filled by _apply(); the UI can surface a concise summary from it.
+        self.last_skipped: list[dict] = []
 
     def get_preset_path(self, name: str) -> str:
         safe_name = self._sanitize_name(name)
@@ -159,7 +166,8 @@ class PresetManager:
             print(f"Failed to save preset: {e}")
             return False
 
-    def load_preset(self, name: str) -> bool:
+    def load_preset(self, name: str, device_build: str = "",
+                    device_version: str = "", device_model: str = "") -> bool:
         file_path = self.get_preset_path(name)
         if not os.path.isfile(file_path):
             return False
@@ -169,7 +177,9 @@ class PresetManager:
         except Exception as e:
             print(f"Failed to read preset: {e}")
             return False
-        return self._apply(data)
+        return self._apply(data, device_build=device_build,
+                           device_version=device_version,
+                           device_model=device_model)
 
     def delete_preset(self, name: str) -> bool:
         file_path = self.get_preset_path(name)
@@ -357,34 +367,75 @@ class PresetManager:
         return data
 
     ## DESERIALIZATION
-    def _apply(self, data: dict) -> bool:
+    def _apply(self, data: dict, device_build: str = "",
+               device_version: str = "", device_model: str = "") -> bool:
         try:
+            self.last_skipped = []
+            decision = mobilegestalt_decision(device_build, device_version)
             # make sure every tweak exists before applying
-            self._load_all_tweaks()
+            self._load_all_tweaks(decision)
 
             # never re-enable HotLoad-hidden features: loading a preset must not
             # resurrect broken/dangerous tweaks (defense-in-depth on top of the
             # warning shown before loading)
             from src.tweaks.hidden import current_hidden_tweak_names
             hidden_names = current_hidden_tweak_names()
+            is_iphone = device_model.startswith("iPhone") if device_model else True
 
             if "tweaks" in data:
                 for name, tweak_data in data["tweaks"].items():
-                    key = None
+                    raw_key = None
                     try:
-                        key = TweakID[name]
+                        raw_key = TweakID[name]
                     except KeyError:
                         continue
-                    if key not in tweaks:
-                        continue
+                    # Removed tombstone IDs (e.g. K1 / LGLPMGestalt) stay
+                    # parseable here, then the central deliverability filter
+                    # below records them as REMOVED_TWEAK and never assigns
+                    # their state.
+                    key = canonical_tweak_id(raw_key)
                     # PosterBoard is excluded from presets (see _serialize); skip
                     # it on load too so old presets cannot restore wallpapers.
                     if key == TweakID.PosterBoard:
                         continue
-                    if name in hidden_names:
+                    if name in hidden_names or key.name in hidden_names:
+                        self.last_skipped.append({
+                            "tweak_id": key.name,
+                            "requested_enabled": bool(
+                                tweak_data.get("enabled", False))
+                            if isinstance(tweak_data, dict) else False,
+                            "reason_code": "HOTLOAD_HIDDEN",
+                            "reason": "Hidden by HotLoad safety rules.",
+                        })
+                        target = tweaks.get(key)
+                        if target is not None:
+                            target.set_enabled(False)
+                        continue
+                    target = tweaks.get(key)
+                    # Central filter BEFORE state assignment: registry
+                    # version/device-class constraints plus the shared
+                    # MobileGestalt decision. Unsupported entries are forced
+                    # off (never restored as ON) and reported in last_skipped.
+                    deliverable, reason_code, reason = tweak_deliverability(
+                        key, device_version=device_version,
+                        device_build=device_build, is_iphone=is_iphone,
+                        tweak=target)
+                    if not deliverable:
+                        if target is not None:
+                            target.set_enabled(False)
+                        self.last_skipped.append({
+                            "tweak_id": key.name,
+                            "requested_enabled": bool(
+                                tweak_data.get("enabled", False))
+                            if isinstance(tweak_data, dict) else False,
+                            "reason_code": reason_code,
+                            "reason": reason,
+                        })
+                        continue
+                    if target is None:
                         continue
                     try:
-                        self._apply_tweak(tweaks[key], tweak_data)
+                        self._apply_tweak(target, tweak_data)
                     except Exception as e:
                         print(f"Failed to apply tweak {name}: {e}")
 
@@ -393,10 +444,16 @@ class PresetManager:
             print(f"Failed to apply preset: {e}")
             return False
 
-    def _load_all_tweaks(self):
+    def _load_all_tweaks(self, decision=None):
         # idempotent: the loaders return early if the tweaks already exist
         tweak_loader.load_plist_tweaks()
         tweak_loader.load_daemons()
+        if decision is not None and decision.supported:
+            tweak_loader.load_mobilegestalt(decision=decision)
+        # Loads the non-gestalt eligibility tweaks on any device; the
+        # MobileGestalt-backed members only register when supported, and
+        # stale gestalt state is cleared otherwise.
+        tweak_loader.load_eligibility(None, decision)
 
     def _apply_tweak(self, tweak, data: dict):
         if "enabled" in data:

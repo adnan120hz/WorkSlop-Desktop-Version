@@ -166,11 +166,24 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str) -> bool:
         if rule is not None and not confirm_flagged(rule, parent):
             return False
 
-    if not pm.load_preset(name):
+    if not pm.load_preset(
+            name,
+            device_build=dm.get_current_device_build(),
+            device_version=dm.get_current_device_version(),
+            device_model=dm.get_current_device_model()):
         QMessageBox.critical(
             parent, _T("Nugget", "Load Preset"),
             _T("Nugget", "Failed to load the preset."))
         return False
+    if pm.last_skipped:
+        skipped_lines = "\n".join(
+            "• {0} ({1})".format(s["tweak_id"], s["reason_code"])
+            for s in pm.last_skipped)
+        QMessageBox.warning(
+            parent, _T("Nugget", "Some Tweaks Skipped"),
+            _T("Nugget",
+               "These tweaks are not supported on the current device and "
+               "were left off:\n\n{0}").format(skipped_lines))
 
     window.settings.setValue("last_loaded_preset", name)
     window._sync_settings()

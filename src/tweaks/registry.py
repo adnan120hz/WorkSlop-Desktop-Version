@@ -57,6 +57,7 @@ class TweakSpec:
     ipad_only: bool = False
     factory: Optional[Callable[[], object]] = None  # overrides BasicPlistTweak
     description: Optional[str] = None  # detailed "what it does" tooltip
+    requires_gestalt: bool = False  # True = MobileGestalt capability decision is mandatory
     disabled: bool = False  # True = tweak is cut off: never loaded, never applied, never rendered
     excludes: tuple = ()  # TweakIDs that must be turned off when this one is
                           # turned on (mutually-exclusive pairs, e.g. RTL/LTR).
@@ -92,71 +93,22 @@ def _watchos_compatibility():
 GP = FileLocation.globalPreferences
 
 
-def _ff(id_: TweakID, title: str, flag_category: str, flag_names: list,
-        description: str = "", **kwargs) -> TweakSpec:
-    """Feature-flag tweak.
-
-    GoldenNugget removed the whole feature-flags system; the definitions
-    below (ClockAnim, Lockscreen, PhotoUI, AI, KioskMode) are ported verbatim
-    from leminlimez/Nugget's ``load_featureflags()``.
-    Round 5 (2026-10-01): the eight ``SolariumFF*`` Liquid Glass pairs that
-    used to live here were deleted with the whole legacy Liquid Glass
-    section — the feature-flags delivery channel is dead past iOS 26.1
-    (specs are capped at ``max_version="26.1"``) and the entries were
-    device-negative on iOS 26.6.1.
-    The ``factory`` builds a ``FeatureFlagTweak`` which writes into
-    ``/var/preferences/FeatureFlags/Global.plist`` during apply.
-    That is the iOS 26-and-lower store. On iOS 27 Apple moved the
-    feature-flag store to ``/var/preferences/FeatureFlags/Settings.plist``
-    (sole path read by FeatureFlags.framework; no Global.plist fallback),
-    and as of late Sep 2026 no working delivery channel for either path
-    is publicly confirmed on iOS 27 — so these switches are experimental
-    there and may silently do nothing. Community reports put the last
-    writable iOS for the exploit-based Global.plist route at 26.1, so the
-    specs are capped at ``max_version="26.1"``: fully supported on
-    iOS 26.1 and lower, locked above.
-    """
-    from .tweak_classes import FeatureFlagTweak
-    return TweakSpec(
-        id=id_, section=Section.FEATURE_FLAGS,
-        title=QT_TRANSLATE_NOOP("Nugget", title),
-        description=QT_TRANSLATE_NOOP("Nugget", description) if description else None,
-        location=FileLocation.featureflags, key="",
-        factory=lambda: FeatureFlagTweak(
-            flag_category=flag_category, flag_names=flag_names, **kwargs),
-        # Exploit-based Global.plist route: last writable iOS is 26.1
-        # (community reports). Above that the switches lock in the UI.
-        max_version="26.1",
-    )
-
-
-_FF_SPECS: tuple[TweakSpec, ...] = (
-    _ff(TweakID.ClockAnim, "Enable Lockscreen Clock Animation",
-        'SpringBoard', ['SwiftUITimeAnimation'],
-        description="Enables the SwiftUI time animation on the lockscreen clock."),
-    _ff(TweakID.Lockscreen, "Enable Duplicate Lockscreen Button and Lockscreen Quickswitch",
-        "SpringBoard", ['AutobahnQuickSwitchTransition', 'SlipSwitch', 'PosterEditorKashida'],
-        description="Enables the duplicate lockscreen button and the lockscreen quick-switch transition."),
-    _ff(TweakID.PhotoUI, "Enable Old Photo UI",
-        'Photos', ['Lemonade'], is_list=False, inverted=True,
-        description="Restores the old Photos app UI (disables the Lemonade redesign)."),
-    _ff(TweakID.AI, "Enable Apple Intelligence",
-        'SpringBoard', ['Domino', 'SuperDomino'],
-        description="Enables the Apple Intelligence feature flags (Domino / SuperDomino)."),
-    _ff(TweakID.KioskMode, "Enable Kiosk Mode",
-        'PreferencesFramework', ['ForcedRetailKioskMode'],
-        description="Forces retail kiosk mode."),
-)
+# Wave 10 Package 1: the five registry Feature Flags specs (ClockAnim,
+# Lockscreen, PhotoUI, AI, KioskMode) are removed from the active product
+# registry. Their delivery channel is dead for iOS 26.6.1 and the audit
+# kill list names them explicitly. The TweakID members remain only as
+# tombstones in src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old presets
+# naming them resolve to removed/skipped, never to a FeatureFlags payload.
+_FF_SPECS: tuple[TweakSpec, ...] = ()
 
 SPECS: tuple[TweakSpec, ...] = (
     # --- Liquid Glass ---
-    # Round 5 (2026-10-01, revised per user order): section INTENTIONALLY
-    # EMPTY. The user rejected the Tinted-only spec ("mendingan langsung
-    # dari Settings saja") — the product must offer TRUE full-disable of
-    # Liquid Glass or nothing at all. All 109 legacy specs were deleted as
-    # fake/unproven/dead/misdirected. No spec may be added here until a
-    # full-disable method is proven on-device on iOS 26.6.1 (stock,
-    # non-jailbreak). Deep research for such a method is in progress.
+    # Wave 10 audit containment: apart from the user-ordered Hide Search
+    # presentation row, the active rows here are the three research-only
+    # forensic/binary-gated specs and the one user-retained icon exception
+    # below. They are not a full-disable claim and are not presented as
+    # supported on iOS 26.6.1; the central audit gate in
+    # src/tweaks/capabilities.py blocks research-only delivery on 23G83.
 
     # --- SpringBoard ---
     _t(TweakID.LockScreenFootnote, Section.SPRINGBOARD, "Lock Screen Footnote Text",
@@ -189,10 +141,6 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.AirplaySupport, Section.SPRINGBOARD, "Enable AirPlay support for Stage Manager",
        FileLocation.springboard, "SBExtendedDisplayOverrideSupportForAirPlayAndDontFileRadars",
        description=QT_TRANSLATE_NOOP("Nugget", "Adds extended-display AirPlay support for Stage Manager so apps and external displays can use the feature more broadly.")),
-    _t(TweakID.SBMinimumLockscreenIdleTime, Section.SPRINGBOARD, "Auto‑Lock (Lock Screen)",
-       FileLocation.springboard, "SBMinimumLockscreenIdleTime", value=5, kind=Kind.NUMBER,
-       min_value=0, max_value=600,
-       description=QT_TRANSLATE_NOOP("Nugget", "Sets how many minutes of inactivity before the Lock Screen turns the display off. 0 = never auto-lock.")),
     _t(TweakID.SBAlwaysShowSystemApertureInSnapshots, Section.SPRINGBOARD, "Show Dynamic Island in Screenshots",
        FileLocation.springboard, "SBAlwaysShowSystemApertureInSnapshots", min_version="17.4", iphone_only=True,
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the Dynamic Island to appear in screenshots instead of being hidden or shrunk while the screenshot is taken.")),
@@ -212,9 +160,6 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SBDisableIconParallax, Section.SPRINGBOARD, "Disable Icon Parallax",
        FileLocation.springboard, "SBDisableParallax",
        description=QT_TRANSLATE_NOOP("Nugget", "Stops Home Screen icons from shifting with the device tilt (the parallax effect). Pair with Disable Icon Page-Control Parallax for a fully static Home Screen.")),
-    _t(TweakID.SBHideSearchAffordance, Section.SPRINGBOARD, "Hide Search Button on Home Screen",
-       FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
-       description=QT_TRANSLATE_NOOP("Nugget", "Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.")),
 
     # --- Internal Options ---
     _t(TweakID.SBBuildNumber, Section.INTERNAL, "Show Build Version in Status Bar", GP, "UIStatusBarShowBuildVersion",
@@ -240,8 +185,6 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Enables the iPad-style keyboard keyflicks on iPhones.")),
     _t(TweakID.DisableSecondsHand, Section.INTERNAL, "Disable Clock Icon Seconds Hand", GP, "SBDisableClockIconSecondsHand",
        description=QT_TRANSLATE_NOOP("Nugget", "Stops the animated second hand on the Clock app's Home Screen icon.")),
-    _t(TweakID.DisableSearchingWebsites, Section.INTERNAL, "Disable Spotlight Searching in Websites", GP, "SBSearchDisabledDomains",
-       description=QT_TRANSLATE_NOOP("Nugget", "Removes website / web search results from Spotlight search suggestions.")),
     _t(TweakID.ShowButtonHints, Section.INTERNAL, "Show Hardware Button Hints in Screenshots", GP, "SBHardwareButtonHintDropletsAlwaysVisibleInSnapshots",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows the side button / action button hint labels in screenshots (engineering debug UI).")),
     _t(TweakID.AppStoreDebug, Section.INTERNAL, "App Store Debug Gesture", FileLocation.appStore, "debugGestureEnabled",
@@ -260,85 +203,47 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a system notification whenever an app reads the pasteboard, acting as a privacy indicator for system-level pastes.")),
     # === Round 6 (2026-10-02): 71 audited candidates, pre-beta developer release ===
     # WARNING: All unverified on device. See AUDIT-KANDIDAT-BARU.md.
+    # Wave 10 Home/Hide Search package: the canonical Hide Search Button is
+    # presented in the Liquid Glass menu by explicit user order. This is a
+    # presentation move only — the single writer keeps the managed
+    # SpringBoard location, key SBHomeScreenShowsSearchAffordance, and
+    # value=False. The retired HideSearchAffordance name aliases here.
+    _t(TweakID.SBHideSearchAffordance, Section.LIQUID_GLASS, "Hide Search Button on Home Screen",
+       FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
+       description=QT_TRANSLATE_NOOP("Nugget", "Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.")),
     _t(TweakID.SolariumForceFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.")),
-    _t(TweakID.DisableSolariumSwiftUI, Section.LIQUID_GLASS, "Disable Solarium (SwiftUI)", GP, "com.apple.SwiftUI.DisableSolarium",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium for SwiftUI. Reader removed in 26.1 — likely non-functional.")),
-    _t(TweakID.GlassLegibility2, Section.LIQUID_GLASS, "Glass Legibility Value 2", FileLocation.uikit, "UIViewGlassLegibilitySetting", value=2,
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Glass legibility value 2 = unobserved branch. 0=Clear, 1=Tinted (proven).")),
-    _t(TweakID.SolariumFeatureFlags, Section.FEATURE_FLAGS, "Solarium Feature Flags", FileLocation.featureflags, "SolariumFlags",
-       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "PLACEHOLDER: Specific Solarium flags not yet defined. Channel dead on 26.2+. WARNING: Can break Control Center.")),
+    # REMOVED (Wave 10, user order 2026-10-02): GlassLegibility2 (K1),
+    # DisableSolariumSwiftUI (dead reader on iOS 26.6.1), and
+    # SolariumFeatureFlags (placeholder with no real flag set) are deleted
+    # from the v10 product registry. Their TweakID members remain only as
+    # tombstones in src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old
+    # presets naming them resolve to removed/skipped, never applied.
     _t(TweakID.DisallowGlassTime, Section.LIQUID_GLASS, "Disallow Glass on LS Clock", GP, "SBDisallowGlassTime",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock.")),
     _t(TweakID.DisableGlassDock, Section.LIQUID_GLASS, "Disable Glass on Dock", GP, "SBDisableGlassDock",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Liquid Glass on Dock — solid style.")),
     _t(TweakID.FlatIconsEverywhere, Section.LIQUID_GLASS, "Flat Icons Everywhere", GP, "SBUseFlatIconsEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force all icons flat, no 3D/glass effect.")),
-    _t(TweakID.DisableWidgetSpecular, Section.LIQUID_GLASS, "Disable Widget Specular", GP, "SBDisableWidgetSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from widgets.")),
-    _t(TweakID.DisableDockSpecular, Section.LIQUID_GLASS, "Disable Dock Specular", GP, "SBDisableDockSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from dock.")),
-    _t(TweakID.DisableFolderSpecular, Section.LIQUID_GLASS, "Disable Folder Specular", GP, "SBDisableFolderSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from folders.")),
-    _t(TweakID.ExcludeClearGlassShadows, Section.LIQUID_GLASS, "Exclude Clear Glass Shadows", GP, "SBExcludeAllClearGlassShadows",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove all Clear Glass shadows.")),
-    _t(TweakID.ExcludeDockShadow, Section.LIQUID_GLASS, "Exclude Dock Shadow", GP, "SBExcludeDockShadow",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove dock drop shadow.")),
-    _t(TweakID.ExcludeSearchShadow, Section.LIQUID_GLASS, "Exclude Search Shadow", GP, "SBExcludeSearchShadow",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove search field shadow.")),
-    _t(TweakID.DisableOuterRefraction, Section.LIQUID_GLASS, "Disable Outer Refraction", GP, "SolariumDisableOuterRefraction",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable liquid bending at glass edges.")),
-    _t(TweakID.DisableSolariumHDR, Section.LIQUID_GLASS, "Disable Solarium HDR", GP, "SolariumAllowHDR", value=False,
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable HDR tone-mapping. Value=False.")),
-    _t(TweakID.DisableSpecularMotion, Section.LIQUID_GLASS, "Disable Specular Motion", GP, "SBDisableSpecularEverywhereUsingLSSAssertion",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable motion-based specular.")),
-    _t(TweakID.DisableSpecularEverywhere, Section.LIQUID_GLASS, "Disable Specular Everywhere", GP, "SBDisableSpecularEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from all CC tiles.")),
-    _t(TweakID.SuppressDICompletely, Section.SPRINGBOARD, "Suppress Dynamic Island", FileLocation.springboard, "SBSuppressDynamicIslandCompletely",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Hide Dynamic Island completely. Tool-proven.")),
-    _t(TweakID.DisableGlassEverywhere, Section.LIQUID_GLASS, "Disable Glass Everywhere (Predicted)", GP, "SBDisableGlassEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Predicted key — pattern hypothesis.")),
-    _t(TweakID.DisallowGlassEverywhere, Section.LIQUID_GLASS, "Disallow Glass Everywhere (Predicted)", GP, "SBDisallowGlassEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Predicted key — pattern hypothesis.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "User-retained Wave 10 exception: force all icons flat, no 3D/glass effect. Pattern-grade; iOS 26.6.1 reader unproven.")),
+    # REMOVED (Wave 10, user order 2026-10-02): DisableGlassEverywhere and
+    # DisallowGlassEverywhere were predicted pattern-hypothesis keys
+    # presented as normal product toggles. Deleted from the v10 product
+    # registry; TweakID tombstones remain in REMOVED_TWEAK_IDS only.
     # === Non-glass candidates (audited) ===
     _t(TweakID.CustomLockDate, Section.SPRINGBOARD, "Custom Lock Screen Date", FileLocation.globalPreferencesHomeDomain, "AppleICUDateTimeSymbols",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Custom Lock Screen date format. Device-proven (iOS 26.0-26.7).")),
-    _t(TweakID.NotifDisplayStyle, Section.SPRINGBOARD, "Notification Display Style", GP, "globalNotificationListDisplayStyleSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Display As: Count/Stack/List. Apple key from iOS 26 headers.")),
-    _t(TweakID.NotifPreview, Section.SPRINGBOARD, "Notification Previews", GP, "globalContentPreviewSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show Previews: Always/When Unlocked/Never.")),
-    _t(TweakID.DisableParallax, Section.SPRINGBOARD, "Disable Icon Parallax", FileLocation.springboard, "SBDisableParallax",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Stop icons shifting with device tilt.")),
-    _t(TweakID.HideSearchAffordance, Section.SPRINGBOARD, "Hide Search Button", FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Hide search button above Dock. Value=False.")),
     _t(TweakID.AnimDragCoeff, Section.SPRINGBOARD, "Animation Speed Coefficient", GP, "UIAnimationDragCoefficient", value=0.5,
        min_version="26.0", kind=Kind.NUMBER, min_value=0, max_value=5, step=0.1,
        description=QT_TRANSLATE_NOOP("Nugget", "Animation speed: <1 faster, >1 slower, 0 disables.")),
     # === Remaining audited candidates ===
-    _t(TweakID.DisableLockScreenSpecular, Section.LIQUID_GLASS, "Disable LS Specular (Predicted)", GP, "SBDisableLockScreenSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from Lock Screen. Predicted.")),
-    _t(TweakID.DisableClockSpecular, Section.LIQUID_GLASS, "Disable Clock Specular (Predicted)", GP, "SBDisableClockSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from LS clock. Predicted.")),
-    _t(TweakID.DisableGlassLockScreen, Section.LIQUID_GLASS, "Disable Glass on LS (Predicted)", GP, "SBDisableGlassLockScreen",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Lock Screen. Predicted.")),
-    _t(TweakID.DisableCompactChrome, Section.LIQUID_GLASS, "Disable Compact Chrome", GP, "DisableSolariumCompactChrome",
-       min_version="27.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium compact chrome. Gate 27.0.")),
-    _t(TweakID.DisableGlassDI, Section.LIQUID_GLASS, "Disable Glass on DI (Predicted)", GP, "SBDisableGlassDynamicIsland",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Dynamic Island. Predicted.")),
-    _t(TweakID.DisallowGlassDI, Section.LIQUID_GLASS, "Disallow Glass on DI (Predicted)", GP, "SBDisallowGlassDynamicIsland",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass on DI. Predicted.")),
-    _t(TweakID.DisableIslandSpecular, Section.LIQUID_GLASS, "Disable Island Specular (Predicted)", GP, "SBDisableIslandSpecular",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove DI specular. Predicted.")),
-    _t(TweakID.ExcludeAllGlassShadows, Section.LIQUID_GLASS, "Exclude All Glass Shadows (Predicted)", GP, "SBExcludeAllGlassShadows",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove all glass shadows. Predicted.")),
-    _t(TweakID.FlatDockEverywhere, Section.LIQUID_GLASS, "Flat Dock Everywhere (Predicted)", GP, "SBUseFlatDockEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Flat dock everywhere. Predicted.")),
-    _t(TweakID.DisableGlassBlur, Section.LIQUID_GLASS, "Disable Glass Blur (Predicted)", GP, "SBDisableGlassBlur",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass blur. Predicted.")),
-    _t(TweakID.DisallowGlassKeyboard, Section.LIQUID_GLASS, "Disallow Glass Keyboard (Predicted)", GP, "SBDisallowGlassKeyboard",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow keyboard glass. Predicted.")),
-    _t(TweakID.DisableRefractionEverywhere, Section.LIQUID_GLASS, "Disable Refraction Everywhere (Predicted)", GP, "SBDisableRefractionEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable refraction everywhere. Predicted.")),
+    # REMOVED (Wave 10, user order 2026-10-02): the predicted Liquid Glass
+    # entries that used to sit around DisableCompactChrome —
+    # DisableLockScreenSpecular, DisableClockSpecular,
+    # DisableGlassLockScreen, DisableGlassDI, DisallowGlassDI,
+    # DisableIslandSpecular, ExcludeAllGlassShadows, FlatDockEverywhere,
+    # DisableGlassBlur, DisallowGlassKeyboard, and
+    # DisableRefractionEverywhere — are deleted from the v10 product
+    # registry. TweakID tombstones remain in REMOVED_TWEAK_IDS only.
     # === Remaining: status bar, notifications, keyboard, siri ===
     # REMOVED: StatusBarOverrides was incorrectly registered as a plist key.
     # The actual statusBarOverrides is a BINARY STRUCT file at
@@ -347,61 +252,68 @@ SPECS: tuple[TweakSpec, ...] = (
     # See ~/workspace/riset/ for the visual signal research.
     _t(TweakID.ShowSystemServices, Section.SPRINGBOARD, "Show System Services Icons", GP, "ShowSystemServices",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show/hide VPN/Location/Alarm icons.")),
-    _t(TweakID.KbAutocorrect, Section.INTERNAL, "Keyboard Autocorrect", GP, "KeyboardAutocorrection",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Toggle autocorrect. Device-proven channel.")),
-    _t(TweakID.KbPrediction, Section.INTERNAL, "Keyboard Prediction", GP, "KeyboardPrediction",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Toggle predictive text.")),
-    _t(TweakID.SiriEnabled, Section.INTERNAL, "Siri Master Switch", GP, "Assistant Enabled",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Master on/off for Siri.")),
     # === WorkSlop own system — remaining audited candidates (not GoldenNugget copy) ===
     # REMOVED: GranularSpringBoard used invented key SBGranularGlass (not a real
     # Apple key). The granular controls are N1-N7 (SBUseFlatIconsEverywhere, etc.)
     # which are implemented as separate entries below.
-    _t(TweakID.LGLPMGestalt, Section.LIQUID_GLASS, "LG Low Power Mode Signal", FileLocation.mga, "SAGvsp6O6kAQ4fEfDJpC4Q",
-       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "LGLPM MobileGestalt signal. BLOCKED on iOS 26.2+ (Apple locked MobileGestalt).")),
-    _t(TweakID.ShowBatteryPercentage, Section.SPRINGBOARD, "Battery Percentage", FileLocation.springboard, "SBShowBatteryPercentage",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show battery percentage.")),
-    _t(TweakID.NotifScheduled, Section.SPRINGBOARD, "Scheduled Delivery", GP, "globalScheduledDeliverySetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Scheduled notification delivery.")),
-    _t(TweakID.NotifSummarize, Section.SPRINGBOARD, "Notification Summarization", GP, "globalSummarizationSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "AI notification summarization.")),
-    _t(TweakID.NotifAnnounce, Section.SPRINGBOARD, "Announce Notifications", GP, "globalAnnounceSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Spoken notification announcements.")),
-    _t(TweakID.NotifHighlights, Section.SPRINGBOARD, "Notification Highlights", GP, "globalHighlightsSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Highlight important notifications.")),
-    _t(TweakID.NotifAlertType, Section.SPRINGBOARD, "Banner Style", GP, "alertType",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Banner style per-app: Temporary/Persistent.")),
-    _t(TweakID.NotifGrouping, Section.SPRINGBOARD, "Notification Grouping", GP, "bulletinGroupingSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Grouping: Automatic/By App/Off.")),
-    _t(TweakID.NotifVisibility, Section.SPRINGBOARD, "Notification Visibility", GP, "lockScreenSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Per-app visibility control.")),
-    _t(TweakID.NotifPriority, Section.SPRINGBOARD, "Prioritize Notifications", GP, "prioritizationSetting",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "AI-powered prioritization.")),
-    _t(TweakID.IconVisibility, Section.SPRINGBOARD, "Reveal Hidden Icons", GP, "SBIconVisibility",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Reveal hidden/disabled Home Screen icons.")),
-    _t(TweakID.DisableClockSeconds, Section.SPRINGBOARD, "Disable Clock Seconds Hand", GP, "SBDisableClockIconSecondsHand",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Stop animated second hand on Clock icon.")),
+    # REMOVED (Wave 10): LGLPMGestalt was registered here as a BasicPlistTweak
+    # writing the MobileGestalt key SAGvsp6O6kAQ4fEfDJpC4Q as a top-level key
+    # into FileLocation.mga. That delivery model is wrong — MobileGestalt
+    # tweaks patch CacheExtra in the device's own plist. The registry model
+    # is deleted; old presets naming LGLPMGestalt resolve to removed/skipped
+    # via src/tweaks/capabilities.py::REMOVED_TWEAK_IDS, never applied. No
+    # registry spec may target FileLocation.mga without a MobileGestalt
+    # factory.
+    # REMOVED (Wave 10 Package 1, audit kill list): the Settings-duplicate
+    # SpringBoard/Keyboard/Siri rows, the ten wrong-domain Notification
+    # rows, the wrong value/type rows (DisableSearchingWebsites,
+    # SiriTriggerPhrase, SiriVocab), the dead-reader Liquid Glass
+    # specular/shadow/refraction/HDR rows plus DisableCompactChrome, and
+    # the five redundant duplicate rows (SuppressDICompletely,
+    # DisableParallax, HideSearchAffordance, IconVisibility,
+    # DisableClockSeconds) are deleted from the active v10 registry.
+    # Non-duplicate kills stay tombstoned in REMOVED_TWEAK_IDS; the five
+    # duplicate names alias to their canonical IDs there.
     _t(TweakID.KbGestureIntro, Section.INTERNAL, "Keyboard Gesture Intro", GP, "DidShowGestureKeyboardIntroduction",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Re-show gesture keyboard introduction.")),
     _t(TweakID.KbAutoLists, Section.INTERNAL, "Keyboard Autocorrect Lists", GP, "KeyboardAutocorrectionLists",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Android-style autocorrect bar.")),
-    _t(TweakID.KbPredBar, Section.INTERNAL, "Prediction Bar Toggle", GP, "KeyboardShowPredictionBar",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Show/hide prediction bar.")),
-    _t(TweakID.SiriDataSharing, Section.INTERNAL, "Siri Data Sharing Opt-Out", GP, "Siri Data Sharing Opt-In Status", value=2,
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Opt-out of Siri telemetry. Value=2.")),
-    _t(TweakID.SiriAutoPunct, Section.INTERNAL, "Dictation Auto Punctuation", GP, "Dictation Auto Punctuation Enabled",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Auto punctuation during dictation.")),
-    _t(TweakID.SiriVoiceTrigger, Section.INTERNAL, "Hey Siri Toggle", GP, "VoiceTrigger Enabled",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Toggle Hey Siri voice trigger.")),
-    _t(TweakID.SiriTriggerPhrase, Section.INTERNAL, "Trigger Phrase Type", GP, "UserPreferredVoiceTriggerPhraseType",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Choose trigger phrase: Hey Siri vs Siri.")),
     _t(TweakID.SiriSpeakerTTS, Section.INTERNAL, "Speaker for TTS", GP, "Use device speaker for TTS",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Route Siri voice through device speaker.")),
     _t(TweakID.SiriDeclined, Section.INTERNAL, "Siri Declined Flag", GP, "UserHasDeclinedEnable",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Flag for declined Siri setup.")),
-    _t(TweakID.SiriVocab, Section.INTERNAL, "Custom Vocabulary", GP, "CustomVocabulary",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Custom vocabulary for Siri.")),
 ) + _FF_SPECS
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}
 SPECS_BY_ID = {spec.id: spec for spec in SPECS if not spec.disabled}
+
+
+def home_tweak_catalogue(specs_by_section=None) -> tuple:
+    """Registry-derived Home catalogue entries for every active spec.
+
+    Home consumes this instead of a hand-maintained tweak list, so adding
+    one registry spec surfaces it on Home automatically. ``specs_by_section``
+    is injectable for tests; by default the live ``SPECS_BY_SECTION``
+    mapping is read at call time so a registry rebuild is reflected without
+    editing Home. Removed tombstones and retired duplicate aliases are not
+    specs and therefore never appear as separate Home entries.
+    """
+    source = SPECS_BY_SECTION if specs_by_section is None else specs_by_section
+    entries = []
+    for section in Section:
+        feature = SECTION_FEATURES.get(section, section.value)
+        for spec in source.get(section, []):
+            if getattr(spec, "disabled", False):
+                continue
+            entries.append({
+                "id": spec.id,
+                "id_name": spec.id.name,
+                "title": spec.title,
+                "section": section,
+                "section_name": section.value,
+                "feature": feature,
+                "location": spec.location,
+                "location_path": spec.location.value,
+                "key": spec.key,
+            })
+    return tuple(entries)

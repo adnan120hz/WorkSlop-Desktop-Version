@@ -1,14 +1,9 @@
-"""SkyBackground: fresh light-blue animated background for WorkSlop Desktop.
+"""Animated blue Apple-logo background for the Wave 10 shell.
 
-Replaces the old terminal theme entirely. A calm white-blue tech canvas with
-many softly-tinted Apple logos drifting in the background. The big centered
-brand hero lives on the home page itself; this widget only paints the canvas
-and the floating logos behind every page.
-
-Performance notes:
-  * Every floater pixmap is pre-rendered once (size + tint + opacity baked in)
-    so paintEvent is just blits — no per-frame rasterization.
-  * The timer skips work while the widget is hidden.
+Rebuilt from the archived v4 SkyBackground concept: pre-rendered Apple
+logos drift slowly upward behind the page stack. The logos are tinted in
+WorkSlop blue and kept subtle so white content surfaces stay readable.
+Paint work is only pixmap blits; the timer does nothing while hidden.
 """
 
 from __future__ import annotations
@@ -17,29 +12,17 @@ import math
 import random
 
 from PySide6.QtCore import Qt, QRectF, QTimer
-from PySide6.QtGui import QColor, QPainter, QPixmap
+from PySide6.QtGui import QColor, QPainter, QPixmap, QLinearGradient
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QWidget
 
-# Qt resource path (registered via resources_rc) — safe in frozen builds,
-# unlike a filesystem path next to the source tree.
 APPLE_SVG = ":/icon/apple.svg"
-
-BASE_BG = "#F2F7FF"
-
-# Soft blue tints for the drifting background logos (light enough to never
-# fight with page content drawn above).
-FLOAT_TINTS = ["#BFD9FA", "#A9CBF7", "#C9DFFB", "#9DC2F2", "#D4E4FC"]
 FLOAT_COUNT = 16
+FLOAT_TINTS = ["#0B65D8", "#2386E8", "#2E8FE0", "#0053A8", "#0E74DE"]
 
 
 def _tinted_apple(size: int, color_hex: str, opacity: float,
                   dpr: float = 1.0) -> QPixmap:
-    """Rasterize apple.svg at *size* px, tinted, with baked-in opacity.
-
-    The SVG is fitted into the square (aspect preserved, centered) — never
-    stretched, so the 3:4 Apple logo keeps its true proportions.
-    """
     scale = max(1.0, float(dpr))
     px = max(1, int(round(size * scale)))
     pm = QPixmap(px, px)
@@ -67,32 +50,31 @@ def _tinted_apple(size: int, color_hex: str, opacity: float,
 class _Floater:
     __slots__ = ("rx", "ry", "size", "speed", "phase", "sway", "pixmap")
 
-    def __init__(self, pixmap: QPixmap, rx: float, ry: float,
-                 speed: float, phase: float, sway: float):
+    def __init__(self, pixmap, rx, ry, speed, phase, sway):
         self.pixmap = pixmap
-        self.rx = rx            # relative x 0..1
-        self.ry = ry            # relative y 0..1 (drifts upward, wraps)
+        self.rx = rx
+        self.ry = ry
         self.size = pixmap.width()
-        self.speed = speed      # relative y per second
+        self.speed = speed
         self.phase = phase
-        self.sway = sway        # horizontal sine amplitude in px
+        self.sway = sway
 
 
 class SkyBackground(QWidget):
-    """Animated white-blue background with drifting Apple logos + hero."""
+    """Blue Apple logos floating behind the shell content."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("workslopSkyBackground")
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
         self._floaters: list[_Floater] = []
         self._t = 0.0
         self._timer = QTimer(self)
-        self._timer.setInterval(33)  # ~30 fps
+        self._timer.setInterval(40)
         self._timer.timeout.connect(self._tick)
         self._seed_floaters()
-
-    # ---- public API --------------------------------------------------------
+        self.start()
 
     def start(self):
         if not self._timer.isActive():
@@ -101,47 +83,49 @@ class SkyBackground(QWidget):
     def stop(self):
         self._timer.stop()
 
-    # ---- floaters ----------------------------------------------------------
+    def is_animating(self) -> bool:
+        return self._timer.isActive()
+
+    def floater_positions(self):
+        return [(f.rx, f.ry) for f in self._floaters]
 
     def _seed_floaters(self):
-        rng = random.Random(20260930)
-        dpr = 1.0
+        rng = random.Random(20261002)
         for _ in range(FLOAT_COUNT):
-            size = rng.randint(26, 92)
-            tint = rng.choice(FLOAT_TINTS)
-            opacity = rng.uniform(0.35, 0.75)
-            pm = _tinted_apple(size, tint, opacity, dpr)
+            size = rng.randint(28, 104)
+            pm = _tinted_apple(
+                size, rng.choice(FLOAT_TINTS), rng.uniform(0.17, 0.32), 1.0)
             self._floaters.append(_Floater(
                 pixmap=pm,
                 rx=rng.random(),
                 ry=rng.random(),
-                speed=rng.uniform(0.008, 0.028),
+                speed=rng.uniform(0.006, 0.020),
                 phase=rng.uniform(0, 2 * math.pi),
-                sway=rng.uniform(8, 30),
+                sway=rng.uniform(6, 24),
             ))
 
     def _tick(self):
         if not self.isVisible():
             return
-        self._t += 0.033
+        self._t += 0.040
         for f in self._floaters:
-            f.ry -= f.speed * 0.033
-            if f.ry < -0.12:
-                f.ry = 1.12
+            f.ry -= f.speed * 0.040
+            if f.ry < -0.14:
+                f.ry = 1.14
         self.update()
 
-    # ---- paint -------------------------------------------------------------
-
-    def paintEvent(self, event):  # noqa: N802
+    def paintEvent(self, event):  # noqa: N802 - Qt override
         w, h = self.width(), self.height()
         if w <= 0 or h <= 0:
             return
         p = QPainter(self)
-        p.fillRect(self.rect(), QColor(BASE_BG))
-
-        # Drifting logos behind everything.
+        gradient = QLinearGradient(0, 0, w, h)
+        gradient.setColorAt(0.0, QColor("#F2F9FF"))
+        gradient.setColorAt(0.55, QColor("#E2F0FE"))
+        gradient.setColorAt(1.0, QColor("#D3E9FD"))
+        p.fillRect(self.rect(), gradient)
         for f in self._floaters:
-            x = f.rx * w + math.sin(self._t * 0.6 + f.phase) * f.sway
-            y = f.ry * h + math.cos(self._t * 0.4 + f.phase) * 10
+            x = f.rx * w + math.sin(self._t * 0.55 + f.phase) * f.sway
+            y = f.ry * h + math.cos(self._t * 0.38 + f.phase) * 8
             p.drawPixmap(int(x - f.size / 2), int(y - f.size / 2), f.pixmap)
         p.end()

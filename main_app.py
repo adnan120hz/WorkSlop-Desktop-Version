@@ -287,7 +287,9 @@ def main() -> int:
 
     widget = MainWindow(device_manager=dm, translator=translator)
     translator.fix_ui_for_rtl(widget.ui)
-    widget.resize(800, 600)
+    # Reference-layout proportions: the blue header tabs + device panel
+    # need a desktop-tool width, so open at 1240x820 instead of 800x600.
+    widget.resize(1240, 820)
     widget.show()
 
     # First-launch dialogs (interface picker + backup reminder) are deferred
@@ -306,25 +308,49 @@ def main() -> int:
         from PySide6.QtCore import QObject, Signal
 
         class _UpdateSignal(QObject):
-            available = Signal(bool)
+            available = Signal(object)
 
         _update_signal = _UpdateSignal()
 
-        def _show_update_dialog():
+        def _show_update_dialog(result):
             from src.gui.dialogs import UpdateAppDialog
-            UpdateAppDialog().exec()
+            UpdateAppDialog(result).exec()
+
+        def _on_update_result(result):
+            # Startup notification: only on update_available, and only
+            # once per (channel, tag) — the pair is stored after the
+            # dialog is shown, whether accepted or dismissed.
+            try:
+                if result is None or result.outcome != "update_available":
+                    return
+                if result.latest is None:
+                    return
+                pair_channel = settings.value("update_last_notified_channel", "")
+                pair_tag = settings.value("update_last_notified_tag", "")
+                if (pair_channel, pair_tag) == (result.channel,
+                                                result.latest.tag_name):
+                    return
+                _show_update_dialog(result)
+                settings.setValue("update_last_notified_channel", result.channel)
+                settings.setValue("update_last_notified_tag",
+                                  result.latest.tag_name)
+                settings.sync()
+            except Exception as e:
+                logger.debug("Update dialog skipped: %s", e)
 
         def _check_update():
             try:
-                from src.controllers.web_request_handler import is_update_available
+                from src.controllers.web_request_handler import (
+                    check_for_update, get_update_channel)
                 from src.gui.version import App_Version, App_Build
-                ok = bool(is_update_available(App_Version, App_Build))
+                result = check_for_update(App_Version, App_Build,
+                                          get_update_channel())
             except Exception as e:
                 logger.debug("Update check failed: %s", e)
-                ok = False
-            _update_signal.available.emit(ok)
+                result = None
+            _update_signal.available.emit(result)
 
-        _update_signal.available.connect(lambda ok: _show_update_dialog() if ok else None)
+        _update_signal.available.connect(_on_update_result)
         threading.Thread(target=_check_update, daemon=True).start()
         app._update_signal = _update_signal  # keep a strong reference
     except Exception as e:
