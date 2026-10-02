@@ -103,6 +103,8 @@ class TweakID(Enum):
     # added for pre-beta developer release. All unverified on device.
     # See ~/workspace/riset/AUDIT-KANDIDAT-BARU.md for audit details.
     SolariumForceFallback = auto()
+    # Deprecated alias for backward compat with old presets (pre-4.0)
+    ForceSolariumFallback = SolariumForceFallback
     DisableSolariumSwiftUI = auto()
     GlassLegibility2 = auto()
     SolariumFeatureFlags = auto()

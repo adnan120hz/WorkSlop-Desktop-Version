@@ -109,12 +109,12 @@ def _classify(exc_type, exc_value) -> dict:
             "Your computer ran out of memory. Close some programs and try again."
     # --- App logic / programming errors ---
     elif name == "NuggetException" or module.startswith("src."):
-        severity, fault, friendly = "Serious", "The app (GoldenNugget)", \
-            "GoldenNugget hit an internal problem."
+        severity, fault, friendly = "Serious", "The app (WorkSlop Desktop)", \
+            "WorkSlop Desktop hit an internal problem."
     elif issubclass(exc_type, (TypeError, ValueError, KeyError, IndexError,
                                AttributeError, ImportError, NameError, OSError)):
-        severity, fault, friendly = "Serious", "The app (GoldenNugget)", \
-            "GoldenNugget hit an internal problem."
+        severity, fault, friendly = "Serious", "The app (WorkSlop Desktop)", \
+            "WorkSlop Desktop hit an internal problem."
 
     return {
         "severity": severity,
@@ -152,7 +152,7 @@ def _build_issue_body(info: dict, summary: str, traceback_text: str,
     except Exception:
         version = "unknown"
     body = (
-        "## GoldenNugget Error Report\n\n"
+        "## WorkSlop Desktop Error Report\n\n"
         f"**App version:** {version}\n"
         f"**Severity:** {info['severity']}\n"
         f"**Likely cause:** {info['fault']}\n\n"
@@ -214,7 +214,7 @@ class CrashDialog(QDialog):
         layout = QVBoxLayout(self)
 
         heading = QLabel(
-            "GoldenNugget detected an error. Here's what we know - report it to "
+            "WorkSlop Desktop detected an error. Here's what we know - report it to "
             "us or copy the details (with the session log) before restarting.")
         heading.setWordWrap(True)
         heading.setStyleSheet("font-size: 16px; font-weight: 600;")
@@ -279,7 +279,7 @@ class CrashDialog(QDialog):
         buttons.addWidget(open_log_btn)
 
         continue_btn = QPushButton("Restart App")
-        continue_btn.setToolTip("Close the error report and relaunch GoldenNugget.")
+        continue_btn.setToolTip("Close the error report and relaunch WorkSlop Desktop.")
         continue_btn.setDefault(True)
         continue_btn.clicked.connect(self.accept)
         buttons.addWidget(continue_btn)
@@ -395,21 +395,15 @@ def _crash_loop_active() -> bool:
 
 
 def _restart_app():
-    """Relaunch GoldenNugget from the crash handler so the session keeps
+    """Relaunch WorkSlop Desktop from the crash handler so the session keeps
     working after an unexpected error. Uses the same args the process was
-    started with; falls back to a plain re-exec if anything fails."""
+    started with. Cross-platform via src.utils.restart (the old os.execv
+    calls silently did nothing on Windows, where os.exec* does not exist)."""
     try:
-        if getattr(sys, "frozen", False):
-            # PyInstaller: sys.argv[0] is already the exe path.
-            target = sys.argv if len(sys.argv) > 1 else [sys.executable]
-            os.execv(sys.executable, target)
-        else:
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+        from src.utils.restart import restart_app
+        restart_app()
     except Exception:
-        try:
-            os.execl(sys.executable, sys.executable, *sys.argv)
-        except Exception:
-            pass
+        pass
 
 
 def _handle_crash(exc_type, exc_value, exc_tb):
