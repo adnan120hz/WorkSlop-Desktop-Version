@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
+from src.devicemanagement.session import install_windows_selector_policy
 from src.gui.theme import t, ColorThemeManager
 
 
@@ -42,6 +43,7 @@ class _AppListThread(QThread):
     def run(self):
         try:
             import asyncio
+            install_windows_selector_policy()
             apps = asyncio.run(self._fetch())
             self.done.emit(apps)
         except Exception as e:
@@ -86,6 +88,7 @@ class _BrowseThread(QThread):
     def run(self):
         try:
             import asyncio
+            install_windows_selector_policy()
             entries, access = asyncio.run(self._browse())
             self.done.emit(self.bundle_id, entries, access)
         except Exception as e:
@@ -130,6 +133,7 @@ class _BackupBrowseThread(QThread):
 
     def run(self):
         import asyncio
+        install_windows_selector_policy()  # Windows: pmd3 selector loop
         try:
             backup_dir = asyncio.run(self._backup())
             from src.restore.appdomain_backup import list_app_domain_files
@@ -175,6 +179,7 @@ class _TransferThread(QThread):
     def run(self):
         try:
             import asyncio
+            install_windows_selector_policy()
             asyncio.run(self._transfer())
             self.done.emit(self.local_path)
         except Exception as e:
@@ -212,6 +217,7 @@ class _FileOpThread(QThread):
     def run(self):
         try:
             import asyncio
+            install_windows_selector_policy()
             msg = asyncio.run(self._execute())
             self.done.emit(msg)
         except Exception as e:

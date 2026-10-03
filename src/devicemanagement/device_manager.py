@@ -20,7 +20,8 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 import pymobiledevice3.service_connection as _sc
 
 
-from src.devicemanagement.session import lockdown_session
+from src.devicemanagement.session import (
+    install_windows_selector_policy, lockdown_session)
 from src.exceptions.device_errors import is_device_locked_error as _is_device_locked_error
 from src.controllers.hotload import HotLoad
 from src.restore.skip_setup27 import build_cloud_config
@@ -208,6 +209,15 @@ class DeviceManager:
         # so 60s is a generous ceiling. ``on_device_found`` (optional) fires
         # after each device is appended so the UI can show it immediately
         # instead of waiting for the whole list (user latency fix 2026-10-03).
+        # Windows: pymobiledevice3 needs the Selector loop (session.py).
+        install_windows_selector_policy()
+        try:
+            import logging as _det_log
+            _det_log.getLogger("WorkSlop.detection").info(
+                "event loop policy: %s (platform %s)",
+                type(asyncio.get_event_loop_policy()).__name__, sys.platform)
+        except Exception:
+            pass
         try:
             asyncio.run(asyncio.wait_for(
                 self._get_devices(settings, show_alert, on_device_found),
@@ -547,6 +557,7 @@ class DeviceManager:
         return self.get_current_mobilegestalt_decision().supported
 
     def apply_gestalt_tweaks(self, update_label=lambda x: None, show_alert=lambda x: None):
+        install_windows_selector_policy()
         asyncio.run(self._apply_gestalt_tweaks(update_label, show_alert))
 
     def _load_gestalt_plist(self, update_label=lambda x: None):
@@ -633,46 +644,93 @@ class DeviceManager:
             raise NuggetException(QCoreApplication.tr(
                 "No MobileGestalt tweaks are enabled."))
 
+        # Debt fix (2026-10-03): a MobileGestalt apply started from the
+        # MobileGestalt page is recorded in the Apply Journal, exactly
+        # like the main Apply pass. Previously this path wrote no journal
+        # at all, so page-initiated gestalt applies left no durable
+        # per-tweak record in <log dir>/ApplyJournal.
+        self.last_apply_journal_path = None
+        self._journal_error = None
+        journal = begin_journal("apply", device=self._journal_device_info())
+        self._current_journal = journal
+        journal_entries: list = []
+        try:
+            for _jname, _jtweak in tweaks.items():
+                if isinstance(_jtweak, gestalt_tweak_types) and _jtweak.enabled:
+                    journal_entries.extend(
+                        self._journal_describe(journal, _jname, _jtweak))
+            if rdar_on:
+                journal_entries.extend(self._journal_describe(
+                    journal, TweakID.RdarFix, rdar_tweak))
+        except Exception as _je:
+            log_warn(f"Apply Journal snapshot (gestalt) failed: {_je}")
+            journal_entries = []
+
         update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
         files_to_restore: list[FileToRestore] = []
-        if has_gestalt:
-            gestalt_plist = self._load_gestalt_plist(update_label)
-            for tweak_name in tweaks:
-                tweak = tweaks[tweak_name]
-                if isinstance(tweak, gestalt_tweak_types):
-                    gestalt_plist = tweak.apply_tweak(gestalt_plist)
-            self.concat_file(
-                contents=plistlib.dumps(gestalt_plist),
-                path=FileLocation.mga.value,
-                files_to_restore=files_to_restore,
-                owner=501, group=501,
-            )
-        if rdar_on:
-            rdar_plist = rdar_tweak.apply_tweak({})
-            rdar_payload = rdar_plist.get(rdar_tweak.file_location)
-            if rdar_payload is not None:
+        try:
+            if has_gestalt:
+                gestalt_plist = self._load_gestalt_plist(update_label)
+                for tweak_name in tweaks:
+                    tweak = tweaks[tweak_name]
+                    if isinstance(tweak, gestalt_tweak_types):
+                        gestalt_plist = tweak.apply_tweak(gestalt_plist)
                 self.concat_file(
-                    contents=plistlib.dumps(rdar_payload),
-                    path=rdar_tweak.file_location.value,
+                    contents=plistlib.dumps(gestalt_plist),
+                    path=FileLocation.mga.value,
                     files_to_restore=files_to_restore,
                     owner=501, group=501,
                 )
+            if rdar_on:
+                rdar_plist = rdar_tweak.apply_tweak({})
+                rdar_payload = rdar_plist.get(rdar_tweak.file_location)
+                if rdar_payload is not None:
+                    self.concat_file(
+                        contents=plistlib.dumps(rdar_payload),
+                        path=rdar_tweak.file_location.value,
+                        files_to_restore=files_to_restore,
+                        owner=501, group=501,
+                    )
 
-        self.update_label = update_label
-        self.do_not_unplug = ""
-        if self.data_singleton.current_device.connected_via_usb:
-            self.do_not_unplug = "\n" + QCoreApplication.tr("DO NOT UNPLUG")
-        async with lockdown_session(udid) as ld:
-            update_label(QCoreApplication.tr("Preparing to restore...") + self.do_not_unplug)
-            await restore_files(
-                files=files_to_restore, reboot=self.pref_manager.auto_reboot,
-                lockdown_client=ld,
-                progress_callback=self.progress_callback,
-                backup_password="",
-                # Nugget's gestalt flow restores the file directly: no
-                # GoldenNugget protective backup here.
-                skip_protective_backup=True,
-            )
+            # Journal: stage every entry against the files about to be
+            # restored (best-effort — journaling must never block an apply).
+            try:
+                _keys = journal.attach_files(files_to_restore)
+                for _entry in journal_entries:
+                    _entry["status"] = TW_STAGED
+                    journal.associate(_entry, _keys)
+                journal.write()
+            except Exception as _je:
+                log_warn(f"Apply Journal staging (gestalt) failed: {_je}")
+
+            self.update_label = update_label
+            self.do_not_unplug = ""
+            if self.data_singleton.current_device.connected_via_usb:
+                self.do_not_unplug = "\n" + QCoreApplication.tr("DO NOT UNPLUG")
+            async with lockdown_session(udid) as ld:
+                update_label(QCoreApplication.tr("Preparing to restore...") + self.do_not_unplug)
+                await restore_files(
+                    files=files_to_restore, reboot=self.pref_manager.auto_reboot,
+                    lockdown_client=ld,
+                    progress_callback=self.progress_callback,
+                    backup_password="",
+                    # Nugget's gestalt flow restores the file directly: no
+                    # GoldenNugget protective backup here.
+                    skip_protective_backup=True,
+                )
+        except Exception as e:
+            for _entry in journal_entries:
+                if _entry.get("status") == TW_STAGED:
+                    _entry["status"] = TW_NOT_DELIVERED
+            self._finish_journal(
+                journal, "failed", error=f"{type(e).__name__}: {e}")
+            self._current_journal = None
+            raise
+        for _entry in journal_entries:
+            if _entry.get("status") == TW_STAGED:
+                _entry["status"] = TW_DELIVERED
+        self._finish_journal(journal, "success")
+        self._current_journal = None
         msg = QCoreApplication.tr("Your device will now restart.\n\nRemember to turn Find My back on!")
         if not self.pref_manager.auto_reboot:
             msg = QCoreApplication.tr("Please restart your device to see changes.")
@@ -737,6 +795,7 @@ class DeviceManager:
             update_label(QCoreApplication.tr("Backing up device... ({0:.1f}%)").format(progress))
         return _cb
     def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None, on_backup_complete=None):
+        install_windows_selector_policy()
         asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice, on_backup_complete))
     async def _apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None, on_backup_complete=None):
         files_to_restore: list[FileToRestore] = []
@@ -2010,10 +2069,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         # User doesn't want encryption - show friendly error
                         raise NuggetException(QCoreApplication.tr(
                             "Backup encryption is enabled on your iPhone.\n\n"
-                            "GoldenNugget needs to temporarily disable it to apply tweaks safely.\n\n"
+                            "WorkSlop Desktop needs to temporarily disable it to apply tweaks safely.\n\n"
                             "Please choose one:\n"
                             "1. Disable encryption on your iPhone: Settings → General → Transfer or Reset iPhone → Backup Password → Turn Off\n"
-                            "2. Or enable \"Use Encrypted Backups (Experimental)\" in GoldenNugget Settings → enter your backup password when prompted.\n\n"
+                            "2. Or enable \"Use Encrypted Backups (Experimental)\" in WorkSlop Desktop Settings → enter your backup password when prompted.\n\n"
                             "Tip: Option 1 is simpler if you don't know your backup password."
                         ))
 
@@ -2074,6 +2133,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
 
     ## RESETTING TWEAKS
     def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        install_windows_selector_policy()
         asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice))
     async def _reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
         journal = None

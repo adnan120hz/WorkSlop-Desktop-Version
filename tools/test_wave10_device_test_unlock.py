@@ -407,19 +407,29 @@ finally:
     QMessageBox.warning = _orig_warning
     QMessageBox.exec = _orig_exec
 
-print("\nGUI: Home MobileGestalt status follows the shared decision")
-for build, expected in (("23G82", "Locked"), ("23G83", "Locked"),
-                        ("23C5027f", "Supported")):
-    home = IOSHomePage(_Window(build=build))
+print("\nGUI: Home MobileGestalt tile follows the shared decision")
+from src.devicemanagement.constants import mobilegestalt_decision  # noqa: E402
+for build, ver, expected_locked in (
+        ("23G82", "26.6.1", True), ("23G83", "26.6.1", True),
+        ("23C5027f", "26.1", False)):
+    home = IOSHomePage(_Window(build=build, version=ver))
     app.processEvents()
-    got = home._info_values["gestalt"].text()
-    check(f"Home gestalt on {build} is {expected}", got == expected, got)
-check("serial row hidden without data", home._info_rows["serial"].isHidden())
-check("capacity chip hidden without data", home._capacity_chip.isHidden())
-check("Home shows brand logo, no phone", hasattr(home, "_brand_logo")
-      and not hasattr(home, "_phone"))
-check("tweak list card present on Home",
-      home._catalogue_card.objectName() == "tweakListCard")
+    # The shell (MainWindow.change_selected_device) drives the tile from
+    # the one shared decision; replay exactly those two calls here.
+    decision = mobilegestalt_decision(build, ver)
+    home.set_mobilegestalt_visible(True)
+    home.set_mobilegestalt_locked(not decision.supported, ver)
+    check(f"Home gestalt tile on {build} locked={expected_locked}",
+          (home.mobilegestalt_card in home._tile_locks) == expected_locked)
+    if expected_locked:
+        check(f"Home gestalt tile on {build} explains the boundary",
+              "26.2 beta 1" in home._tile_locks[home.mobilegestalt_card],
+              home._tile_locks[home.mobilegestalt_card][:60])
+    home.close()
+check("Home hero is the Apple logo tile (no phone frame)",
+      not home._hero_logo.pixmap().isNull() and not hasattr(home, "_phone"))
+check("Home carries the nine v4 feature tiles",
+      len(home._tiles) == 9, str(len(home._tiles)))
 
 print("\nGUI: Status Bar page is a normal feature on 23G83 (Wave 11)")
 from src.gui.ios.statusbar import IOSStatusBarPage  # noqa: E402

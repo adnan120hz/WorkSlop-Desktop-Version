@@ -25,6 +25,14 @@ from src.exceptions.crash_handler import install_crash_handler, CrashHandlerApp
 install_crash_handler()
 print("[init] CrashHandler installed")
 
+# Windows: pymobiledevice3 requires the Selector event loop (the default
+# ProactorEventLoop cannot drive its usbmux sockets). Installed once here
+# at process start; every device worker thread re-asserts it before its
+# own asyncio.run calls (src.devicemanagement.session).
+from src.devicemanagement.session import install_windows_selector_policy
+install_windows_selector_policy()
+print("[init] Event loop policy ready")
+
 
 def _current_ios(dm) -> tuple:
     """(version, model) of the currently selected device, or (None, None)."""

@@ -284,19 +284,23 @@ app.processEvents()
 check("panel starts at No Device",
       "No device" in host.device_panel.device_combo.currentText(),
       host.device_panel.device_combo.currentText())
-check("home title starts at No device",
-      host.ios_home._device_title.text() in ("No device connected", "No Device"),
-      host.ios_home._device_title.text())
+check("home picker starts at No Device",
+      host.ios_home.device_combo.currentText() == "No Device",
+      host.ios_home.device_combo.currentText())
 
-# Pre-device statuses must not exist at all (user report).
+# Pre-device statuses must not exist at all (user report): the v4 Home
+# shows only "Not connected" and no version/support claims before a
+# device is detected.
 host.ios_home.update_device_info()
 host.ios_home.update_status()
 app.processEvents()
-for key in ("gestalt", "statusbar", "support"):
-    row = host.ios_home._info_rows[key]
-    check(f"no-device: {key} row hidden", not row.isVisible() or
-          host.ios_home._info_values[key].text() == "",
-          host.ios_home._info_values[key].text())
+check("no-device: subtitle carries no version",
+      host.ios_home.subtitle.text() == "iPhone (iOS — —)",
+      host.ios_home.subtitle.text())
+check("no-device: status is Not connected, never Supported",
+      "Not connected" in host.ios_home.status_lbl.text()
+      and "Supported" not in host.ios_home.status_lbl.text(),
+      host.ios_home.status_lbl.text())
 
 # Wedge the flag like the old bug, then Refresh must recover by itself.
 host.refresh_in_progress = True
@@ -312,14 +316,18 @@ check("refresh #2 ran", manager.scans == 2, str(manager.scans))
 check("device flipped into the panel",
       "Stub iPhone" in host.device_panel.device_combo.currentText(),
       host.device_panel.device_combo.currentText())
-check("home title flipped to the device",
-      host.ios_home._device_title.text() == "Stub iPhone",
-      host.ios_home._device_title.text())
+check("home picker flipped to the device",
+      host.ios_home.device_combo.currentText().startswith("Stub iPhone"),
+      host.ios_home.device_combo.currentText())
 check("footer reports the device",
       "1 device" in host.footer_status_lbl.text(),
       host.footer_status_lbl.text())
-check("gestalt row now exists with the shared verdict (Locked 23G83)",
-      host.ios_home._info_values["gestalt"].text() == "Locked",
-      host.ios_home._info_values["gestalt"].text())
+check("home status flips to Supported after refresh",
+      "Supported!" in host.ios_home.status_lbl.text(),
+      host.ios_home.status_lbl.text())
+check("home subtitle shows the device iOS after refresh",
+      "26.6.1" in host.ios_home.subtitle.text()
+      and "23G83" in host.ios_home.subtitle.text(),
+      host.ios_home.subtitle.text())
 
 print(f"\nALL {PASS} CHECKS PASSED")

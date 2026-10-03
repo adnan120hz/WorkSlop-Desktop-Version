@@ -284,6 +284,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # content. White cards/panels sit above it, like the v4 shell.
         from src.gui.ios.sky_bg import SkyBackground
         self._sky_bg = SkyBackground(shell)
+        self._sky_bg.start()  # v4: drifting logos animate from window start
         self._shell = shell
         content = QtWidgets.QWidget(shell)
         content.setStyleSheet("background: transparent; border: none;")
@@ -537,10 +538,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
     def _on_color_theme_changed(self):
         """Called when the color theme (dark/light or accent) changes."""
         self._apply_global_stylesheet()
-        # Keep the bubble backdrop in sync with the palette.
+        # Repaint the sky backdrop against the current palette (v4
+        # SkyBackground paints from the sky tints; a repaint is all it
+        # needs — the Wave 10 set_colors API is gone with its backdrop).
         try:
-            _c = self._color_theme.colors
-            self._backdrop.set_colors(_c.bubble, "rgba(180, 205, 255, 40)")
+            self._backdrop.update()
         except Exception:
             pass
         # Keep the device pill themed too.

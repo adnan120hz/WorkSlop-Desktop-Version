@@ -606,19 +606,22 @@ class NavigationMixin:
             self.ios_nav.setVisible(False)
             self.ios_nav.clear_right_action()
         else:
-            # the iOS home page is full-screen — no header at all
+            # the iOS home page is full-screen — no header at all. The
+            # refresh + sidebar sync below must still run for page 0:
+            # returning early here left the rail highlighting the previous
+            # page (e.g. Settings) after a programmatic jump home.
             self.ios_nav.setVisible(index != 0)
             if index == 0:
                 self.ios_nav.clear_right_action()
-                return
-            title = self._ios_page_titles.get(index, "")
-            self.ios_nav.set_title(title)
-            self.ios_nav.set_back_visible(True)
-            right = self._nav_right_actions.get(index)
-            if right:
-                self.ios_nav.set_right_action(right[0], right[1])
             else:
-                self.ios_nav.clear_right_action()
+                title = self._ios_page_titles.get(index, "")
+                self.ios_nav.set_title(title)
+                self.ios_nav.set_back_visible(True)
+                right = self._nav_right_actions.get(index)
+                if right:
+                    self.ios_nav.set_right_action(right[0], right[1])
+                else:
+                    self.ios_nav.clear_right_action()
         # REAUDIT FIX: device-dependent pages (Settings "This device" rows,
         # Passcode device line, Backup apply state...) build their UI once at
         # construction, so they showed stale "No device" after the iPhone was

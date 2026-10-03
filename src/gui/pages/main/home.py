@@ -28,6 +28,19 @@ class HomePage(Page):
         button wall, so the classic home reads as just logo + text (+ the
         presets widget below).
         """
+        # Branding: the generated UI still carries the upstream
+        # "GoldenNugget" caption and the resource used to hold the
+        # upstream flask logo. Rebrand at runtime (the generated file is
+        # not edited by hand): WorkSlop title + WS icon.
+        title = getattr(self.ui, "label_2", None)
+        if title is not None:
+            title.setText("WorkSlop Desktop")
+        hero_btn = getattr(self.ui, "bigNuggetBtn", None)
+        if hero_btn is not None:
+            from PySide6.QtCore import QSize
+            from PySide6.QtGui import QIcon
+            hero_btn.setIcon(QIcon(":/credits/workslop.png"))
+            hero_btn.setIconSize(QSize(170, 170))
         for name in ("discordBtn", "starOnGithubBtn"):
             btn = getattr(self.ui, name, None)
             if btn is not None:

@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Signal, QSettings
 from PySide6.QtGui import QColor, QPalette
 
-from src.gui.theme.colors import ThemeColors, WS_BLUE, ACCENT_PRESETS
+from src.gui.theme.colors import ThemeColors, SKY, WS_BLUE, ACCENT_PRESETS
 from src.controllers.settings import migrate_legacy_key
 
 
@@ -162,7 +162,10 @@ class ColorThemeManager(QObject):
             pressed = QColor(accent).darker(130).name()
         else:
             accent, hover, pressed = ACCENT_PRESETS[self._accent_name]
-        return WS_BLUE.with_accent(accent, hover, pressed)
+        # WorkSlop v4 UI restoration (user order 2026-10-03): the shipped
+        # palette is the v4 SKY palette again (white rail, soft blue-white
+        # body). WS_BLUE/WORKBENCH stay defined for archived code only.
+        return SKY.with_accent(accent, hover, pressed)
 
     def accent_hex(self) -> str:
         """Return the ``#rrggbb`` string for the current accent."""

@@ -187,8 +187,13 @@ def test_tweak_stages_the_archive():
 
     tweak.set_enabled(True)
     tweak.apply_ios27_tweak(files)
-    check("enabled with no names stages a reset record",
-          len(files) == 1 and is_reset_archive(files[0].contents))
+    # Audit B30 (4dff4af): an enabled tweak with no overrides stages
+    # nothing — build_archive(None, None) is the *reset* record, and
+    # staging it on an empty apply would clobber the user's status bar.
+    # Explicit reset still goes through build_reset_archive(). This
+    # expectation was stale: the test predates B30 and was never updated.
+    check("enabled with no names stages nothing (B30)",
+          len(files) == 0)
 
     tweak.set_carrier_override("MyCarrier")
     tweak.set_secondary_carrier_override("Second")

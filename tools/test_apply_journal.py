@@ -310,10 +310,105 @@ def test_manager_integration():
             pass
 
 
+def test_gestalt_journal():
+    print("\nMobileGestalt page apply is journal-recorded (debt fix)")
+    try:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+        from contextlib import asynccontextmanager
+        from types import SimpleNamespace
+        import src.devicemanagement.device_manager as dm_mod
+        from src.tweaks.tweaks import tweaks, TweakID
+        from src.tweaks.tweak_loader import load_mobilegestalt, load_plist_tweaks
+    except Exception as e:
+        print(f"  skipped: {type(e).__name__}: {e}")
+        return
+    app = QApplication.instance() or QApplication([])
+    jdir = os.environ["WORKSLOP_APPLY_JOURNAL_DIR"]
+    os.makedirs(jdir, exist_ok=True)
+    load_plist_tweaks()
+    load_mobilegestalt(build="23C5027f", version="26.1")
+
+    dm = dm_mod.DeviceManager()
+    dm.get_current_device_name = lambda: "Test iPhone"
+    dm.get_current_device_model = lambda: "iPhone14,5"
+    dm.get_current_device_version = lambda: "26.1"
+    dm.get_current_device_build = lambda: "23C5027f"
+    dm.get_current_device_udid = lambda: "TESTUDID-GESTALT"
+    dm.data_singleton.current_device = SimpleNamespace(
+        connected_via_usb=True, version="26.1", build="23C5027f")
+    dm._load_gestalt_plist = lambda update_label=None: {
+        "CacheExtra": {"oPeik/9e8lQWMszEjbPzng": {}}}
+    dm.pref_manager.auto_reboot = False
+
+    @asynccontextmanager
+    async def fake_lockdown(serial=None, **kw):
+        yield SimpleNamespace()
+
+    captured = {}
+
+    async def fake_restore_files(**kw):
+        captured["files"] = list(kw.get("files") or [])
+        if captured.get("fail"):
+            raise RuntimeError("gestalt restore boom")
+        return "OK"
+
+    old_lockdown = dm_mod.lockdown_session
+    old_restore = dm_mod.restore_files
+    dm_mod.lockdown_session = fake_lockdown
+    dm_mod.restore_files = fake_restore_files
+
+    def latest_apply():
+        files = sorted(glob.glob(os.path.join(jdir, "apply-*.json")),
+                       key=os.path.getmtime)
+        with open(files[-1]) as fh:
+            return json.load(fh)
+
+    tweak = tweaks[TweakID.ModelName]
+    tweak.set_enabled(True)
+    try:
+        dm.apply_gestalt_tweaks(lambda x: None, lambda x: None)
+        doc = latest_apply()
+        check("gestalt apply journal written", doc["mode"] == "apply")
+        check("gestalt apply journal success", doc["status"] == "success",
+              doc["status"])
+        entries = [e for e in doc["tweaks"] if e["tweak_id"] == "ModelName"]
+        check("gestalt tweak entry recorded", len(entries) == 1,
+              str(doc["tweaks"]))
+        check("gestalt entry delivered",
+              bool(entries)
+              and entries[0]["status"] == "delivered-by-restore",
+              str(entries))
+        check("gestalt journal path surfaced",
+              bool(dm.last_apply_journal_path)
+              and os.path.exists(dm.last_apply_journal_path))
+
+        captured["fail"] = True
+        raised = False
+        try:
+            dm.apply_gestalt_tweaks(lambda x: None, lambda x: None)
+        except Exception:
+            raised = True
+        check("failing gestalt apply propagates", raised)
+        doc2 = latest_apply()
+        check("failed gestalt apply journaled failed",
+              doc2["status"] == "failed", doc2["status"])
+        entries2 = [e for e in doc2["tweaks"] if e["tweak_id"] == "ModelName"]
+        check("failed gestalt entries not delivered",
+              bool(entries2)
+              and entries2[0]["status"] == "not-delivered",
+              str(entries2))
+    finally:
+        tweak.set_enabled(False)
+        dm_mod.lockdown_session = old_lockdown
+        dm_mod.restore_files = old_restore
+
+
 test_value_summary()
 test_journal_document()
 test_file_records_from_disk_and_errors()
 test_retention()
 test_manager_integration()
+test_gestalt_journal()
 
 print(f"\nALL {PASS} CHECKS PASSED")

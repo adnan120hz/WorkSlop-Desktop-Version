@@ -14,8 +14,12 @@ Contract (user order 2026-10-03):
 * ``ThemeManager`` defaults a fresh install to the WorkSlop UI; the
   first-launch picker and the Settings interface switch both persist the
   same ``ui/theme`` choice.
-* About follows the v4 contents (no 3uTools UI-reference credit), and the
+* About carries the English Nugget UI reference (user order
+  2026-10-03) and no "3uTools" credit appears anywhere in the app; the
   visible app version is exactly ``11.0``.
+* Pages are the real v4.0 pages restored from commit ``4f44415`` (hero
+  Home with 9 feature tiles, SKY palette, white rail, v4 SkyBackground)
+  integrated with the current backend — not the Wave 10 rebuild pages.
 
 Run: QT_QPA_PLATFORM=offscreen python tools/test_wave10_ui_rebuild.py
 """
@@ -147,11 +151,16 @@ class _Window:
 
 print("\nWave 11 visual baseline")
 colors = ColorThemeManager.instance().colors
-check("content surface is white", colors.bg_primary == "#FFFFFF",
+# v4 restoration (user order 2026-10-03): the shipped palette is the v4
+# SKY palette again — soft blue-white body, white rail, Apple-blue brand.
+check("content surface is the v4 sky body", colors.bg_primary == "#F2F7FF",
       colors.bg_primary)
-check("brand blue stays strong", colors.brand == "#0B65D8", colors.brand)
-check("no washed-out background tints",
-      "#7FB8EC" not in FLOAT_TINTS and "#5EA9E6" not in FLOAT_TINTS,
+check("rail surface is v4 white", colors.menu_bg == "#FFFFFF", colors.menu_bg)
+check("brand blue is the v4 Apple blue", colors.brand == "#007AFF",
+      colors.brand)
+check("background floaters use the soft v4 tints",
+      set(FLOAT_TINTS) == {"#BFD9FA", "#A9CBF7", "#C9DFFB", "#9DC2F2",
+                           "#D4E4FC"},
       str(FLOAT_TINTS))
 for key in ("global", "modern_card", "sidebar_nav_button", "nav_bar"):
     check(f"style resolves: {key}", bool(t(key).strip()))
@@ -243,14 +252,15 @@ print("\nanimated background")
 sky = SkyBackground()
 check("floater count", len(sky._floaters) == FLOAT_COUNT,
       str(len(sky._floaters)))
-check("timer animating", sky.is_animating())
 sky.resize(1000, 600)
 sky.show()
+sky.start()
+check("timer animating", sky._timer.isActive())
 app.processEvents()
-before = sky.floater_positions()
+before = [(f.rx, f.ry) for f in sky._floaters]
 for _ in range(4):
     sky._tick()
-after = sky.floater_positions()
+after = [(f.rx, f.ry) for f in sky._floaters]
 check("floaters move", before != after)
 sky.hide()
 sky.stop()
@@ -304,54 +314,63 @@ check("dock holds the four classic apps",
       ["Phone", "Safari", "Messages", "Music"])
 pf.close()
 
-print("\nHome device/catalogue surface")
+print("\nHome is the restored v4 page (hero + 9 feature tiles)")
 window = _Window()
 home = IOSHomePage(window)
 app.processEvents()
 check("Home shows the big Apple brand logo (no phone frame)",
-      hasattr(home, "_brand_logo") and not home._brand_logo.pixmap().isNull())
+      not home._hero_logo.pixmap().isNull())
 check("Home has no phone frame widget", not hasattr(home, "_phone"))
-check("device title is device", home._device_title.text() == "iPhone 14")
-check("phone caption is device", home._phone_caption.text() == "iPhone 14")
-check("refresh link is available", not home._refresh_link.isHidden())
-check("title card exists", home._title_card.objectName() == "deviceTitleCard")
-check("tweak list card exists",
-      home._catalogue_card.objectName() == "tweakListCard")
-check("no Hard Disk Capacity card on Home", not hasattr(home, "_capacity_card"))
-check("MobileGestalt row Locked on 23G83 (shared decision)",
-      home._info_values["gestalt"].text() == "Locked",
-      home._info_values["gestalt"].text())
-check("model in table", home._info_values["model"].text() == "iPhone14,5")
-check("iOS in table", home._info_values["ios"].text() == "26.6.1")
-check("build in table", home._info_values["build"].text() == "23G83")
-check("connection in table", home._info_values["connection"].text() == "USB")
-check("unknown storage stays honest",
-      home._info_values["storage"].text() == "—")
-entries = {entry["id_name"]: entry for entry in home.tweak_catalogue_entries}
-check("catalogue is registry-derived", "SBHideSearchAffordance" in entries)
-check("Flat Icons is a normal catalogue row",
-      "FlatIconsEverywhere" in entries)
-check("catalogue has no device-test badge",
-      all("UNPROVEN" not in str(entry) and "device test" not in str(entry)
-          for entry in home.tweak_catalogue_entries))
-check("action tiles present",
-      set(home._tile_by_title) >= {"Refresh", "Backup / Restore", "Tweaks",
-                                   "Liquid Glass", "Status Bar", "PosterBoard",
-                                   "Daemons", "MobileGestalt", "Reset Tweaks"})
-check("statusbar card is a tile",
-      home.statusbar_card is home._tile_by_title["Status Bar"])
-check("gestalt card is a tile",
-      home.mobilegestalt_card is home._tile_by_title["MobileGestalt"])
+check("hero title is WorkSlop", home._title.text() == "WorkSlop",
+      home._title.text())
+check("device picker shows the device",
+      home.device_combo.itemText(0) == "iPhone 14 (@ USB)",
+      home.device_combo.itemText(0))
+check("device subtitle shows version and build",
+      home.subtitle.text() == "iPhone (iOS 26.6.1 23G83)",
+      home.subtitle.text())
+check("status reads Supported with a supported device",
+      "Supported!" in home.status_lbl.text(), home.status_lbl.text())
+check("all nine v4 feature tiles exist",
+      [title.text() for _icon, _res, title, _sub in home._tiles] == [
+          "Tweaks", "Liquid Glass", "App Data", "MobileGestalt",
+          "PosterBoard", "Daemons", "Status Bar", "Custom Icon",
+          "Passcode Theme"],
+      str([title.text() for _icon, _res, title, _sub in home._tiles]))
+check("no UNPROVEN / device-test text on any tile",
+      all("UNPROVEN" not in title.text() and "device test" not in title.text()
+          and "UNPROVEN" not in sub.text() and "device test" not in sub.text()
+          for _icon, _res, title, sub in home._tiles))
+home._on_tile_clicked(home.tweaks_card, 1)
+check("tile click navigates the iOS page stack",
+      window.ios_pages.index == 1, str(window.ios_pages.index))
+home.set_mobilegestalt_locked(True, "26.6.1")
+check("MobileGestalt tile locks with an explanation",
+      home.mobilegestalt_card in home._tile_locks
+      and home.mobilegestalt_card.graphicsEffect() is not None)
+home.set_mobilegestalt_locked(False)
+check("MobileGestalt tile unlocks",
+      home.mobilegestalt_card not in home._tile_locks
+      and home.mobilegestalt_card.graphicsEffect() is None)
+check("preset widget rides the v4 home", home.preset_widget is not None)
+check("process status starts hidden", home.process_status_lbl.isHidden())
 home.close()
 
-print("\nAbout follows v4 contents")
+print("\nAbout carries the English Nugget UI reference")
 about = AboutProgramDialog()
 about_texts = ([w.text() for w in about.findChildren(QLabel)]
                + [w.text() for w in about.findChildren(QToolButton)])
-check("About has no 3uTools UI-reference credit",
-      not any("3uTools" in text or "UI reference" in text
-              for text in about_texts),
-      str([text for text in about_texts if "3u" in text or "reference" in text]))
+# User order 2026-10-03: the "UI reference: 3uTools" credit is removed
+# entirely and replaced by the English Nugget UI reference.
+check("About has no 3uTools credit anywhere",
+      not any("3uTools" in text for text in about_texts),
+      str([text for text in about_texts if "3u" in text]))
+check("About carries the Nugget UI reference",
+      any("UI reference: Nugget UI" in text for text in about_texts),
+      str([text for text in about_texts if "reference" in text]))
+check("About states the second interface is based on the Nugget UI",
+      any("second interface based on the Nugget UI" in text
+          for text in about_texts))
 check("About names WorkSlop Desktop",
       any("WorkSlop Desktop" in text for text in about_texts))
 about.close()

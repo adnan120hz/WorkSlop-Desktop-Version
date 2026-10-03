@@ -7,9 +7,10 @@ Skips cleanly when PySide6 is unavailable. When Qt is present it verifies:
   the Liquid Glass section page does not (v4 placement, restored verbatim
   2026-10-03 — supersedes the Wave 10 move into the Liquid Glass menu);
 * exactly one rendered switch exists for the Hide Search payload;
-* Home's registry-derived catalogue lists Hide Search under SpringBoard
-  and lists a synthetic new registry entry automatically after a
-  catalogue refresh, with no Home code edit.
+* the registry places Hide Search under SpringBoard, the restored v4
+  Home shows its fixed nine feature tiles (no rebuild-era catalogue),
+  and a synthetic new registry entry renders in a rebuilt section page
+  with no page code edit.
 
 Run: QT_QPA_PLATFORM=offscreen python tools/test_wave10_home_hide_search_gui.py
 """
@@ -91,13 +92,6 @@ class _Window:
         pass
 
 
-def catalogue_line(page, section_value):
-    for line in page.tweak_catalogue_lbl.text().splitlines():
-        if line.startswith(section_value + ":"):
-            return line
-    return ""
-
-
 print("\nsection pages render Hide Search only under SpringBoard (v4)")
 window = _Window()
 liquid_page = IOSSectionPage(window, Section.LIQUID_GLASS)
@@ -111,19 +105,22 @@ check("duplicate name renders nowhere as a switch",
       TweakID.HideSearchAffordance not in liquid_page.content._switches
       and TweakID.HideSearchAffordance not in springboard_page.content._switches)
 
-print("\nHome catalogue is registry-derived")
+print("\nregistry places Hide Search in SpringBoard; v4 Home tiles fixed")
+from PySide6.QtWidgets import QLabel  # noqa: E402
+from src.tweaks.registry import SPECS_BY_ID  # noqa: E402
+check("registry section of Hide Search is SpringBoard (v4)",
+      SPECS_BY_ID[TweakID.SBHideSearchAffordance].section
+      is Section.SPRINGBOARD)
 home = IOSHomePage(window)
 app.processEvents()
-entries = {entry["id_name"]: entry for entry in home.tweak_catalogue_entries}
-check("Home lists canonical Hide Search", "SBHideSearchAffordance" in entries)
-check("Home places Hide Search in SpringBoard (v4)",
-      entries["SBHideSearchAffordance"]["section"] is Section.SPRINGBOARD)
-check("Home SpringBoard line names Hide Search",
-      "Hide Search Button on Home Screen" in catalogue_line(home, "SpringBoard"))
-check("Home Liquid Glass line does not name Hide Search",
-      "Hide Search Button on Home Screen" not in catalogue_line(home, "Liquid Glass"))
-check("Home keeps FlatIconsEverywhere listed",
-      "FlatIconsEverywhere" in entries)
+tile_titles = [title.text() for _icon, _res, title, _sub in home._tiles]
+check("v4 Home has the nine feature tiles",
+      tile_titles == ["Tweaks", "Liquid Glass", "App Data", "MobileGestalt",
+                      "PosterBoard", "Daemons", "Status Bar", "Custom Icon",
+                      "Passcode Theme"],
+      str(tile_titles))
+check("Home has no Hide Search tile (it lives in the SpringBoard page)",
+      not any("Hide Search" in t for t in tile_titles))
 
 synthetic = TweakSpec(
     id=TweakID.StatusBar,
@@ -135,17 +132,13 @@ synthetic = TweakSpec(
 )
 SPECS_BY_SECTION[Section.LIQUID_GLASS].append(synthetic)
 try:
-    home.refresh_tweak_catalogue()
+    rebuilt = IOSSectionPage(window, Section.LIQUID_GLASS)
     app.processEvents()
-    refreshed = {entry["id_name"]: entry
-                 for entry in home.tweak_catalogue_entries}
-    check("Home lists synthetic new registry entry after refresh",
-          refreshed.get("StatusBar", {}).get("title")
-          == "Synthetic Home Probe")
-    check("Home label shows the synthetic entry",
-          "Synthetic Home Probe" in home.tweak_catalogue_lbl.text())
+    labels = [w.text() for w in rebuilt.findChildren(QLabel)]
+    check("synthetic new registry entry renders with no page code edit",
+          "Synthetic Home Probe" in labels, str(labels[:3]))
+    rebuilt.close()
 finally:
     SPECS_BY_SECTION[Section.LIQUID_GLASS].remove(synthetic)
-    home.refresh_tweak_catalogue()
 
 print(f"\nALL {PASS} CHECKS PASSED")

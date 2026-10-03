@@ -44,8 +44,12 @@ SLIDE_PX = 8
 
 
 def restart_app():
-    """Relaunch the app so freshly loaded settings take effect."""
-    os.execl(sys.executable, sys.executable, *sys.argv)
+    """Relaunch the app so freshly loaded settings take effect.
+
+    Delegates to src.utils.restart: the old ``os.execl`` call here did not
+    exist on Windows and crashed the preset-load restart there."""
+    from src.utils.restart import restart_app as _restart_app
+    _restart_app()
 
 
 # ---------------------------------------------------------------------------

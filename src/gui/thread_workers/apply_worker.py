@@ -14,6 +14,7 @@ import threading
 # to the same class the backend uses).
 from src.utils.alerts import ApplyAlertMessage
 from src.exceptions.nugget_exception import NuggetException
+from src.devicemanagement.session import install_windows_selector_policy
 
 
 class _SudoState:
@@ -96,6 +97,7 @@ class ApplyThread(QThread):
             return "abort"
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         self._log = logging.getLogger("WorkSlop.apply")
@@ -194,6 +196,7 @@ class RestoreCacheThread(QThread):
         self.progress.emit(txt)
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         log = logging.getLogger("WorkSlop.restore_cache")
@@ -443,6 +446,7 @@ class RestoreFullBackupThread(QThread):
                 "Nugget", "Restoring backup... ({0:.1f}%)").format(value))
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         log = logging.getLogger("WorkSlop.restore_full")
@@ -531,6 +535,7 @@ class GestaltApplyThread(QThread):
         self.progress.emit(txt)
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         log = logging.getLogger("WorkSlop.gestalt")
@@ -600,6 +605,7 @@ class FullBackupThread(QThread):
                 "Nugget", "Backing up... ({0:.1f}%)").format(value))
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         log = logging.getLogger("WorkSlop.full_backup")
@@ -683,6 +689,7 @@ class ProtectiveBackupThread(QThread):
                 "Nugget", "Backing up... ({0:.1f}%)").format(value))
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         from src.controllers.nugget_logger import log_context
         log = logging.getLogger("WorkSlop.protective_backup")
@@ -757,6 +764,7 @@ class CacheUpdateThread(QThread):
         self.progress.emit(txt)
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         import asyncio
         from src.controllers.nugget_logger import log_context
@@ -802,6 +810,7 @@ class RefreshDevicesThread(QThread):
         self.alert.emit(msg)
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         log = logging.getLogger("WorkSlop.refresh")
         try:
@@ -832,6 +841,7 @@ class ResetPairingThread(QThread):
         self.manager = manager
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop (session.py)
         import logging
         import asyncio
         log = logging.getLogger("WorkSlop.pairing")

@@ -25,6 +25,7 @@ class PBDBThread(QThread):
         self.backup_function(self.update_label, self.update_progress)
 
     def run(self):
+        install_windows_selector_policy()  # Windows: pmd3 selector loop
         try:
             self.do_work()
         except Exception as e:

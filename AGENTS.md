@@ -105,14 +105,17 @@ Dark/light mode + accent color customization for the whole GUI.
   until that fade-out finishes — guarded by `_allow_close`, or the recursive
   `close()` from `_finish_close` starts a second fade and the window never
   closes.
-- **TEMP: Classic UI removed** — `src/qt/mainwindow.ui` is deleted (the
-  generated `mainwindow_ui.py` stays committed and keeps working at runtime),
-  the Settings "iOS-style Interface" switch is hidden, `ThemeManager.load_theme`
-  always returns `IOS`, and the first-launch `InterfacePickerDialog` is skipped
-  (saves `IOS` instead). Restore all of these when Classic comes back:
-  recreate `mainwindow.ui`, unhide the switch in `settings.py`, revert
-  `load_theme` to read `ui/theme`, and re-add the picker block in
-  `main_window.run_first_launch_prompts`.
+- **Dual UI (restored 2026-10-03)**: the main UI is the WorkSlop v4 UI
+  (white 216 px rail, SKY palette, v4 pages restored from commit
+  `4f44415`); the second UI is the classic Nugget shell (generated UI in
+  `src/qt/mainwindow_ui.py`, committed as generated code — do not edit
+  by hand; `mainwindow.ui` stays deleted) with its chrome icons swapped
+  to the WorkSlop `ws-*.svg` set. `ThemeManager` reads `ui/theme`
+  (`"ios"`/`"classic"`, default WorkSlop), the first-launch
+  `InterfacePickerDialog` runs from `run_first_launch_prompts` when the
+  key is absent, and Settings → Appearance carries the "WorkSlop
+  interface (off = Nugget interface)" switch that flips the same key —
+  so a user can always switch in both directions.
 - Old `src/gui/ios/theme_manager.py` (`CLASSIC`/`IOS`) is layout-only
   (Classic vs iOS-style chrome) and stays untouched side-by-side.
 - Theme UI lives in Settings → **Appearance** (`src/gui/ios/settings.py`):

@@ -82,6 +82,8 @@ async def _create(udid, include_photos, include_posterboard) -> int:
 
 def _run_create(args) -> int:
     from src.cli.common import bootstrap, make_device_manager, ensure_device
+    from src.devicemanagement.session import install_windows_selector_policy
+    install_windows_selector_policy()  # Windows: pmd3 selector loop
     settings = bootstrap()
     dm = make_device_manager(settings)
     device = ensure_device(dm, settings, args.udid)

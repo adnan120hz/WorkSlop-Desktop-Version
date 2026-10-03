@@ -112,7 +112,16 @@ class AboutProgramDialog(QDialog):
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 15px; padding: 0 20px;")
         layout.addWidget(desc)
-        
+
+        # UI reference (user order 2026-10-03): the main interface is the
+        # WorkSlop v4 interface; the second interface is based on the
+        # Nugget UI. No other app's UI-reference credit appears here.
+        ui_ref = QLabel(self.tr("UI reference: Nugget UI. WorkSlop Desktop also includes a second interface based on the Nugget UI."))
+        ui_ref.setWordWrap(True)
+        ui_ref.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ui_ref.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; padding: 0 20px;")
+        layout.addWidget(ui_ref)
+
         # Credits section
         credits_title = QLabel(self.tr("Credits"))
         credits_title.setStyleSheet(f"font-size: 17px; font-weight: 600; color: {c.text_primary}; padding-top: 8px;")
@@ -138,8 +147,8 @@ class AboutProgramDialog(QDialog):
         # Credits data: WorkSlop's own credits first, then upstream contributors
         credits = [
             ("Owner & Developer", "Adnan.120hz", "https://github.com/adnan120hz"),
-            ("Fork utama", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
-            ("Portingan MobileGestalt", "Nugget by leminlimez", "https://github.com/leminlimez/Nugget"),
+            ("Main fork", "GoldenNugget", "https://github.com/GoldenNugget-Team/GoldenNugget"),
+            ("MobileGestalt port", "Nugget by leminlimez", "https://github.com/leminlimez/Nugget"),
             ("Main Developer (upstream)", "awesomenull", "https://github.com/awesomenull-dev"),
             ("Co-Developer (upstream)", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
             ("PosterRestore Team", "PosterRestore Discord", "https://discord.gg/gWtzTVhMvh"),
