@@ -1,271 +1,189 @@
 <p align="center">
-  <img src="assets/workslop-icon.jpg" width="180" alt="WorkSlop Desktop icon">
+  <img src="assets/workslop-icon.jpg" width="160" alt="WorkSlop Desktop icon">
 </p>
 
-# WorkSlop Desktop
+<h1 align="center">WorkSlop Desktop</h1>
 
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
-[![Version](https://img.shields.io/badge/version-v3.4%20stable-green.svg)]()
+<p align="center">
+  A desktop application for customizing iPhone settings and appearance without
+  a jailbreak, over a USB connection. WorkSlop Desktop is built with PySide6
+  and is derived from the GoldenNugget project.
+</p>
 
-**Owner & Developer: [@Adnan.120hz](https://github.com/adnan120hz)**
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform: Windows | macOS | Linux">
+  <a href="https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases/latest"><img src="https://img.shields.io/badge/version-v11.0.1-brightgreen.svg" alt="Version v11.0.1"></a>
+  <a href="https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases"><img src="https://img.shields.io/badge/releases-GitHub-black.svg" alt="GitHub Releases"></a>
+</p>
 
-Customize your iPhone without jailbreak — system tweaks, Liquid Glass controls,
-MobileGestalt flags, feature flags, eligibility, wallpapers, icon & passcode
-themes, app-data browsing and full backups in one app, with the same Sky look
-on Windows, Linux and macOS.
+---
 
-WorkSlop Desktop is a fresh fork of
-[GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) with a
-redesigned Sky interface, **extra features and wider iOS support**: tweak
-modules ported from [Nugget](https://github.com/leminlimez/Nugget)
-(MobileGestalt, eligibility, RDAR fix, risky tweaks), a Liquid Glass section
-for iOS 26, iMazing-style read-only App Data browsing, real full backups,
-Indonesian translations, and per-iOS support gating — unsupported tweaks are
-shown locked with the reason, never hidden. It also has a safer backup
-system: when the protective device backup reaches 100%, the file manager
-opens with the finished backup selected so you can copy it somewhere safe
-before the apply continues.
+## Public Release
+
+The current public release of WorkSlop Desktop is **v11.0.1**. It is available
+for all three desktop platforms:
+
+| Platform | Archive |
+| --- | --- |
+| Windows | `WorkSlopDesktop-v11.0.1-Windows.zip` |
+| Linux (x86_64) | `WorkSlopDesktop-v11.0.1-Linux.tar.gz` |
+| Linux (ARM64) | `WorkSlopDesktop-v11.0.1-Linux-aarch64.tar.gz` |
+| macOS (Apple Silicon) | `WorkSlopDesktop-v11.0.1-macOS-AppleSilicon.zip` |
+| macOS (Intel) | `WorkSlopDesktop-v11.0.1-macOS-Intel.zip` |
+| macOS (Intel, legacy) | `WorkSlopDesktop-v11.0.1-macOS-IntelLegacy.zip` |
+
+Download:
+[github.com/adnan120hz/WorkSlop-Desktop-Version/releases/latest](https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases/latest)
+
+All earlier versions (v11.0 and below) predate the current public release and
+several of them were published as pre-releases; v11.0.1 is the version
+recommended for general use.
 
 > [!WARNING]
-> Always back up your data before applying tweaks. WorkSlop Desktop tries to
-> protect your data, but unexpected problems can still happen — we are not
-> responsible for any data loss or bootloops. Use at your own risk.
-> **Effectiveness on real iPhones is still unverified** — please report what
-> you find in [Issues](https://github.com/adnan120hz/desk/issues).
+> Always back up your iPhone before applying any tweak. WorkSlop Desktop
+> includes protective-backup measures, but unexpected problems — including
+> data loss — remain possible. Use this software at your own risk.
+
+## What's New in v11.0.1
+
+v11.0.1 is a small, focused maintenance release. It changes no tweak or
+payload; it refines the backup workflow and interface consistency:
+
+- The fixed "Backup Location" panel has been removed from the Backup page.
+  When a Full Backup or a Protective Backup starts, the folder is now chosen
+  in the system file picker; it is created automatically if it does not exist
+  yet and the choice is remembered. The automatic protective backup that runs
+  before an apply uses the same folder.
+- The Backup page shows a live progress strip at the bottom (current step,
+  percentage and progress bar) while a backup or restore is running.
+- The Themes page and the classic Apply page are color-matched to the Nugget
+  interface; the Themes page is fully dark in that interface.
+- The Apply progress log ("Restoring to device… %" with the progress bar) is
+  now shown in all three interfaces.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## Features
 
-### Home
-- Device overview: model, iOS version, build, UDID, connection status.
-- Quick-action cards: **Tweaks**, **Liquid Glass**, **App Data**,
-  **MobileGestalt**, **PosterBoard**, **Daemons**, **Status Bar**,
-  **Custom Icon**, **Passcode Theme** — each jumps straight to its page.
+### Three interfaces
 
-### Tweaks
-The main customization page, organized in sections. Every control shows its
-support range; **anything your connected iOS does not support stays visible
-but locked** (disabled, with the reason in a tooltip) instead of being hidden
-or silently toggleable.
+The interface can be switched at any time under **Settings → Appearance**:
 
-- **Liquid Glass** — ~25 toggles for iOS 26's glass renderer: the master
-  switch **"Disable Liquid Glass (Recommended for iOS 26.6.1)"** combined
-  with **"Force Solarium Fallback (use with Disable Liquid Glass)"** — a new
-  method (untested on a real device) that forces the Solarium fallback,
-  restoring the flat iOS 18-style UI on iOS 26.6.1. Per-surface disables
-  (Lock Screen clock, Dock, buttons, widgets, folders), specular/reflection
-  controls and flat-icon options. iOS 26.0 and newer only.
-- **SpringBoard** — SpringBoard system options (ported from GoldenNugget).
-- **Feature Flags** — SpringBoard / Photos / SwiftUI / IconServices / Mail /
-  Sharing / DocumentCamera / AppleMediaServices feature flags. Writes to
-  `/var/preferences/FeatureFlags/Global.plist` via the exploit-based route,
-  which community tooling reports working **up to iOS 26.1** — the switches
-  lock automatically above that. On iOS 27 they are shown as experimental:
-  research found no confirmed working delivery channel there yet.
-- **Internal Options** — internal/debug-style options including KeyFlick.
-- **Eligibility** — Nugget's eligibility module ported verbatim: EU Enabler
-  with region code, Apple Intelligence for unsupported devices, eligibility
-  file + Siri feature flags, model/hardware/CPU spoofing with the original
-  model list. MobileGestalt-family controls (AIGestalt, spoofing) lock
-  outside the supported range. Honest limit: the EU Enabler's
-  `/var/MobileAsset/...` Config.plist cannot be delivered by this fork
-  (Nugget sends it via BookRestore, which this fork does not have), so that
-  file is skipped with a warning while the `/var/db/...` files go through
-  the normal sparse restore.
-- **Risky** — Disable OTA updates file and custom resolution (ported from
-  Nugget's risky module).
+- **WorkSlop (Main)** — the original WorkSlop interface.
+- **WorkSlop 2** — the classic shell with WorkSlop icons and the blue/white
+  WorkSlop identity.
+- **Nugget** — the original Nugget look and layout; only the application name
+  and icon are WorkSlop's.
 
-### MobileGestalt
-- 23 device feature-flag tweaks ported **verbatim** from
-  [Nugget](https://github.com/leminlimez/Nugget) by leminlimez, plus the
-  RDAR fix switch and Dynamic Island type control.
-- **Open on iOS 16.0 → iOS 26.2 beta 1**, locked on 26.2 beta 2 and newer —
-  the menu stays visible with the reason, per Apple's closure of the restore
-  route on newer builds.
+### Customization areas
 
-### Liquid Glass (Home menu)
-- One-tap shortcut from Home straight to the Liquid Glass tweak section.
+- Liquid Glass controls (a WorkSlop set, plus a 100%-Nugget set inside the
+  Nugget-based interfaces)
+- SpringBoard options
+- Status Bar customization
+- MobileGestalt flags
+- Feature Flags
+- Eligibility options
+- Daemons and services control
+- PosterBoard (wallpapers)
+- Icon themes and passcode themes
+- Full Backup and protective backup
 
-### PosterBoard / Wallpaper
-- Animated wallpapers, PosterBoard descriptors and templates, including
-  video wallpapers (ffmpeg + OpenCV).
-
-### Daemons
-- Disable system daemons. No iOS build gating — available on all supported
-  builds.
-
-### Status Bar
-- Status bar customization. **Locked on any iOS 27 build**, open on
-  iOS 26 and below.
-
-### App Data — read-only
-- **iMazing-style per-app backup browsing**: for apps that deny direct
-  container access, the app takes a targeted backup of only
-  `AppDomain-<bundle_id>` and lets you browse and download files from it.
-- Apps that allow direct access can still be browsed over the normal
-  channel. Honest limits (same as iMazing): App Store apps without File
-  Sharing simply do not expose their container — an Apple restriction,
-  and the UI shows which access level each app grants.
-- **No write support**: this page never modifies app data.
-
-### Themes
-- **Custom Icon** — themed app icons & labels.
-- **Passcode Theme** — custom keypad themes (`.passthm` files).
-
-### Backup
-Data safety is a first-class feature, not an afterthought:
-
-- **Full Backup** — a real, complete iTunes/Finder-style backup
-  (`mb.backup` without filters) saved to a folder you choose, in the
-  standard `<folder>/<UDID>/` layout. Real 0–100% progress straight from
-  mobilebackup2, a warning to make sure you have enough free disk space
-  (full backups are large and take a long time), and when it hits 100% the
-  file manager opens with the finished backup folder highlighted. It never
-  reboots your device — it only exports the backup file, like saving it
-  for later.
-- **Protective backup** — before any tweak apply on the iOS 27 flow, the
-  app automatically takes a selective protective backup (settings,
-  contacts, photos, messages, system preferences — app containers and
-  keychain are skipped). At 100% the file manager opens with the finished
-  backup highlighted so you can copy it somewhere safe before the apply
-  continues. An experimental per-device backup cache with incremental
-  refresh makes repeat applies faster, and encrypted backups are supported
-  (you'll be asked for the password).
-- **Restore Backup** — restore a backup you took earlier, with automatic
-  retries on transient errors and support for encrypted backups (password
-  prompt). Only **Restore Backup** and **Apply** reboot the device.
-
-### Settings
-- Appearance: Sky theme, accent color picker.
-- Language: English / Indonesian (in-app translations, `.qm`).
-- Safety options and update checker (checks **adnan120hz/desk** releases,
-  not upstream).
-- **About → Credits**: full contributor list (upstream developers,
-  PosterRestore team, translators, library authors).
-
-### How Apply works per iOS version
-| iOS | Apply method |
-|---|---|
-| 26.x and below | Partial sparse restore, **no wipe** (GoldenNugget's built-in method, unchanged). |
-| 27.x | Classic protective flow: backup → apply tweaks → **reboot** → wipe → reconnect → restore backup. The device reboots on Apply, like the original GoldenNugget. |
-
-> Standalone backup actions (**Full Backup**) do **not** reboot the device —
-> they just export the backup file to the folder you choose. Only **Restore
-> Backup** and **Apply** reboot the device.
-
-### Version support
-
-WorkSlop Desktop only supports the **49 iOS builds** listed below.
-Anything else is rejected, even if its version number looks newer.
-
-| iOS | Builds |
-|---|---|
-| 16.0 – 16.0.3 | 20A362, 20A371, 20A380, 20A392 |
-| 16.1 – 16.1.2 | 20B82, 20B101, 20B110 |
-| 16.2 | 20C65 |
-| 16.3 – 16.3.1 | 20D47, 20D67 |
-| 16.4 – 16.4.1 | 20E247, 20E252 |
-| 16.5 – 16.5.1 | 20F66, 20F75 |
-| 16.6 – 16.6.1 | 20G75, 20G81 |
-| 16.7.x | 20H19, 20H24, 20H30, 20H57, 20H68, 20H115, 20H219, 20H315, 20H332, 20H350 |
-| 18.0 | 22A3354 |
-| 18.1 betas | 22B5007p, 22B5023e, 22B5034e, 22B5045g |
-| 26.0 / 26.0.1 | 23A341, 23A342 |
-| 26.1 | 23B85 |
-| 26.2 betas | 23C5027f (beta 1), 23C5035e, 23C5042d |
-| 26.2 | 23C89 |
-| 26.3 | 23D57 |
-| 26.4 | 23E215 |
-| 26.5 | 23F72 |
-| 27.0 betas / 27.0 | 24A5264w, 24A5279h, 24A5288g, 24A5299d, 24A5309f, 24A5315a, 24A5320a, 24A335 |
-
-Feature gating per build:
-
-| Feature | Rule |
-|---|---|
-| Tweaks (Apply) | All 49 builds. iOS 26.x and below: partial sparse restore (no wipe). iOS 27: protective flow (backup → tweak → **reboot** → wipe → reconnect → restore). |
-| Feature Flags | Fully supported on **iOS 26.1 and lower**; locked above (the exploit-based `Global.plist` route stops working past 26.1 per community tooling). Experimental on iOS 27 — may silently do nothing. |
-| MobileGestalt | **Open on iOS 16.0 → iOS 26.2 beta 1** (builds `20A362`–`23C5027f`). Locked on 26.2 beta 2 and newer — menu stays visible with the reason. |
-| Status Bar | **Locked on any iOS 27 build** (`24A…`). Open on iOS 26 and below. |
-| Daemons | No build gating — available on all 49 builds. |
-| Liquid Glass | iOS 26.0 and newer only (hidden on older versions); no upper lock. |
-
-## Requirements
-
-<details>
-<summary>Windows</summary>
-
-- Either the [Apple Devices (from Microsoft Store)](https://apps.microsoft.com/detail/9np83lwlpz9k) app or [iTunes (from Apple's website)](https://www.apple.com/itunes/)
-</details>
-
-<details>
-<summary>Linux</summary>
-
-- [usbmuxd](https://github.com/libimobiledevice/usbmuxd)
-- [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice)
-</details>
-
-<details>
-<summary>Running from Python</summary>
-
-- [pymobiledevice3](https://github.com/doronz88/pymobiledevice3)
-- [PySide6](https://doc.qt.io/qtforpython-6/) (PySide6-Essentials on non-Linux, selected automatically)
-- [ffmpeg-python](https://pypi.org/project/ffmpeg-python/) (video wallpapers)
-- [opencv-python](https://pypi.org/project/opencv-python/) (video wallpapers)
-- Python 3.10 or newer
-</details>
-
-> All pinned dependencies are in `requirements.txt` (including PyInstaller for building).
-
-## Running the Python program
+<p align="center">
+  <img src="docs/images/interface-workslop-main.png" width="49%" alt="Apply page with progress log in the WorkSlop (Main) interface">
+  <img src="docs/images/interface-nugget.png" width="49%" alt="Apply page in the Nugget interface">
+</p>
 
 > [!NOTE]
-> It is highly recommended to use a virtual environment:
-> ```sh
-> python3 -m venv .env   # only needed once
-> ```
-macOS/Linux:
+> What any individual tweak does on a given iPhone depends on the iOS version
+> and build installed. Some options are version-gated and are shown locked,
+> with the reason, when a device does not support them. There is no guarantee
+> that a particular tweak takes effect on every iOS version — make a backup
+> before applying, and test changes one at a time.
+
+## Getting Started
+
+1. Download the archive for your platform from
+   [Releases](https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases/latest)
+   and extract it.
+2. Run the application.
+3. Connect your iPhone with a USB cable and tap **Trust** on the iPhone when
+   asked to trust this computer.
+4. Create a backup (Full Backup recommended) before applying any tweak.
+5. Enable the options you want, then use the **Apply** page.
+
+Platform requirements:
+
+- **Windows** — the [Apple Devices](https://apps.microsoft.com/detail/9np83lwlpz9k)
+  app from the Microsoft Store, or iTunes from Apple's website.
+- **macOS** — no additional software required.
+- **Linux** — `usbmuxd` and `libimobiledevice`.
+
+Questions and bug reports:
+[GitHub Issues](https://github.com/adnan120hz/WorkSlop-Desktop-Version/issues)
+
+### Running from source
+
 ```sh
-source .env/bin/activate
-```
-Windows:
-```sh
-.env\Scripts\activate.bat
-```
-Install packages and run:
-```sh
-pip install -r requirements.txt   # only needed once
+pip install -r requirements.txt
 python main_app.py
 ```
-> Depending on your system configuration, use either `python`/`pip` or `python3`/`pip3`.
 
-## Building
+Python 3.10 or newer is required. To build a standalone binary:
 
-Prebuilt binaries for Windows, macOS and Linux are produced by the
-[build workflow](.github/workflows/build.yml) on every push to `main`
-(6 artifacts: Windows, macOS Apple Silicon, macOS Intel, macOS Intel Legacy,
-Linux x64, Linux aarch64).
-
-To build locally you need the pinned dependencies above, then:
 ```sh
 pip install -r requirements.txt
 python compile.py
 ```
 
+## Changelog
+
+### v11.0.1 — 2026-10-03
+
+- Backup folder is chosen in the system file picker when a Full Backup or
+  Protective Backup starts (created automatically and remembered); the fixed
+  "Backup Location" panel was removed.
+- Live progress strip at the bottom of the Backup page.
+- Themes and classic Apply pages color-matched to the Nugget interface.
+- Apply progress log shown in all three interfaces.
+- No tweak changes.
+
+### v11.0 — 2026-10-03
+
+- Three selectable interfaces: WorkSlop (Main), WorkSlop 2 and Nugget.
+- Liquid Glass section rebuilt around the WorkSlop set restored verbatim to
+  its v4 form, plus a separate 100%-Nugget Liquid Glass set in the
+  Nugget-based interfaces.
+- Eligibility and MobileGestalt options locked (fail-closed) on iOS 26.2
+  beta 2 (build `23C5035e`) and newer; supported up to `23C5027f`.
+- Backup stall watchdog on every backup path; new WorkSlop brand icon;
+  beta tester team credited on the Home page.
+
+[Full changelog](CHANGELOG.md)
+
 ## Credits
 
-| Role | Project / Person |
-|---|---|
-| Owner & Developer | [@Adnan.120hz](https://github.com/adnan120hz) |
-| Main upstream (this is a fork of) | [GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) |
-| MobileGestalt / eligibility / RDAR / risky ports | [Nugget](https://github.com/leminlimez/Nugget) by leminlimez |
+**Developer:** Adnan.120hz
+([TikTok](https://www.tiktok.com/@adnan.120hz?_r=1&_t=ZS-9AElXliY2Me) ·
+[GitHub](https://github.com/adnan120hz) ·
+[Official Website](https://adnan120hz.vercel.app))
 
-The full contributor list (upstream developers, PosterRestore team, translators and
-library authors) is shown in the app under **Settings → About → Credits**.
+**UI reference:** Nugget UI
+
+WorkSlop Desktop is based on
+[GoldenNugget](https://github.com/GoldenNugget-Team/GoldenNugget) and
+incorporates modules from [Nugget](https://github.com/leminlimez/Nugget) by
+leminlimez.
+
+Also credited: awesomenull · Wind0ws11Aero · PosterRestore ·
+pymobiledevice3 · PySide6 · Quiet Daemon (Mikasa-san) · Snoolie ·
+f1shy-dev · JJTech0130
+
+**Beta tester team:** Charlie, rfrz1d_, Davy (@Davydavpn)
 
 ## License
 
-This project is licensed under the **GNU Affero General Public License v3.0
-(AGPL-3.0)** — this is required and cannot be changed, because WorkSlop
-Desktop is a fork of GoldenNugget which is itself AGPL-3.0. See
-[LICENSE](LICENSE) for the full text.
+WorkSlop Desktop is licensed under the **GNU Affero General Public License
+v3.0 (AGPL-3.0)**. As a derivative of GoldenNugget, it remains under the same
+license as its upstream. See [LICENSE](LICENSE) for the full text.
