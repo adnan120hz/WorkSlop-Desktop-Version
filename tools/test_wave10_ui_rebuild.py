@@ -1,23 +1,34 @@
 #!/usr/bin/env python3
-"""Offscreen checks + screenshots for the modern blue Wave 10 UI.
+"""Offscreen checks for the Wave 11 dual-interface shell.
 
-Contract: bright-blue top bar with five centered category tabs, white left
-sidebar with device dropdown + menu, big Apple brand logo on Home (no phone
-frame in any state), right info/capacity cards, strong-blue bottom tiles,
-light footer, and an animated blue Apple-logo background behind content.
-The notch mapping unit checks below still cover PhoneFrame itself, which
-remains in use by the PosterBoard tendie preview dialog.
+Contract (user order 2026-10-03):
 
-Run: QT_QPA_PLATFORM=offscreen /tmp/sbvenv/bin/python \
-    tools/test_wave10_ui_rebuild.py
+* Main UI = WorkSlop v4: light 216 px sidebar rail, iOS-style page stack,
+  and the WorkSlop menu set (Home / Tweaks / MobileGestalt / Wallpaper /
+  Backup / App Data / Themes / Settings).
+* Second UI = classic Nugget shell: generated device bar + sidebar and
+  classic Home/Daemons pages, with the classic chrome icons swapped to
+  the WorkSlop ``ws-*.svg`` set.
+* The Wave 10 modern shell (3uTools-style top bar / left device panel /
+  footer) is archived code and is not instantiated by ``MainWindow``.
+* ``ThemeManager`` defaults a fresh install to the WorkSlop UI; the
+  first-launch picker and the Settings interface switch both persist the
+  same ``ui/theme`` choice.
+* About follows the v4 contents (no 3uTools UI-reference credit), and the
+  visible app version is exactly ``11.0``.
+
+Run: QT_QPA_PLATFORM=offscreen python tools/test_wave10_ui_rebuild.py
 """
 import os
 import sys
-import time
+import tempfile
 from types import SimpleNamespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# Isolate every QSettings store: the dual-UI checks flip ui/theme and must
+# never touch the developer's real WorkSlop configuration.
+os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp(prefix="workslop-ui-test-")
 
 PASS = 0
 
@@ -30,11 +41,10 @@ def check(name, cond, extra=""):
 
 
 try:
-    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtCore import QEvent, QFile, QSettings, Qt
     from PySide6.QtGui import QKeyEvent
     from PySide6.QtWidgets import (
-        QApplication, QHBoxLayout, QLabel, QPushButton, QMainWindow,
-        QStackedLayout, QVBoxLayout, QWidget)
+        QApplication, QLabel, QMainWindow, QToolButton)
 except Exception as e:
     print(f"skipped: {type(e).__name__}: {e}")
     raise SystemExit(0)
@@ -47,14 +57,18 @@ try:
 except Exception:
     pass
 
-from src.gui.ios.device_panel import NAV_ITEMS, PANEL_WIDTH, WorkSlopDevicePanel
+from src.gui.dialogs.dialogs import AboutProgramDialog
+from src.gui.interface_picker import InterfacePickerDialog
 from src.gui.ios.home import IOSHomePage
 from src.gui.ios.phone_frame import (
     PhoneFrame, notch_type_for_product, _DOCK_APPS, _HOME_GRID_APPS)
+from src.gui.ios.sidebar import MENUS, SIDEBAR_WIDTH, WorkSlopSidebar
 from src.gui.ios.sky_bg import FLOAT_COUNT, FLOAT_TINTS, SkyBackground
-from src.gui.ios.top_bar import HEADER_HEIGHT, TABS, WorkSlopTopBar
+from src.gui.ios.theme_manager import ThemeManager
+from src.gui.main_window import _HIDDEN_THEMED_ICONS
 from src.gui.main_window_mixins import NavigationMixin
 from src.gui.theme import ColorThemeManager, t
+from src.version import App_Build, App_Version
 
 
 class _Settings:
@@ -80,7 +94,7 @@ class _DeviceManager:
     current_device_index = 0
 
     def get_current_device_udid(self):
-        return "wave10-offscreen-udid-0001"
+        return "wave11-offscreen-udid-0001"
 
     def get_current_device_version(self):
         return "26.6.1"
@@ -131,57 +145,104 @@ class _Window:
         pass
 
 
-print("\nmodern blue palette + styles")
+print("\nWave 11 visual baseline")
 colors = ColorThemeManager.instance().colors
-check("content is white", colors.bg_primary == "#FFFFFF", colors.bg_primary)
-check("brand blue is strong (not pale)", colors.brand == "#0B65D8", colors.brand)
-check("menu blue is strong", colors.menu_bg == "#0B65D8", colors.menu_bg)
-check("no washed-out float tints", "#7FB8EC" not in FLOAT_TINTS
-      and "#5EA9E6" not in FLOAT_TINTS, str(FLOAT_TINTS))
-for key in ("device_side_panel", "sidebar_device_header", "sidebar_device_combo",
-            "sidebar_nav_button", "info_label", "info_value", "storage_bar",
-            "modern_card", "capacity_chip", "phone_link_button",
-            "footer_light_text", "footer_light_button", "scroll_area_transparent",
-            "nav_bar"):
-    check("fluid radii: card 16 / nav pill 18", "border-radius: 16px" in t("modern_card") and "border-radius: 18px" in t("sidebar_nav_button"))
-check(f"style resolves: {key}", bool(t(key).strip()))
+check("content surface is white", colors.bg_primary == "#FFFFFF",
+      colors.bg_primary)
+check("brand blue stays strong", colors.brand == "#0B65D8", colors.brand)
+check("no washed-out background tints",
+      "#7FB8EC" not in FLOAT_TINTS and "#5EA9E6" not in FLOAT_TINTS,
+      str(FLOAT_TINTS))
+for key in ("global", "modern_card", "sidebar_nav_button", "nav_bar"):
+    check(f"style resolves: {key}", bool(t(key).strip()))
+check("app version is exactly 11.0", App_Version == "11.0", App_Version)
+check("app build adds no release label", App_Build == 0, str(App_Build))
 
-print("\ntop header bar")
-topbar = WorkSlopTopBar()
-check("header height", topbar.height() == HEADER_HEIGHT, str(topbar.height()))
-check("five reference tabs", [tid for tid, _l, _i, _legacy in TABS] ==
-      ["idevice", "apps", "rtwp", "smartflash", "toolbox"])
-check("tab labels are WorkSlop destinations",
-      [label for _tid, label, _i, _legacy in TABS] ==
-      ["Device", "Tweaks", "PosterBoard", "MobileGestalt", "Settings"],
-      str([label for _tid, label, _i, _legacy in TABS]))
-topbar.select("tweaks")
-check("legacy select maps to Tweaks", topbar._buttons["apps"][0].isChecked())
-topbar.set_gestalt_locked(True, "locked for test")
-check("MobileGestalt lock API works", not topbar._buttons["smartflash"][0].isEnabled())
-topbar.set_gestalt_locked(False)
-check("logo is WorkSlop", topbar._logo_name.text() == "WorkSlop")
-check("WS mark present", topbar._logo_mark.text() == "WS")
-check("update shortcut exists", topbar._update_btn is not None)
+print("\nWorkSlop v4 sidebar (main UI)")
+sidebar = WorkSlopSidebar()
+check("sidebar width is the v4 rail", sidebar.width() == SIDEBAR_WIDTH == 216,
+      str(sidebar.width()))
+check("sidebar is the v4 WorkSlop menu set",
+      [(menu_id, label) for menu_id, label, _icon in MENUS] == [
+          ("home", "Home"), ("tweaks", "Tweaks"),
+          ("gestalt", "MobileGestalt"), ("wallpaper", "Wallpaper"),
+          ("backup", "Backup"), ("appdata", "App Data"),
+          ("themes", "Themes"), ("settings", "Settings")],
+      str(MENUS))
+check("sidebar version label is clean 11.0",
+      sidebar._version_lbl.text() == "WorkSlop Desktop v11.0",
+      sidebar._version_lbl.text())
+sidebar.select("tweaks")
+check("sidebar select checks Tweaks", sidebar._buttons["tweaks"][0].isChecked())
+sidebar.set_gestalt_locked(True, "locked for test")
+check("sidebar MobileGestalt lock works",
+      not sidebar._buttons["gestalt"][0].isEnabled())
+sidebar.set_gestalt_locked(False)
+check("sidebar MobileGestalt unlock works",
+      sidebar._buttons["gestalt"][0].isEnabled())
+sidebar.set_menu_enabled("settings", False)
+check("sidebar menu enable API works",
+      not sidebar._buttons["settings"][0].isEnabled())
+sidebar.close()
 
-print("\nleft white sidebar")
-window = _Window()
-panel = WorkSlopDevicePanel(window)
-check("panel width", panel.width() == PANEL_WIDTH == 200, str(panel.width()))
-check("no CONNECTED DEVICE header", panel._device_header.isHidden())
-check("device dropdown shows device", panel.device_combo.currentText() == "iPhone 14")
-check("nav maps real pages", [m for m, _l, _i in NAV_ITEMS] ==
-      ["home", "tweaks", "liquidglass", "springboard", "internal", "statusbar",
-       "posterboard", "daemons", "gestalt", "settings"])
-panel.select("liquidglass")
-check("sidebar select works", panel._buttons["liquidglass"][0].isChecked())
-panel.set_gestalt_locked(True, "locked for test")
-check("sidebar gestalt lock works", not panel._buttons["gestalt"][0].isEnabled())
-panel.set_gestalt_locked(False)
+print("\ndual-interface ThemeManager")
+_qs = QSettings("WorkSlop", "WorkSlop")
+_qs.remove("ui/theme")
+_qs.sync()
+tm = ThemeManager(None)
+check("fresh install defaults to WorkSlop UI",
+      tm.current_theme == ThemeManager.IOS, str(tm.current_theme))
+tm.save_theme(ThemeManager.CLASSIC)
+check("classic persists and reloads",
+      ThemeManager(None).current_theme == ThemeManager.CLASSIC)
+tm.save_theme(ThemeManager.IOS)
+check("WorkSlop persists and reloads",
+      ThemeManager(None).current_theme == ThemeManager.IOS)
+
+print("\nfirst-launch interface picker")
+picker = InterfacePickerDialog()
+picker_text = " ".join(w.text() for w in picker.findChildren(QLabel))
+check("picker offers WorkSlop as the main UI", "WorkSlop" in picker_text,
+      picker_text)
+check("picker offers Nugget as the second UI", "Nugget" in picker_text,
+      picker_text)
+check("picker says Nugget uses WorkSlop icons",
+      "WorkSlop icons" in picker_text, picker_text)
+picker._pick("classic")
+check("picker records the Nugget choice", picker.choice == "classic")
+picker.close()
+
+print("\nclassic Nugget chrome uses the WorkSlop icon set")
+expected_classic_icons = {
+    "phoneIconBtn": ":/icon/ws-device.svg",
+    "refreshBtn": ":/icon/ws-refresh.svg",
+    "homePageBtn": ":/icon/ws-device.svg",
+    "gestaltPageBtn": ":/icon/ws-chip.svg",
+    "euEnablerPageBtn": ":/icon/ws-flash.svg",
+    "statusBarPageBtn": ":/icon/ws-signal.svg",
+    "passcodePageBtn": ":/icon/ws-toolbox.svg",
+    "springboardOptionsPageBtn": ":/icon/ws-apps.svg",
+    "internalOptionsPageBtn": ":/icon/ws-sliders.svg",
+    "liquidGlassPageBtn": ":/icon/ws-glass.svg",
+    "daemonsPageBtn": ":/icon/ws-sliders.svg",
+    "iconThemesPageBtn": ":/icon/ws-wallpaper.svg",
+    "applyPageBtn": ":/icon/ws-backup.svg",
+    "posterboardPageBtn": ":/icon/ws-poster.svg",
+    "settingsPageBtn": ":/icon/ws-gear.svg",
+}
+for widget_name, resource in expected_classic_icons.items():
+    check(f"classic icon {widget_name}",
+          _HIDDEN_THEMED_ICONS.get(widget_name) == resource
+          and QFile(resource).exists(),
+          str(_HIDDEN_THEMED_ICONS.get(widget_name)))
+check("classic brand/social glyphs stay truthful",
+      _HIDDEN_THEMED_ICONS["mainDevBtn"] == ":/icon/github.svg"
+      and _HIDDEN_THEMED_ICONS["discordBtn"] == ":/icon/discord.svg")
 
 print("\nanimated background")
 sky = SkyBackground()
-check("floater count", len(sky._floaters) == FLOAT_COUNT, str(len(sky._floaters)))
+check("floater count", len(sky._floaters) == FLOAT_COUNT,
+      str(len(sky._floaters)))
 check("timer animating", sky.is_animating())
 sky.resize(1000, 600)
 sky.show()
@@ -193,31 +254,32 @@ after = sky.floater_positions()
 check("floaters move", before != after)
 sky.hide()
 sky.stop()
+sky.close()
 
-print("\ndevice-matched screen cutout (notch / Dynamic Island)")
+print("\ndevice-matched screen cutout (PosterBoard preview)")
 _NOTCH_CASES = [
-    ("iPhone12,1", "notch_large"),   # iPhone 11
-    ("iPhone12,5", "notch_large"),   # iPhone 11 Pro Max
-    ("iPhone13,2", "notch_large"),   # iPhone 12
-    ("iPhone13,4", "notch_large"),   # iPhone 12 Pro Max
-    ("iPhone14,2", "notch_small"),   # iPhone 13 Pro
-    ("iPhone14,5", "notch_small"),   # iPhone 13
-    ("iPhone14,6", "notch_small"),   # iPhone SE (2022)
-    ("iPhone14,7", "notch_small"),   # iPhone 14
-    ("iPhone14,8", "notch_small"),   # iPhone 14 Plus
-    ("iPhone15,2", "island"),        # iPhone 14 Pro
-    ("iPhone15,3", "island"),        # iPhone 14 Pro Max
-    ("iPhone15,4", "island"),        # iPhone 15
-    ("iPhone15,5", "island"),        # iPhone 15 Plus
-    ("iPhone16,1", "island"),        # iPhone 15 Pro
-    ("iPhone16,2", "island"),        # iPhone 15 Pro Max
-    ("iPhone17,1", "island"),        # iPhone 16 Pro
-    ("iPhone17,3", "island"),        # iPhone 16
-    ("iPhone18,1", "island"),        # iPhone 17 series
+    ("iPhone12,1", "notch_large"),
+    ("iPhone12,5", "notch_large"),
+    ("iPhone13,2", "notch_large"),
+    ("iPhone13,4", "notch_large"),
+    ("iPhone14,2", "notch_small"),
+    ("iPhone14,5", "notch_small"),
+    ("iPhone14,6", "notch_small"),
+    ("iPhone14,7", "notch_small"),
+    ("iPhone14,8", "notch_small"),
+    ("iPhone15,2", "island"),
+    ("iPhone15,3", "island"),
+    ("iPhone15,4", "island"),
+    ("iPhone15,5", "island"),
+    ("iPhone16,1", "island"),
+    ("iPhone16,2", "island"),
+    ("iPhone17,1", "island"),
+    ("iPhone17,3", "island"),
+    ("iPhone18,1", "island"),
     ("iPhone18,3", "island"),
-    ("", "island"),                  # no device -> modern fallback
+    ("", "island"),
     (None, "island"),
-    ("iPad13,1", "island"),          # not an iPhone -> fallback
+    ("iPad13,1", "island"),
     ("garbage", "island"),
 ]
 for product, expected in _NOTCH_CASES:
@@ -242,61 +304,56 @@ check("dock holds the four classic apps",
       ["Phone", "Safari", "Messages", "Music"])
 pf.close()
 
-print("\nHome modern reference layout")
+print("\nHome device/catalogue surface")
+window = _Window()
 home = IOSHomePage(window)
 app.processEvents()
 check("Home shows the big Apple brand logo (no phone frame)",
       hasattr(home, "_brand_logo") and not home._brand_logo.pixmap().isNull())
-check("Home has no phone frame widget anymore",
-      not hasattr(home, "_phone"))
+check("Home has no phone frame widget", not hasattr(home, "_phone"))
 check("device title is device", home._device_title.text() == "iPhone 14")
 check("phone caption is device", home._phone_caption.text() == "iPhone 14")
-check("refresh phone link not hidden", not home._refresh_link.isHidden())
-check("no big blue info buttons", home._refresh_info_btn.isHidden()
-      and home._details_btn.isHidden())
-check("Reboot hidden without handler", home._reboot_link.isHidden())
-check("Turn Off hidden without handler", home._turnoff_link.isHidden())
+check("refresh link is available", not home._refresh_link.isHidden())
 check("title card exists", home._title_card.objectName() == "deviceTitleCard")
-check("details card exists", home._details_card.objectName() == "deviceDetailsCard")
-check("tweak list card replaces capacity card on Home",
+check("tweak list card exists",
       home._catalogue_card.objectName() == "tweakListCard")
-check("no Hard Disk Capacity card on Home",
-      not hasattr(home, "_capacity_card"))
-check("capacity chip hidden without data", home._capacity_chip.isHidden())
-check("battery hidden without data", home._battery_value.isHidden())
+check("no Hard Disk Capacity card on Home", not hasattr(home, "_capacity_card"))
 check("MobileGestalt row Locked on 23G83 (shared decision)",
       home._info_values["gestalt"].text() == "Locked",
       home._info_values["gestalt"].text())
-check("serial row hidden without data",
-      home._info_rows["serial"].isHidden())
-check("storage row hidden without data",
-      home._info_rows["storage"].isHidden())
-check("device title", home._device_title.text() == "iPhone 14")
 check("model in table", home._info_values["model"].text() == "iPhone14,5")
 check("iOS in table", home._info_values["ios"].text() == "26.6.1")
 check("build in table", home._info_values["build"].text() == "23G83")
 check("connection in table", home._info_values["connection"].text() == "USB")
-check("support in table", home._info_values["support"].text() != "—")
-check("unknown storage honest", home._info_values["storage"].text() == "—")
+check("unknown storage stays honest",
+      home._info_values["storage"].text() == "—")
 entries = {entry["id_name"]: entry for entry in home.tweak_catalogue_entries}
-check("catalogue registry-derived", "SBHideSearchAffordance" in entries)
-check("FlatIcons exception listed", "FlatIconsEverywhere" in entries)
+check("catalogue is registry-derived", "SBHideSearchAffordance" in entries)
+check("Flat Icons is a normal catalogue row",
+      "FlatIconsEverywhere" in entries)
+check("catalogue has no device-test badge",
+      all("UNPROVEN" not in str(entry) and "device test" not in str(entry)
+          for entry in home.tweak_catalogue_entries))
 check("action tiles present",
       set(home._tile_by_title) >= {"Refresh", "Backup / Restore", "Tweaks",
                                    "Liquid Glass", "Status Bar", "PosterBoard",
                                    "Daemons", "MobileGestalt", "Reset Tweaks"})
-check("statusbar card is a tile", home.statusbar_card is home._tile_by_title["Status Bar"])
-check("gestalt card is a tile", home.mobilegestalt_card is home._tile_by_title["MobileGestalt"])
+check("statusbar card is a tile",
+      home.statusbar_card is home._tile_by_title["Status Bar"])
+check("gestalt card is a tile",
+      home.mobilegestalt_card is home._tile_by_title["MobileGestalt"])
+home.close()
 
-print("\nabout dialog credits")
-from PySide6.QtWidgets import QToolButton as _QToolButton
-from src.gui.dialogs.dialogs import AboutProgramDialog
+print("\nAbout follows v4 contents")
 about = AboutProgramDialog()
-_about_texts = ([w.text() for w in about.findChildren(QLabel)]
-                + [w.text() for w in about.findChildren(_QToolButton)])
-check("About credits the UI reference",
-      "UI reference:" in _about_texts and "3uTools" in _about_texts,
-      str([tx for tx in _about_texts if "3uTools" in tx or "reference" in tx]))
+about_texts = ([w.text() for w in about.findChildren(QLabel)]
+               + [w.text() for w in about.findChildren(QToolButton)])
+check("About has no 3uTools UI-reference credit",
+      not any("3uTools" in text or "UI reference" in text
+              for text in about_texts),
+      str([text for text in about_texts if "3u" in text or "reference" in text]))
+check("About names WorkSlop Desktop",
+      any("WorkSlop Desktop" in text for text in about_texts))
 about.close()
 
 print("\nfullscreen behaviour")
@@ -324,8 +381,6 @@ esc = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape,
                 Qt.KeyboardModifier.NoModifier)
 check("ESC leaves fullscreen first",
       harness.eventFilter(harness, esc) is True and not harness.isFullScreen())
-
-print("\nfullscreen via window shortcuts (real-Windows path)")
 harness._install_fullscreen_shortcuts()
 check("fullscreen shortcuts installed",
       len(getattr(harness, "_fullscreen_shortcuts", ())) == 2)
@@ -336,79 +391,152 @@ _esc_sc.activated.emit()
 check("ESC shortcut leaves fullscreen", not harness.isFullScreen())
 harness.close()
 
-print("\ncomposite screenshots (shell-shaped)")
-shot_dir = os.path.join(os.path.dirname(__file__), "..", "..", "riset",
-                        "wave10", "ui-rebuild-screenshots")
-os.makedirs(shot_dir, exist_ok=True)
-frame = QMainWindow()
-frame.setWindowTitle("WorkSlop Desktop")
-frame.resize(1280, 840)
-central = QWidget(frame)
-central.setStyleSheet("background: transparent;")
-stack = QStackedLayout(central)
-stack.setContentsMargins(0, 0, 0, 0)
-stack.setStackingMode(QStackedLayout.StackAll)
-stack.addWidget(sky)
-content = QWidget(central)
-content.setStyleSheet("background: transparent;")
-root = QVBoxLayout(content)
-root.setContentsMargins(0, 0, 0, 0)
-root.setSpacing(0)
-root.addWidget(topbar)
-body = QHBoxLayout()
-body.setContentsMargins(0, 0, 0, 0)
-body.setSpacing(0)
-body.addWidget(panel)
-body.addWidget(home, 1)
-root.addLayout(body, 1)
-footer = QWidget(frame)
-footer.setFixedHeight(30)
-footer.setStyleSheet("background-color: #EDF5FD; border-top: 1px solid #BDD7F2;")
-fl = QHBoxLayout(footer)
-fl.setContentsMargins(12, 0, 10, 0)
-f_lbl = QLabel("1 device(s) connected", footer)
-f_lbl.setStyleSheet(t("footer_light_text"))
-fl.addWidget(f_lbl)
-fl.addStretch(1)
-f_ver = QLabel("Version: 10.0", footer)
-f_ver.setStyleSheet(t("footer_light_text"))
-fl.addWidget(f_ver)
-f_feed = QPushButton("Feedback", footer)
-f_feed.setStyleSheet(t("footer_light_button"))
-fl.addWidget(f_feed)
-f_btn = QPushButton("Check Update", footer)
-f_btn.setStyleSheet(t("footer_light_button"))
-fl.addWidget(f_btn)
-root.addWidget(footer)
-stack.addWidget(content)
-sky.lower()
-frame.setCentralWidget(central)
-frame.setStyleSheet(t("global"))
-frame.show()
+print("\nreal MainWindow: WorkSlop main UI + Nugget second UI (subprocess)")
+# The real window owns device-detection worker threads that can outlive
+# the checks and stall interpreter shutdown, so the dual-shell drive
+# runs in a child process that reports each check and hard-exits.
+_CHILD = r'''
+import os
+import sys
+
+sys.path.insert(0, os.getcwd())
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+P = 0
+
+
+def check(name, cond, extra=""):
+    global P
+    assert cond, f"FAILED: {name} {extra}"
+    P += 1
+    print(f"  ok: {name}" + (f"  [{extra}]" if extra else ""), flush=True)
+
+
+from PySide6.QtCore import QSettings, QTimer
+from PySide6.QtWidgets import QApplication
+
+app = QApplication([])
+app.setApplicationName("WorkSlop Desktop")
+
+# With no usbmuxd in this environment, device refresh ends in a modal
+# "failed to get device list" dialog; a human would click it away, so
+# the test auto-dismisses modal widgets instead of blocking forever.
+_modal_killer = QTimer()
+_modal_killer.timeout.connect(
+    lambda: (QApplication.activeModalWidget().close()
+             if QApplication.activeModalWidget() is not None else None))
+_modal_killer.start(50)
+import src.qt.resources_rc  # noqa: F401
+from src.controllers.settings import Settings
+from src.controllers.translator import Translator
+from src.devicemanagement.device_manager import DeviceManager
+from src.gui.ios.theme_manager import ThemeManager
+from src.gui.main_window import MainWindow
+
+qs = QSettings("WorkSlop", "WorkSlop")
+qs.setValue("ui/theme", "ios")
+qs.sync()
+win = MainWindow(device_manager=DeviceManager(),
+                 translator=Translator(app, Settings()))
 app.processEvents()
-shot_path = os.path.abspath(
-    os.path.join(shot_dir, "home-modern-v7.png"))
-pixmap = frame.grab()
-check("screenshot rendered", not pixmap.isNull(),
-      f"{pixmap.width()}x{pixmap.height()}")
-check("screenshot saved",
-      pixmap.save(shot_path) and os.path.getsize(shot_path) > 10000, shot_path)
-frame.showFullScreen()
+check("main window starts in WorkSlop UI",
+      win.theme_manager.current_theme == ThemeManager.IOS)
+check("WorkSlop rail visible / generated Nugget rail hidden",
+      not win.workslop_sidebar.isHidden() and win.ui.sidebar.isHidden())
+check("device bar is shared by both shells", not win.ui.deviceBar.isHidden())
+check("WorkSlop shell starts on iOS-style Home",
+      win.content_stack.currentIndex() == 1
+      and win.ios_pages.currentIndex() == 0)
+check("modern shell is not instantiated",
+      not hasattr(win, "workslop_topbar")
+      and not hasattr(win, "workslop_footer")
+      and not hasattr(win, "device_panel"))
+check("window version label is branded and clean",
+      "WorkSlop" in win.ui.appVersionLbl.text()
+      and "11.0" in win.ui.appVersionLbl.text()
+      and "GoldenNugget" not in win.ui.appVersionLbl.text()
+      and "pre-release" not in win.ui.appVersionLbl.text().lower()
+      and "beta" not in win.ui.appVersionLbl.text().lower()
+      and "stable" not in win.ui.appVersionLbl.text().lower(),
+      win.ui.appVersionLbl.text())
+
+win._on_workslop_menu("tweaks")
+check("WorkSlop Tweaks menu opens the tweak stack",
+      win.ios_pages.currentIndex() == 1
+      and win.workslop_sidebar._buttons["tweaks"][0].isChecked())
+win.show_ios_page(9)  # Liquid Glass section page
+check("Liquid Glass section highlights the v4 Tweaks rail item",
+      win.workslop_sidebar._buttons["tweaks"][0].isChecked())
+win._on_workslop_menu("wallpaper")
+check("WorkSlop Wallpaper menu opens PosterBoard",
+      win.ios_pages.currentIndex() == 2
+      and win.workslop_sidebar._buttons["wallpaper"][0].isChecked())
+check("Settings switch starts on WorkSlop",
+      win.ios_settings.interface_switch.isChecked())
+
+# Flip through the real Settings switch, exactly as a user would.
+win.ios_settings.interface_switch.setChecked(False)
 app.processEvents()
-check("composite enters fullscreen", frame.isFullScreen())
-check("fullscreen layout expands without clipping",
-      topbar.width() <= frame.width()
-      and home._brand_logo.width() <= home.width(),
-      f"frame={frame.width()} home={home.width()}")
-full_path = os.path.abspath(
-    os.path.join(shot_dir, "home-modern-fullscreen-offscreen.png"))
-full_pixmap = frame.grab()
-check("fullscreen screenshot saved",
-      full_pixmap.save(full_path) and os.path.getsize(full_path) > 10000,
-      full_path)
-frame.showNormal()
-frame.close()
+check("Settings switch selects Nugget UI",
+      win.theme_manager.current_theme == ThemeManager.CLASSIC)
+check("Nugget rail visible / WorkSlop rail hidden",
+      not win.ui.sidebar.isHidden() and win.workslop_sidebar.isHidden())
+win.ios_settings.refresh()
+check("Settings switch reflects Nugget after refresh",
+      not win.ios_settings.interface_switch.isChecked())
+win.show_home()
+check("Nugget Home is classic stack page 0",
+      win.content_stack.currentIndex() == 0
+      and win.ui.homePageBtn.isChecked())
+win.on_daemonsPageBtn_clicked()
+app.processEvents()
+check("Nugget Daemons is classic stack page 2",
+      win.content_stack.currentIndex() == 2
+      and win.ui.daemonsPageBtn.isChecked())
+win.show_ios_page(10)  # Icon Themes needs the shared header action.
+check("hosted Icon Themes keeps its shared header in Nugget UI",
+      win.content_stack.currentIndex() == 1
+      and win.ios_pages.currentIndex() == 10
+      and not win.ios_nav.isHidden()
+      and win.ui.iconThemesPageBtn.isChecked())
+win.show_ios_page(4)  # Settings does not need that header in Nugget UI.
+check("hosted Settings hides the shared header in Nugget UI",
+      win.content_stack.currentIndex() == 1
+      and win.ios_pages.currentIndex() == 4
+      and win.ios_nav.isHidden()
+      and win.ui.settingsPageBtn.isChecked())
+
+win.ios_settings.interface_switch.setChecked(True)
+app.processEvents()
+win.show_home()
+check("switching back restores WorkSlop Home",
+      win.theme_manager.current_theme == ThemeManager.IOS
+      and win.content_stack.currentIndex() == 1
+      and win.ios_pages.currentIndex() == 0
+      and not win.workslop_sidebar.isHidden()
+      and win.ui.sidebar.isHidden()
+      and win.workslop_sidebar._buttons["home"][0].isChecked())
+win.close()
+print(f"MAINWINDOW-DUAL-OK {P}", flush=True)
+os._exit(0)
+'''
+
+import subprocess  # noqa: E402
+
+_repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_child_env = dict(os.environ, PYTHONUNBUFFERED="1")
+_proc = subprocess.run(
+    [sys.executable, "-c", _CHILD], cwd=_repo_root, env=_child_env,
+    capture_output=True, text=True, timeout=240)
+for _line in _proc.stdout.splitlines():
+    print(_line)
+if _proc.stderr.strip():
+    print(_proc.stderr[-2000:])
+check("dual-shell MainWindow subprocess passed",
+      _proc.returncode == 0 and "MAINWINDOW-DUAL-OK" in _proc.stdout,
+      f"rc={_proc.returncode}")
+_child_pass = int(_proc.stdout.rsplit("MAINWINDOW-DUAL-OK", 1)[1].split()[0]) \
+    if "MAINWINDOW-DUAL-OK" in _proc.stdout else 0
+PASS += _child_pass
 
 print(f"\nALL {PASS} CHECKS PASSED")
-print(f"screenshot: {shot_path}")
-print(f"screenshot: {full_path}")

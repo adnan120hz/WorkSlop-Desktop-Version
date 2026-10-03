@@ -11,12 +11,19 @@ this module classifies which tweaks require that decision and combines it
 with the registry's per-spec version/device-class constraints.
 
 Wave 10 Package 1 adds the audit evidence gate from
-``AUDIT-FINAL-WAVE10.md`` here as well: removed IDs are tombstones, the five
-redundant duplicate IDs alias to their canonical writer, and research-only
-IDs cannot be delivered as ship features on the audited iOS 26.6.1 target
-(build 23G83). The one user-retained exception is
-``FlatIconsEverywhere``; it stays active by explicit user order and is not
-evidence of support.
+``AUDIT-FINAL-WAVE10.md`` here as well: removed IDs are tombstones and the
+five redundant duplicate IDs alias to their canonical writer.
+
+Wave 11 policy (user order 2026-10-03): the audit classification is kept as
+a record, but "research-only / not yet verified on-device" is no longer a
+delivery lock. Every tweak whose key/domain/value/delivery structure
+survived the audit is a normal, user-activatable tweak — an unverified
+tweak that cannot be switched on can never be device-tested at all. Only
+structurally dead entries stay hard-locked: the ``REMOVED_TWEAK_IDS``
+tombstones (wrong domain/storage model, dead FeatureFlags channel,
+wrong value/type, Settings duplicates) and MobileGestalt-backed tweaks on
+a locked/unknown build (``mobilegestalt_decision`` stays fail-closed and
+is always evaluated before anything else here).
 """
 
 from packaging.version import Version
@@ -66,23 +73,13 @@ MOBILEGESTALT_FLOW_TWEAK_IDS = frozenset({
 # stay as tombstones so old presets can be parsed, but a tombstoned ID must
 # always resolve to removed/skipped — never to an applied tweak.
 REMOVED_TWEAK_IDS = frozenset({
-    TweakID.GlassLegibility2,          # K1: UIViewGlassLegibilitySetting = 2
-    TweakID.SolariumFeatureFlags,      # placeholder: no real flag set defined
-    TweakID.DisableSolariumSwiftUI,    # dead reader on iOS 26.6.1
-    TweakID.DisableGlassEverywhere,    # predicted / pattern hypothesis
-    TweakID.DisallowGlassEverywhere,   # predicted / pattern hypothesis
-    TweakID.DisableLockScreenSpecular, # predicted
-    TweakID.DisableClockSpecular,      # predicted
-    TweakID.DisableGlassLockScreen,    # predicted
-    TweakID.DisableGlassDI,            # predicted
-    TweakID.DisallowGlassDI,           # predicted
-    TweakID.DisableIslandSpecular,     # predicted
-    TweakID.ExcludeAllGlassShadows,    # predicted
-    TweakID.FlatDockEverywhere,        # predicted
-    TweakID.DisableGlassBlur,          # predicted
-    TweakID.DisallowGlassKeyboard,     # predicted
-    TweakID.DisableRefractionEverywhere,  # predicted
-    TweakID.LGLPMGestalt,              # wrong BasicPlist/FileLocation.mga model
+    # The v4 Liquid Glass IDs (GlassLegibility2, SolariumFeatureFlags,
+    # DisableSolariumSwiftUI, the predicted/specular/shadow rows,
+    # LGLPMGestalt) are NOT here any more: the user ordered the v4 Liquid
+    # Glass set restored verbatim on 2026-10-03, so those IDs resolve to
+    # their v4 specs again. The Wave 10 audit reasoning is preserved in
+    # AUDIT-FINAL-WAVE10; the restoration is a user product decision, not
+    # an audit upgrade.
     TweakID.AIFeatureFlags,            # uncapped dead FeatureFlags channel (>26.1)
     TweakID.AIFeatureFlagsUI,          # uncapped dead FeatureFlags channel (>26.1)
     # Wave 10 Package 1 audit kills (AUDIT-FINAL-WAVE10 §4). The enum
@@ -110,17 +107,9 @@ REMOVED_TWEAK_IDS = frozenset({
     TweakID.DisableSearchingWebsites,     # wrong value/type
     TweakID.SiriTriggerPhrase,            # wrong value/type
     TweakID.SiriVocab,                    # wrong value/type
-    TweakID.DisableWidgetSpecular,        # dead-reader/pass-stripping LG row
-    TweakID.DisableDockSpecular,          # dead-reader/pass-stripping LG row
-    TweakID.DisableFolderSpecular,        # dead-reader/pass-stripping LG row
-    TweakID.ExcludeClearGlassShadows,     # dead-reader/pass-stripping LG row
-    TweakID.ExcludeDockShadow,            # dead-reader/pass-stripping LG row
-    TweakID.ExcludeSearchShadow,          # dead-reader/pass-stripping LG row
-    TweakID.DisableOuterRefraction,       # dead-reader/pass-stripping LG row
-    TweakID.DisableSolariumHDR,           # dead-reader/pass-stripping LG row
-    TweakID.DisableSpecularMotion,        # dead-reader/pass-stripping LG row
-    TweakID.DisableSpecularEverywhere,    # dead-reader/pass-stripping LG row
-    TweakID.DisableCompactChrome,         # target-ineligible (iOS 27 gate)
+    # The specular/shadow/refraction v4 Liquid Glass rows and
+    # DisableCompactChrome also left this set with the 2026-10-03 verbatim
+    # v4 restoration (see the note at the top of this set).
     TweakID.ClockAnim,                    # dead FeatureFlags channel on target
     TweakID.Lockscreen,                   # dead FeatureFlags channel on target
     TweakID.PhotoUI,                      # dead FeatureFlags channel on target
@@ -147,12 +136,14 @@ DEPRECATED_TWEAK_ALIASES = {
 AUDIT_TARGET_VERSION = "26.6.1"
 AUDIT_TARGET_BUILD = "23G83"
 
-# Audit research-only IDs (AUDIT-FINAL-WAVE10 §5). Registry rows remain in
-# the registry so the UI can show them locked with the audit reason on the
-# target; non-registry families are classified here so presets, summaries,
-# and the backend share the same containment decision. MobileGestalt IDs
-# are already fail-closed by their own decision and are included so the
-# research-only classification is complete in one place.
+# Audit research-only IDs (AUDIT-FINAL-WAVE10 §5), kept as the audit
+# record. Wave 11 (user order 2026-10-03): membership in this set is
+# classification only — it no longer locks, clears, badges, or skips
+# anything by itself. Every entry whose structure passed the audit is a
+# normal activatable tweak; the structurally dead ones live in
+# REMOVED_TWEAK_IDS instead. MobileGestalt IDs are included so the
+# classification is complete in one place; they stay fail-closed through
+# the MobileGestalt decision, not through this set.
 AUDIT_RESEARCH_ONLY_TWEAK_IDS = frozenset({
     # SpringBoard research registry rows
     TweakID.WatchOSCompatibility, TweakID.CustomLockDate,
@@ -179,36 +170,18 @@ AUDIT_RESEARCH_ONLY_TWEAK_IDS = frozenset({
     TweakID.RdarFix,
 }) | MOBILEGESTALT_TWEAK_IDS
 
-# DEVICE-TEST path (user doctrine, reaffirmed 2026-10-02): unproven is not
-# the same as wrong. A candidate whose key/domain/value/reader-hypothesis/
-# delivery structure survived the audit is *for* isolated device testing —
-# locking it away makes the test the doctrine demands impossible. Only
-# structurally wrong, dead-reader, wrong-delivery, settings-duplicate, or
-# user-killed candidates stay hard-locked (REMOVED_TWEAK_IDS above).
-#
-# These three Liquid Glass rows were substantively re-verified before the
-# unlock (payload trace, not UI state):
-#   * SolariumForceFallback=true — spec (registry.py) writes GP =
-#     FileLocation.globalPreferences
-#     (src/tweaks/basic_plist_locations.py:20
-#     "/var/Managed Preferences/mobile/.GlobalPreferences.plist"), exactly
-#     the Hitori .batter provenance: ManagedPreferencesDomain + hidden-dot
-#     .GlobalPreferences.plist (path_mapping maps "/var/Managed Preferences/"
-#     to ManagedPreferencesDomain). Audit: key PARTIAL (tool lineage),
-#     domain PASS, value PASS (bool true), reader UNKNOWN on 23G83.
-#   * SBDisallowGlassTime=true, SBDisableGlassDock=true — same GP file,
-#     bool true; audit 5-layer: exact claimed spelling (authenticity
-#     unproven), GP is the claimed route, value PASS, reader UNKNOWN.
-# All three ride BasicPlistTweak (value default True) into the single
-# managed-GP plist staged by the apply pass (one writer per (location,key)
-# is enforced by the registry audit test), and the Internal Options reset
-# nulls that same GP file with a valid empty plist, so reset cleans the
-# exact keys apply writes. Reader on iOS 26.6.1 is still UNPROVEN — that is
-# what the device test is for; the GUI must say so on every enable.
-DEVICE_TEST_TWEAK_IDS = frozenset({
-    TweakID.SolariumForceFallback, TweakID.DisallowGlassTime,
-    TweakID.DisableGlassDock,
-})
+# DEVICE-TEST classification (retired as a gate, Wave 11, user order
+# 2026-10-03): unproven is not the same as wrong, and a candidate that
+# cannot be switched on can never be device-tested. The three Liquid Glass
+# rows that opened this path in Wave 10 (SolariumForceFallback,
+# SBDisallowGlassTime, SBDisableGlassDock) became plain v4 specs with the
+# 2026-10-03 verbatim v4 restoration, and the same "audit passed -> normal
+# active tweak" rule now covers every research-only entry (see
+# is_device_test_candidate). This explicit set stays empty: nothing is
+# labelled or gated as a device test any more. Only structurally wrong,
+# dead-reader, wrong-delivery, settings-duplicate, or user-killed
+# candidates stay hard-locked (REMOVED_TWEAK_IDS above).
+DEVICE_TEST_TWEAK_IDS = frozenset()
 
 
 def is_device_test_tweak(tweak_id) -> bool:
@@ -220,26 +193,16 @@ def is_device_test_tweak(tweak_id) -> bool:
         return False
 
 
-# USER POLICY EXPANSION (2026-10-03): every audit research-only tweak that
-# is a real registry tweak joins the device-test path — toggle enabled,
-# UNPROVEN badge, one-time backup confirmation, Apply Journal entry — the
-# same treatment the three Liquid Glass candidates already have. What
-# stays hard-locked, with no path through here:
-#   * removed/killed IDs (REMOVED_TWEAK_IDS) — wrong delivery, dead
-#     readers, settings duplicates, user-killed candidates;
-#   * non-registry research families (Status Bar / Daemons / PosterBoard /
-#     Templates / Risky / Eligibility pages own their controls);
-#   * MobileGestalt-gated tweaks on a locked/unknown build — the shared
-#     MobileGestalt decision stays fail-closed and is evaluated BEFORE
-#     this path in tweak_deliverability (RdarFix included).
 def is_device_test_candidate(tweak_id) -> bool:
-    """True when *tweak_id* may be enabled as an UNPROVEN device test.
+    """True when *tweak_id* is an explicit device-test-only candidate.
 
-    The original three Liquid Glass candidates always qualify. Every other
-    audit research-only ID qualifies only when it is a registry tweak
-    (``SPECS_BY_ID``); non-registry families and removed tombstones never
-    do. Deliverability still applies every other gate (version range,
-    device class, MobileGestalt) on top of this classification.
+    Wave 11 (user order 2026-10-03): nothing is a device-test-only
+    candidate any more. Every audit research-only ID whose structure
+    survived became a normal activatable tweak, so this classification is
+    exactly ``DEVICE_TEST_TWEAK_IDS`` (empty). It is kept as a function
+    because the GUI badge/confirmation plumbing imports it; it must never
+    light up again unless a future user order repopulates the set.
+    Removed tombstones never qualify.
     """
     try:
         canonical = canonical_tweak_id(tweak_id)
@@ -247,10 +210,7 @@ def is_device_test_candidate(tweak_id) -> bool:
         return False
     if is_removed_tweak(canonical):
         return False
-    if canonical in DEVICE_TEST_TWEAK_IDS:
-        return True
-    return (is_audit_research_only(canonical)
-            and canonical in SPECS_BY_ID)
+    return canonical in DEVICE_TEST_TWEAK_IDS
 
 
 # Explicit user-retained exception (2026-10-02 17:21 WIB). It remains an
@@ -310,41 +270,18 @@ def is_audit_user_retained(tweak_id) -> bool:
 def clear_audit_research_only_state(device_version: str = "",
                                     device_build: str = "",
                                     tweaks_dict=None) -> list:
-    """Force enabled audit research-only tweaks off on the audited target.
+    """Force enabled audit research-only tweaks off — RETIRED (Wave 11).
 
-    Used before apply/summary generation so stale ON state from a preset,
-    AutoSave, or a previous device cannot be counted or delivered as a
-    supported iOS 26.6.1 feature. Returns the names cleared. Non-target
-    devices and the user-retained exception are untouched.
-
-    Registry research-only tweaks are NOT cleared anymore (user policy
-    2026-10-03): they are deliverable as UNPROVEN device tests, and the
-    apply pass journals them as such. Only non-registry research families
-    (Status Bar / Daemons / PosterBoard / Risky / Eligibility controls)
-    and MobileGestalt-gated rows are still force-cleared — the latter via
-    ``clear_unsupported_mobilegestalt_state`` on locked builds.
+    User order 2026-10-03: a tweak that passed the structure audit is a
+    normal activatable tweak; "not yet verified on-device" is no longer a
+    reason to clear, lock, or skip it (an unverified tweak that cannot be
+    switched on can never be device-tested at all). This function
+    therefore clears nothing and always returns []. It remains importable
+    because the GUI rebuild path and the backend apply pass call it;
+    MobileGestalt-gated state is still force-cleared on locked builds by
+    ``clear_unsupported_mobilegestalt_state``, which is unchanged.
     """
-    if not is_audit_target(device_version, device_build):
-        return []
-    if tweaks_dict is None:
-        from src.tweaks.tweaks import tweaks as tweaks_dict  # late: avoids a cycle
-    cleared = []
-    for tweak_id, tweak in list(tweaks_dict.items()):
-        if tweak is None or not getattr(tweak, "enabled", False):
-            continue
-        if not is_audit_research_only(tweak_id):
-            continue
-        if is_device_test_candidate(tweak_id):
-            continue  # registry research-only: device-testable, not cleared
-        try:
-            tweak.set_enabled(False)
-        except Exception:
-            try:
-                tweak.enabled = False
-            except Exception:
-                continue
-        cleared.append(tweak_id.name if hasattr(tweak_id, "name") else str(tweak_id))
-    return cleared
+    return []
 
 
 def requires_gestalt(tweak_id, tweak=None) -> bool:
@@ -489,35 +426,14 @@ def tweak_deliverability(tweak_id, device_version: str = "",
         if not decision.supported:
             return (False, decision.reason_code, decision.user_message)
 
-    if (is_audit_research_only(canonical)
-            and is_audit_target(device_version, device_build)):
-        if canonical in SPECS_BY_ID:
-            # Device-test path (expanded user policy 2026-10-03): every
-            # research-only REGISTRY tweak may be enabled for an isolated
-            # device test on the audited target — badge UNPROVEN, backup
-            # confirmation, Apply Journal. Non-registry research families
-            # stay locked here; their own pages own those controls.
-            return (True, "DEVICE_TEST_OK",
-                    "UNPROVEN — device test: classified research-only by "
-                    "the Wave 10 audit; structure recorded, on-device "
-                    "effect not proven. Full backup first, Low Power Mode "
-                    "off, one candidate per apply, and never reset the "
-                    "SpringBoard page on iOS 26.6.1.")
-        return (False, "AUDIT_RESEARCH_ONLY",
-                "Research-only in the Wave 10 audit; not a supported "
-                "iOS 26.6.1 ship feature.")
-
-    if is_device_test_tweak(canonical):
-        # Deliverable, but honestly labelled: the structure is verified,
-        # the on-device reader is not. Callers (GUI badge, journal, preset
-        # summaries) surface DEVICE_TEST_OK instead of a plain OK so the
-        # unproven status is never silently dropped.
-        return (True, "DEVICE_TEST_OK",
-                "UNPROVEN — device test: structure verified by audit, "
-                "on-device effect not proven. Full backup first, Low Power "
-                "Mode off, one candidate per apply, and never reset the "
-                "SpringBoard page on iOS 26.6.1.")
-
+    # Wave 11 (user order 2026-10-03): the audit research-only
+    # classification no longer gates delivery. Registry rows and
+    # non-registry families alike (Internal, SpringBoard, Status Bar,
+    # Daemons, PosterBoard, Templates, Risky, Eligibility) are normal
+    # activatable tweaks once their structure passed the audit; only the
+    # REMOVED_TWEAK_IDS tombstones above (structurally dead: wrong
+    # domain/storage model, dead delivery channel, wrong value/type,
+    # Settings duplicates) and the MobileGestalt gate above stay locked.
     return (True, "OK", "")
 
 

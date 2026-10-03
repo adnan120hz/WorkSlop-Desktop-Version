@@ -6,8 +6,9 @@ Skips cleanly when PySide6 is unavailable. Verifies:
 * iOS 26.x (non-audit-target): row enabled; toggling it flips the backend
   predicate and refreshes the conflicting Disable Cellular Service icon
   switch off; turning that switch on dissolves the feature visibly.
-* iOS 26.6.1 / 23G83: the shared capability gate contains Status Bar as
-  research-only, so the row is disabled with the unsupported note.
+* iOS 26.6.1 / 23G83: the feature is a normal active tweak (Wave 11 —
+  the research-only containment was removed by user order), so the row
+  is enabled and no containment note is shown.
 * iOS 27: the row is hidden with the other classic controls.
 * Unknown version: row disabled (never treated as compatible).
 
@@ -85,13 +86,14 @@ app.processEvents()
 check("predicate off after conflict", not st.is_full_signal_bars_no_sim_enabled())
 check("feature switch synced off", not page.full_signal_switch.isChecked())
 
-print("\niOS 26.6.1 / 23G83: research-only containment")
+print("\niOS 26.6.1 / 23G83: normal active tweak (Wave 11)")
 page, st = fresh_page("26.6.1", "23G83")
 st.set_enabled(True)
 page._refresh_full_signal_gate()
-check("row disabled on audit target", not page.full_signal_switch.isEnabled())
-check("unsupported note shown",
-      bool(page._signal_note.text()) and page._signal_note.isVisible())
+check("row enabled on 26.6.1 target", page.full_signal_switch.isEnabled())
+check("no containment note on 26.6.1",
+      not page._signal_note.text() and not page._signal_note.isVisible(),
+      repr(page._signal_note.text()))
 
 print("\niOS 27: hidden")
 page, st = fresh_page("27.0", "24A435")

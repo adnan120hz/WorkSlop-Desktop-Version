@@ -225,6 +225,14 @@ class IOSSettingsPage(QWidget):
     def refresh(self):
         """Called when navigating to Settings — picks up device changes."""
         self._build_device_rows()
+        sw = getattr(self, "interface_switch", None)
+        if sw is not None:
+            from src.gui.ios.theme_manager import ThemeManager
+            want = self.window.theme_manager.current_theme == ThemeManager.IOS
+            if sw.isChecked() != want:
+                sw.blockSignals(True)
+                sw.setChecked(want)
+                sw.blockSignals(False)
 
     def _build_settings_ui(self):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
@@ -240,6 +248,16 @@ class IOSSettingsPage(QWidget):
         body = self._ws_control_row(ap_lay, "AP", tr("Accent color"), first=True)
         self._accent_picker = AccentPicker()
         body.addWidget(self._accent_picker)
+        # Interface switch (restored Wave 11, user order 2026-10-03): the
+        # WorkSlop v4 shell is the main UI; turning this off switches the
+        # same window to the classic Nugget shell. Mirrors the first-launch
+        # InterfacePickerDialog choice (ui/theme).
+        from src.gui.ios.theme_manager import ThemeManager
+        self.interface_switch = self._ws_switch_row(
+            ap_lay, "UI", tr("WorkSlop interface (off = Nugget interface)"),
+            self.window.theme_manager.current_theme == ThemeManager.IOS,
+            lambda ios_on: self.window.apply_theme(
+                ThemeManager.IOS if ios_on else ThemeManager.CLASSIC))
 
         # --- Safety (HotLoad) ---
         sf_lay = self._ws_section("Safety (HotLoad)")

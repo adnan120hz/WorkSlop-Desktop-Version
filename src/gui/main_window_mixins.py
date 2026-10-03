@@ -517,19 +517,58 @@ class SettingsMixin:
 
 
     def apply_theme(self, theme: int):
-        """Apply the Wave 10 WorkSlop shell chrome (classic mode is removed)."""
+        """Apply the active UI mode WITHOUT navigating away (Wave 11).
+
+        Restores the v4-era dual interface (user order 2026-10-03):
+
+        * IOS (WorkSlop, the main UI): the generated Nugget sidebar is
+          hidden, the WorkSlop v4 sidebar rail shows, the shell is
+          full-screen with no padding, and the content stack shows the
+          iOS-style pages.
+        * CLASSIC (Nugget, the second UI): the generated sidebar and the
+          padded desktop shell show, the WorkSlop rail hides, and the
+          classic Home/Daemons pages live in the same content stack; the
+          iOS-style pages open inside this chrome as actions.
+
+        Only the chrome changes — the current page stays put.
+        """
         self.theme_manager.save_theme(theme)
-        self.ui.sidebar.setVisible(False)
-        self.ui.deviceBar.setVisible(False)
-        # full-screen, no padding
-        self.shell_layout.setContentsMargins(0, 0, 0, 0)
-        self.shell_layout.setSpacing(0)
-        self.body_row.setSpacing(0)
-        self.content_stack.setCurrentIndex(0)
-        self._update_shared_nav(self.ios_pages.currentIndex())
+        is_ios = theme == ThemeManager.IOS
+        self.ui.sidebar.setVisible(not is_ios)
+        if hasattr(self, "workslop_sidebar"):
+            self.workslop_sidebar.setVisible(is_ios)
+        # The device bar serves both shells (device picker + refresh).
+        self.ui.deviceBar.setVisible(True)
+        if is_ios:
+            # WorkSlop mode: full-screen, no padding
+            self.shell_layout.setContentsMargins(0, 0, 0, 0)
+            self.shell_layout.setSpacing(0)
+            self.body_row.setSpacing(0)
+            # entering the main UI: land on its pages unless already inside
+            if self.content_stack.currentIndex() != 1:
+                self.content_stack.setCurrentIndex(1)
+                self.ios_pages.setCurrentIndex(0)
+            self._update_shared_nav(self.ios_pages.currentIndex())
+        else:
+            # Nugget mode: padding around the desktop shell
+            self.shell_layout.setContentsMargins(16, 16, 16, 16)
+            self.shell_layout.setSpacing(12)
+            self.body_row.setSpacing(16)
+            # the classic shell hides the shared header except on pages
+            # that need it (Icon Themes keeps "+ Add Icon")
+            self._update_shared_nav(self.ios_pages.currentIndex())
+            if self.content_stack.currentIndex() == 1 \
+                    and self.ios_pages.currentIndex() == 0:
+                # the iOS home has no meaning inside the classic shell
+                self.show_home()
+        self._sync_sidebar_selection()
     def updateAppVersionLabel(self):
         new_text: str = self.ui.appVersionLbl.text()
         new_text = new_text.replace("%VERSION", App_Version)
+        # The generated UI still ships the upstream caption; the classic
+        # (Nugget-mode) sidebar shows it again since Wave 11, so brand it
+        # WorkSlop Desktop here instead of editing the generated file.
+        new_text = new_text.replace("GoldenNugget", "WorkSlop")
         if App_Build > 0:
             new_text = new_text.replace("%BETATAG", f"(beta {App_Build})")
         else:
@@ -557,19 +596,29 @@ class NavigationMixin:
     _classic_nav_pages = (10,)
 
     def _update_shared_nav(self, index: int):
-        # the iOS home page is full-screen — no header at all
-        self.ios_nav.setVisible(index != 0)
-        if index == 0:
+        classic = getattr(self.theme_manager, "current_theme",
+                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        if classic and index not in self._classic_nav_pages:
+            # The classic (Nugget) shell hides the shared iOS header except
+            # on pages that need it (Icon Themes keeps "+ Add Icon"); the
+            # page refresh + selection sync below still run so hosted
+            # iOS-style pages never show stale device state.
+            self.ios_nav.setVisible(False)
             self.ios_nav.clear_right_action()
-            return
-        title = self._ios_page_titles.get(index, "")
-        self.ios_nav.set_title(title)
-        self.ios_nav.set_back_visible(True)
-        right = self._nav_right_actions.get(index)
-        if right:
-            self.ios_nav.set_right_action(right[0], right[1])
         else:
-            self.ios_nav.clear_right_action()
+            # the iOS home page is full-screen — no header at all
+            self.ios_nav.setVisible(index != 0)
+            if index == 0:
+                self.ios_nav.clear_right_action()
+                return
+            title = self._ios_page_titles.get(index, "")
+            self.ios_nav.set_title(title)
+            self.ios_nav.set_back_visible(True)
+            right = self._nav_right_actions.get(index)
+            if right:
+                self.ios_nav.set_right_action(right[0], right[1])
+            else:
+                self.ios_nav.clear_right_action()
         # REAUDIT FIX: device-dependent pages (Settings "This device" rows,
         # Passcode device line, Backup apply state...) build their UI once at
         # construction, so they showed stale "No device" after the iPhone was
@@ -592,32 +641,17 @@ class NavigationMixin:
 
 
     def _on_workslop_menu(self, menu_id: str):
-        """Navigate from the blue top header tabs (ex-sidebar handler)."""
+        """Navigate from the WorkSlop v4 sidebar rail."""
         if menu_id == "home":
             self.show_home()
         elif menu_id == "tweaks":
             self.show_ios_page(1)
-        elif menu_id == "liquidglass":
-            self.on_liquidGlassPageBtn_clicked()
-            return
-        elif menu_id == "springboard":
-            self.on_springboardOptionsPageBtn_clicked()
-            return
-        elif menu_id == "internal":
-            self.on_internalOptionsPageBtn_clicked()
-            return
-        elif menu_id == "statusbar":
-            self.on_statusBarPageBtn_clicked()
-            return
-        elif menu_id == "posterboard" or menu_id == "wallpaper":
-            self.on_posterboardPageBtn_clicked()
-            return
-        elif menu_id == "daemons":
-            self.on_daemonsPageBtn_clicked()
-            return
         elif menu_id == "gestalt":
             self.on_mobileGestaltPageBtn_clicked()
             return  # already syncs the sidebar
+        elif menu_id == "wallpaper":
+            self.on_posterboardPageBtn_clicked()
+            return
         elif menu_id == "backup":
             self.ios_backup.refresh()
             self.show_ios_page(13)
@@ -631,32 +665,68 @@ class NavigationMixin:
         self._sync_sidebar_selection()
 
     def _sync_sidebar_selection(self):
-        """Move the checked highlight of the WorkSlop sidebar to the active view."""
+        """Move the checked highlight of the ACTIVE shell's rail to the
+        active view: the WorkSlop v4 sidebar in IOS mode, the generated
+        Nugget sidebar buttons in CLASSIC mode."""
+        classic = getattr(self.theme_manager, "current_theme",
+                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        if classic:
+            btns = (self.ui.homePageBtn, self.ui.posterboardPageBtn,
+                    self.ui.springboardOptionsPageBtn,
+                    self.ui.internalOptionsPageBtn,
+                    self.ui.liquidGlassPageBtn, self.ui.daemonsPageBtn,
+                    self.ui.applyPageBtn, self.ui.settingsPageBtn,
+                    self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn,
+                    self.ui.gestaltPageBtn)
+            page_to_btn = {
+                0: 0,   # home
+                2: 1,   # posterboard
+                7: 2,   # springboard
+                8: 3,   # internal
+                9: 4,   # liquid glass
+                3: 5,   # daemons (iOS page hosted in classic)
+                6: 6,   # apply
+                4: 7,   # settings
+                5: 8,   # status bar
+                10: 9,  # icon themes
+                12: 10,  # mobilegestalt
+            }
+            idx = None
+            if self.content_stack.currentIndex() == 0:
+                idx = 0
+            elif self.content_stack.currentIndex() == 2:
+                idx = 5  # classic daemons page
+            elif self.content_stack.currentIndex() == 1:
+                idx = page_to_btn.get(self.ios_pages.currentIndex())
+            target = btns[idx] if idx is not None else None
+            for b in btns:
+                b.setChecked(b is target)
+            return
         page_to_menu = {
             0: "home",
-            1: "tweaks", 6: "tweaks", 10: "tweaks", 11: "tweaks", 14: "tweaks",
-            9: "liquidglass",
-            7: "springboard",
-            8: "internal",
-            5: "statusbar",
-            2: "posterboard",
-            3: "daemons",
+            1: "tweaks", 3: "tweaks", 5: "tweaks", 6: "tweaks",
+            7: "tweaks", 8: "tweaks", 9: "tweaks",
             12: "gestalt",
+            2: "wallpaper",
+            13: "backup",
+            15: "appdata",
+            10: "themes", 11: "themes", 14: "themes",
             4: "settings",
-            13: "home", 15: "home",
         }
         menu = page_to_menu.get(self.ios_pages.currentIndex())
         if menu is not None and hasattr(self, "workslop_sidebar"):
             self.workslop_sidebar.select(menu)
-        if menu is not None and hasattr(self, "workslop_topbar"):
-            self.workslop_topbar.select(menu)
 
 
     def show_home(self):
-        """Open the home page."""
-        self.content_stack.setCurrentIndex(0)
-        self.ios_pages.setCurrentIndex(0)
-        self._update_shared_nav(0)
+        """Open the home page of the ACTIVE UI mode."""
+        if getattr(self.theme_manager, "current_theme", ThemeManager.IOS) \
+                == ThemeManager.IOS:
+            self.content_stack.setCurrentIndex(1)
+            self.ios_pages.setCurrentIndex(0)
+            self._update_shared_nav(0)
+        else:
+            self.content_stack.setCurrentIndex(0)
         self._refresh_preset_widgets()
         self._sync_sidebar_selection()
 
@@ -674,13 +744,13 @@ class NavigationMixin:
 
 
     def show_ios_page(self, index: int):
-        self.content_stack.setCurrentIndex(0)
+        self.content_stack.setCurrentIndex(1)
         self.ios_pages.setCurrentIndex(index)
 
 
     def open_presets_section(self):
         """Open the settings page and scroll straight to the presets section."""
-        self.content_stack.setCurrentIndex(0)
+        self.content_stack.setCurrentIndex(1)
         self.ios_pages.setCurrentIndex(4)
         self._update_shared_nav(4)
         self._sync_sidebar_selection()
@@ -766,6 +836,11 @@ class NavigationMixin:
 
     def _go_back(self) -> bool:
         """Navigate back: subpage -> home (stay in the UI)."""
+        classic = getattr(self.theme_manager, "current_theme",
+                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        if classic and self.content_stack.currentIndex() != 0:
+            self.show_home()
+            return True
         if self.ios_pages.currentIndex() != 0:
             self.ios_pages.setCurrentIndex(0)
             self._update_shared_nav(0)
@@ -805,8 +880,15 @@ class NavigationMixin:
 
 
     def on_daemonsPageBtn_clicked(self):
-        self.ios_daemons.refresh_from_tweaks()
-        self.show_ios_page(3)
+        if getattr(self.theme_manager, "current_theme", ThemeManager.IOS) \
+                == ThemeManager.CLASSIC:
+            # The Nugget shell has its own classic Daemons page.
+            self.pages[Page.Daemons].load()
+            self.pages[Page.Daemons].refresh()
+            self.content_stack.setCurrentIndex(2)
+        else:
+            self.ios_daemons.refresh_from_tweaks()
+            self.show_ios_page(3)
         self._sync_sidebar_selection()
 
 

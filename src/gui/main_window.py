@@ -61,24 +61,28 @@ from src.gui.main_window_mixins import (
     SettingsMixin,
 )
 
-# Classic chrome (device bar + sidebar + home toolbar) uses monochrome white
-# bootstrap SVGs; they must be recolored on every theme change.
+# Classic (Nugget UI) chrome — device bar, sidebar, home toolbar — uses
+# the WorkSlop icon set (ws-*.svg, Wave 11, user order 2026-10-03: the
+# second UI is the Nugget shell with its icons renamed to the WorkSlop
+# set); they are recolored on every theme change. The credit/social
+# buttons keep their brand glyphs (a GitHub/Discord mark cannot be
+# renamed to a WorkSlop line icon without lying about where they go).
 _HIDDEN_THEMED_ICONS = {
-    "phoneIconBtn": ":/icon/phone.svg",
-    "refreshBtn": ":/icon/arrow-clockwise.svg",
-    "homePageBtn": ":/icon/house.svg",
-    "gestaltPageBtn": ":/icon/iphone-island.svg",
-    "euEnablerPageBtn": ":/icon/geo-alt.svg",
-    "statusBarPageBtn": ":/icon/wifi.svg",
-    "passcodePageBtn": ":/icon/lock.svg",
-    "springboardOptionsPageBtn": ":/icon/app-indicator.svg",
-    "internalOptionsPageBtn": ":/icon/hdd.svg",
-    "liquidGlassPageBtn": ":/icon/liquid-glass.svg",
-    "daemonsPageBtn": ":/icon/toggles.svg",
-    "iconThemesPageBtn": ":/icon/brush.svg",
-    "applyPageBtn": ":/icon/check-circle.svg",
-    "posterboardPageBtn": ":/icon/wallpaper.svg",
-    "settingsPageBtn": ":/icon/gear.svg",
+    "phoneIconBtn": ":/icon/ws-device.svg",
+    "refreshBtn": ":/icon/ws-refresh.svg",
+    "homePageBtn": ":/icon/ws-device.svg",
+    "gestaltPageBtn": ":/icon/ws-chip.svg",
+    "euEnablerPageBtn": ":/icon/ws-flash.svg",
+    "statusBarPageBtn": ":/icon/ws-signal.svg",
+    "passcodePageBtn": ":/icon/ws-toolbox.svg",
+    "springboardOptionsPageBtn": ":/icon/ws-apps.svg",
+    "internalOptionsPageBtn": ":/icon/ws-sliders.svg",
+    "liquidGlassPageBtn": ":/icon/ws-glass.svg",
+    "daemonsPageBtn": ":/icon/ws-sliders.svg",
+    "iconThemesPageBtn": ":/icon/ws-wallpaper.svg",
+    "applyPageBtn": ":/icon/ws-backup.svg",
+    "posterboardPageBtn": ":/icon/ws-poster.svg",
+    "settingsPageBtn": ":/icon/ws-gear.svg",
     "mainDevBtn": ":/icon/github.svg",
     "discordBtn": ":/icon/discord.svg",
     "starOnGithubBtn": ":/icon/star.svg",
@@ -253,23 +257,31 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         ios_root_layout.addWidget(self.ios_nav)
         ios_root_layout.addWidget(self.ios_pages)
 
-        # Unified shell: the classic GoldenNugget UI is gone. The stack holds
-        # only the iOS-style pages (index 0). The generated Ui_Nugget object
-        # still exists for the hidden device-bar widgets that background flows
-        # (device refresh, picker signals) reference.
+        # Unified dual shell (Wave 11, user order 2026-10-03). The content
+        # stack holds the classic Nugget Home (0), the iOS-style page root
+        # (1), and the classic Daemons page (2). Around it, two chromes:
+        # the WorkSlop v4 Sky shell (sidebar rail + shared nav header) is
+        # the main UI (IOS mode), and the classic Nugget shell (generated
+        # sidebar + classic pages, iOS pages hosted as actions) is the
+        # second UI (CLASSIC mode). apply_theme() switches between them.
+        # The generated Ui_Nugget object still exists for the device-bar
+        # widgets that background flows (device refresh, picker signals)
+        # reference.
         self.ui.centralwidget.setParent(None)
         self.ui.homePage.setParent(None)
         self.ui.sidebar.setParent(None)
         self.ui.daemonsPage.setParent(None)
-        # the top device bar (phone icon + picker) comes back too
+        # the top device bar (phone icon + picker) serves both shells
         self.ui.deviceBar.setParent(None)
         self.content_stack = QtWidgets.QStackedWidget(self)
-        self.content_stack.addWidget(ios_root)           # 0 = iOS pages
+        self.content_stack.addWidget(self.ui.homePage)     # 0 = classic home
+        self.content_stack.addWidget(ios_root)             # 1 = iOS pages
+        self.content_stack.addWidget(self.ui.daemonsPage)  # 2 = classic daemons
         self.content_stack.setStyleSheet("background: transparent;")
         shell = QtWidgets.QWidget(self)
         shell.setProperty("cls", "central")
-        # Wave 10 shell: animated blue Apple-logo background behind the
-        # content. White cards/panels sit above it, like the reference.
+        # Wave 11 shell: animated blue Apple-logo background behind the
+        # content. White cards/panels sit above it, like the v4 shell.
         from src.gui.ios.sky_bg import SkyBackground
         self._sky_bg = SkyBackground(shell)
         self._shell = shell
@@ -285,65 +297,22 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.shell_layout = QtWidgets.QVBoxLayout(content)
         self.shell_layout.setContentsMargins(0, 0, 0, 0)
         self.shell_layout.setSpacing(0)
-        # Reference layout shell: bright-blue top header (logo + tabs),
-        # light device panel left of the page stack, blue footer strip.
-        # The generated deviceBar is parked hidden — background flows still
-        # reference its picker/refresh widgets.
-        self.ui.deviceBar.hide()
-        from src.gui.ios.top_bar import WorkSlopTopBar
-        from src.gui.ios.device_panel import WorkSlopDevicePanel
-        self.workslop_topbar = WorkSlopTopBar(self)
-        self.workslop_topbar.tab_selected.connect(self._on_workslop_menu)
-        self.workslop_topbar.update_requested.connect(
-            self.on_footer_check_update_clicked)
-        self.shell_layout.addWidget(self.workslop_topbar)
+        self.shell_layout.addWidget(self.ui.deviceBar)
         self.body_row = QtWidgets.QHBoxLayout()
         self.body_row.setContentsMargins(0, 0, 0, 0)
         self.body_row.setSpacing(0)
-        # The generated-UI sidebar is parked hidden — old flows still touch
-        # its buttons, but navigation now goes through the new sidebar/tabs.
-        self.ui.sidebar.hide()
-        self.device_panel = WorkSlopDevicePanel(self)
-        self.device_panel.menu_selected.connect(self._on_workslop_menu)
-        # API compat: shell mixins talk to "workslop_sidebar" for selection
-        # sync and the MobileGestalt lock; that is the left sidebar now.
-        self.workslop_sidebar = self.device_panel
-        self.body_row.addWidget(self.device_panel)
+        # Classic (Nugget) sidebar: visible in CLASSIC mode only. Its page
+        # buttons are shown/hidden by the device-refresh flow and HotLoad
+        # gating exactly as in the v4-era dual shell.
+        self.body_row.addWidget(self.ui.sidebar)
+        # WorkSlop v4 sidebar rail: visible in IOS mode (the main UI).
+        from src.gui.ios.sidebar import WorkSlopSidebar
+        self.workslop_sidebar = WorkSlopSidebar(self)
+        self.workslop_sidebar.menu_selected.connect(self._on_workslop_menu)
+        self.body_row.addWidget(self.workslop_sidebar)
         self.body_row.addWidget(self.content_stack, 1)
         self._style_device_pill()
         self.shell_layout.addLayout(self.body_row)
-
-        # Light footer: app status left; version, Feedback, and Check
-        # Update on the right. Check Update uses the existing checker.
-        from src.version import App_Version as _App_Version
-        footer = QtWidgets.QWidget(self)
-        footer.setObjectName("workslopFooter")
-        footer.setFixedHeight(30)
-        footer.setStyleSheet(
-            "QWidget#workslopFooter { background-color: #EDF5FD; "
-            "border-top: 1px solid #BDD7F2; }")
-        footer_layout = QtWidgets.QHBoxLayout(footer)
-        footer_layout.setContentsMargins(12, 0, 10, 0)
-        footer_layout.setSpacing(10)
-        self.footer_status_lbl = QtWidgets.QLabel("WorkSlop Desktop", footer)
-        self.footer_status_lbl.setStyleSheet(t("footer_light_text"))
-        footer_layout.addWidget(self.footer_status_lbl)
-        footer_layout.addStretch(1)
-        self.footer_version_lbl = QtWidgets.QLabel(
-            f"Version: {_App_Version}", footer)
-        self.footer_version_lbl.setStyleSheet(t("footer_light_text"))
-        footer_layout.addWidget(self.footer_version_lbl)
-        self.footer_feedback_btn = QtWidgets.QPushButton("Feedback", footer)
-        self.footer_feedback_btn.setStyleSheet(t("footer_light_button"))
-        self.footer_feedback_btn.clicked.connect(self.on_settingsPageBtn_clicked)
-        footer_layout.addWidget(self.footer_feedback_btn)
-        self.footer_update_btn = QtWidgets.QPushButton("Check Update", footer)
-        self.footer_update_btn.setStyleSheet(t("footer_light_button"))
-        self.footer_update_btn.clicked.connect(
-            self.on_footer_check_update_clicked)
-        footer_layout.addWidget(self.footer_update_btn)
-        self.workslop_footer = footer
-        self.shell_layout.addWidget(footer)
         self.setCentralWidget(shell)
 
         # WorkSlop Desktop branding (the generated .ui still says GoldenNugget;
@@ -395,11 +364,19 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         unmapped parent, which on several platforms renders them transparent
         and stuttering. Called from main_app right after widget.show().
         """
-        # First launch: ask user which interface they prefer.
-        # TEMP: Classic UI removed — skip the picker, stay on iOS-style.
+        # First launch: ask user which interface they prefer (restored
+        # Wave 11, user order 2026-10-03 — the v4-era picker retired by
+        # 445efe3). WorkSlop (iOS-style) is the main UI, so it is also the
+        # fallback when the dialog is dismissed without a choice.
         if not self.theme_manager.settings.contains("ui/theme"):
-            self.theme_manager.save_theme(ThemeManager.IOS)
-            self.apply_theme(ThemeManager.IOS)
+            from src.gui.interface_picker import InterfacePickerDialog
+            dlg = InterfacePickerDialog(self)
+            if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted \
+                    and dlg.choice == "classic":
+                self.theme_manager.save_theme(ThemeManager.CLASSIC)
+            else:
+                self.theme_manager.save_theme(ThemeManager.IOS)
+            self.apply_theme(self.theme_manager.current_theme)
 
         # First launch: remind the user to back up the device before tweaking
         # (keeps asking until they confirm a backup was made)
@@ -460,39 +437,34 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self._retheme_classic()
 
     def _style_device_pill(self):
-        """Restyle the generated top device bar as a command strip.
+        """Restyle the top device bar as a clean status pill (v4 shell).
 
-        The generated device bar is hidden in the current shell, but the
-        widgets remain live for background flows. If it is shown again, it
-        now reads as a deep-ink WorkSlop command strip rather than the old
-        white Sky pill.
+        The picker group moves to the right; the old title text becomes a
+        plain expanding spacer.
         """
         c = self._color_theme.colors
         bar = self.ui.deviceBar
-        bar.setStyleSheet(
-            f"background-color: {c.menu_bg}; border-bottom: 3px solid {c.brand};")
+        bar.setStyleSheet(f"background-color: {c.bg_primary};")
         layout = self.ui.horizontalLayout_4
-        # Title first (expanding), device picker last (right-aligned).
+        # title spacer first (expanding), device pill last (right-aligned)
         layout.insertWidget(0, self.ui.titleBar)
-        self.ui.titleBar.setText("WORKSLP DESKTOP  •  DEVICE WORKSPACE")
-        self.ui.titleBar.setStyleSheet(
-            f"background-color: transparent; border: none; color: {c.menu_text}; "
-            "font-size: 11px; font-weight: 800; letter-spacing: 1.6px;")
+        self.ui.titleBar.setText("")
+        self.ui.titleBar.setStyleSheet("background-color: transparent; border: none;")
         pill = self.ui.horizontalWidget_2
         pill.setStyleSheet(f"""
             QWidget#horizontalWidget_2 {{
-                background-color: rgba(255, 255, 255, 0.08);
-                border: 1px solid rgba(255, 255, 255, 0.18);
-                border-radius: 10px;
+                background-color: {c.bg_secondary};
+                border: 1px solid {c.border};
+                border-radius: 19px;
             }}
         """)
         self.ui.devicePicker.setStyleSheet(f"""
             QComboBox {{
                 background-color: transparent;
                 border: none;
-                color: #FFFFFF;
+                color: {c.text_primary};
                 font-size: 13px;
-                font-weight: 650;
+                font-weight: 500;
                 min-height: 36px;
                 padding-left: 10px;
             }}
@@ -502,7 +474,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                 width: 12px; height: 12px; margin-right: 8px;
             }}
             QComboBox QAbstractItemView {{
-                background-color: {c.bg_secondary};
+                background-color: {c.bg_tertiary};
                 border: 1px solid {c.border};
                 border-radius: 10px;
                 color: {c.text_primary};
@@ -513,21 +485,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             QToolButton {{
                 background-color: transparent;
                 border: none;
-                border-radius: 8px;
-                color: #FFFFFF;
+                border-radius: 14px;
+                color: {c.text_primary};
             }}
-            QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.14); }}
+            QToolButton:hover {{ background-color: rgba(255, 255, 255, 0.12); }}
         """)
         self.ui.phoneIconBtn.setStyleSheet(
             "background-color: transparent; border: none;")
-        if not hasattr(self, "_device_dot"):
-            from PySide6.QtWidgets import QLabel
-            self._device_dot = QLabel(pill)
-            self._device_dot.setFixedSize(9, 9)
-            self._device_dot.setStyleSheet(
-                f"background-color: {c.success}; border-radius: 4px;")
-            self.ui.horizontalLayout_19.insertWidget(0, self._device_dot)
-            self.ui.horizontalLayout_19.setContentsMargins(12, 1, 6, 1)
 
     def _retheme_classic(self):
         """Re-color the classic shell: chrome icons, device picker, version

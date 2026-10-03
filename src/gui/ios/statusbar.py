@@ -57,9 +57,10 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Named no-SIM feature (Wave 10): one recipe combining bar count +
-        # item visibility on the classic binary path. Research-only and
-        # unproven on iOS 26.6.1 — the copy says so, and the row stays
-        # disabled wherever the shared capability gate contains Status Bar.
+        # item visibility on the classic binary path. Wave 11 (user order
+        # 2026-10-03): no "research-only" label on this page any more — the
+        # row is a normal feature wherever the classic override file
+        # exists (iOS 26.x), and the copy states only what it does.
         self._header(QCoreApplication.translate("Nugget", "Signal"))
         self.full_signal_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Full Signal Bars (No SIM Visual)"),
@@ -69,8 +70,7 @@ class IOSStatusBarPage(QWidget):
         self._signal_desc = QLabel(QCoreApplication.translate(
             "Nugget",
             "Visual only. Shows filled cellular bars when no SIM is detected; "
-            "it does not restore cellular service. Research-only: unverified "
-            "on iOS 26.6.1."
+            "it does not restore cellular service."
         ))
         self._signal_desc.setWordWrap(True)
         self.content_layout.addWidget(self._signal_desc)
@@ -253,11 +253,11 @@ class IOSStatusBarPage(QWidget):
         self._ios27_note.setWordWrap(True)
         self.content_layout.addWidget(self._ios27_note)
 
-        # Shared-capability containment note: on the audited iOS 26.6.1
-        # target the whole classic Status Bar family is research-only in
-        # the backend, so the classic rows below are disabled with this
-        # reason instead of toggling into state that can never apply
-        # ("half-active"). Text comes from tweak_deliverability itself.
+        # Shared-capability gate note: the classic Status Bar family is a
+        # normal feature again (Wave 11, user order 2026-10-03), so this
+        # note only appears when the shared predicate still blocks the
+        # family for a structural reason (e.g. no override file on this
+        # iOS), with the predicate's own text as the reason.
         self._gate_note = QLabel("")
         self._gate_note.setWordWrap(True)
         self.content_layout.addWidget(self._gate_note)
@@ -298,8 +298,9 @@ class IOSStatusBarPage(QWidget):
 
     def _refresh_full_signal_gate(self, is_ios27: bool = False):
         """Enable the named feature only where it may honestly be tried:
-        master on, a connected iOS 26.x device, and the shared capability
-        gate not containing Status Bar as research-only on this target."""
+        master on and a connected iOS 26.x device (the classic override
+        file does not exist on iOS 27). The shared capability predicate is
+        still consulted so a structural block shows its own reason."""
         version = self._current_version()
         classic_ok = False
         if version:
@@ -331,8 +332,8 @@ class IOSStatusBarPage(QWidget):
             self._signal_note.setVisible(False)
         elif classic_ok and gate_message:
             # Single source of truth: the note IS the shared capability
-            # gate's own message (research-only containment on this
-            # target), not page-local copy that could drift from it.
+            # gate's own message, not page-local copy that could drift
+            # from it.
             self._signal_note.setText(gate_message)
             self._signal_note.setVisible(True)
         else:
@@ -370,10 +371,10 @@ class IOSStatusBarPage(QWidget):
             widget.setVisible(not is_ios27 or survives)
         self._ios27_note.setVisible(is_ios27)
         if not is_ios27:
-            # Honest containment for the classic family: ask the one
-            # shared predicate. When it contains Status Bar on this
-            # device, every classic switch card goes disabled (backend
-            # would skip the family anyway) and the reason is shown.
+            # The classic family is a normal feature (Wave 11); ask the
+            # one shared predicate anyway so a structural block disables
+            # every classic switch card with the predicate's own reason
+            # instead of toggling into state that can never apply.
             deliverable, gate_message = True, ""
             try:
                 from src.tweaks.capabilities import tweak_deliverability

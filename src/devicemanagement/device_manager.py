@@ -39,7 +39,6 @@ from src.devicemanagement.constants import (
 from src.tweaks.capabilities import (
     canonical_tweak_id,
     clear_audit_research_only_state, clear_unsupported_mobilegestalt_state,
-    is_audit_research_only, is_audit_target, is_removed_tweak,
     requires_gestalt, tweak_deliverability, validate_custom_resolution,
 )
 from src.devicemanagement.data_singleton import DataSingleton
@@ -131,6 +130,22 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
             detailed_txt=files_str + "TRACEBACK:\n\n" + str(traceback.format_exc()),
             backup_path=backup_path
         )
+
+def lg_reset_contents(dev_version) -> bytes:
+    """Reset payload bytes for the Liquid Glass page's files, v4 semantics.
+
+    WorkSlop v4 (registry @ 4f44415, restored verbatim by user order
+    2026-10-03) nulled the Liquid Glass files with zero-byte contents on
+    iOS 26 and a valid empty plist on iOS 27+. The Liquid Glass reset
+    never nulls the SpringBoard plist, so the iOS 26.2+ zero-byte
+    bootloop vector (a truncated com.apple.springboard.plist) is not
+    among these paths; every other reset page keeps the Wave 10 P0
+    always-empty-plist payload.
+    """
+    if dev_version and Version(dev_version) >= Version("27.0"):
+        return plistlib.dumps({})
+    return b""
+
 
 class DeviceManager:
     ## Class Functions
@@ -1476,10 +1491,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             if cleared:
                 log_warn("Cleared unsupported MobileGestalt tweak state before apply: "
                          + ", ".join(sorted(cleared)))
-        # Wave 10 Package 1: audit research-only rows are contained on the
-        # audited target. Clear stale ON state before generation so it can
-        # neither produce a payload nor be counted as a ship feature; the
-        # per-tweak deliverability gate below remains as defense in depth.
+        # Wave 11 (user order 2026-10-03): the audit research-only
+        # classification no longer contains delivery. This call is kept
+        # for symmetry with the GUI path but clears nothing; the
+        # per-tweak deliverability gate below (removed tombstones,
+        # registry version/device-class locks, MobileGestalt capability)
+        # is the only containment left.
         cleared_research = clear_audit_research_only_state(
             hotload_version, device_build)
         if cleared_research:
@@ -1629,27 +1646,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                             log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
                                      f"{res_code} — {res_reason}")
                             continue
-                # Data-driven research-only families (PosterBoard /
-                # Templates) select work by queued files rather than the
-                # enabled flag, so the enabled-only gate above is not enough
-                # for them. On the audited target they are skipped before
-                # any payload is generated; queued user data is left intact.
-                if (tweak_name in (TweakID.PosterBoard, TweakID.Templates)
-                        and is_audit_research_only(tweak_name)
-                        and is_audit_target(hotload_version, device_build)
-                        and not tweak.is_empty()):
-                    backend_skipped.append({
-                        "tweak_id": tweak_name.name
-                        if hasattr(tweak_name, "name") else str(tweak_name),
-                        "reason_code": "AUDIT_RESEARCH_ONLY",
-                        "reason": "Research-only in the Wave 10 audit; not a "
-                                  "supported iOS 26.6.1 ship feature.",
-                    })
-                    j_skip(tweak_name, "AUDIT_RESEARCH_ONLY")
-                    log_warn(f"Skipping tweak {backend_skipped[-1]['tweak_id']}: "
-                             "AUDIT_RESEARCH_ONLY — Research-only in the Wave 10 "
-                             "audit; not a supported iOS 26.6.1 ship feature.")
-                    continue
+                # Wave 11 (user order 2026-10-03): PosterBoard / Templates
+                # are normal features again — the Wave 10 audit
+                # research-only skip that used to sit here is gone. Queued
+                # files flow through the normal delivery path below;
+                # PosterBoard's own v7.4 descriptors-first rules and the
+                # per-tweak deliverability gate above still apply.
                 # HotLoad: never apply tweaks flagged as dangerous/broken for
                 # this device / iOS version (kill switch off -> no rules match),
                 # and never apply tweaks of a hidden feature.
@@ -2114,6 +2116,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # to already holds the tweaked values, so restoring a captured
             # "original" re-wrote the very tweaks the user asked to remove.
             files_to_null: list[str] = []
+            # Paths nulled by the LiquidGlass page reset — these keep the
+            # v4 reset byte semantics (user order 2026-10-03, Liquid Glass
+            # restored verbatim): iOS 26 → zero-byte contents, iOS 27+ →
+            # valid empty plist. The LiquidGlass reset never nulls the
+            # SpringBoard plist, so the iOS 26.2+ zero-byte bootloop vector
+            # (truncated com.apple.springboard.plist) is not in this set.
+            lg_v4_null_paths: set = set()
             uses_domains = False
             _page_starts: list = []
             _null_starts: list = []
@@ -2228,12 +2237,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     ## the GP files (same files the Internal Options reset
                     ## covers, but scoped to this page's checkbox).
                     files_to_null.append(FileLocation.globalPreferences.value)
+                    lg_v4_null_paths.add(FileLocation.globalPreferences.value)
                     # 2026-10-01: the "Tinted Glass (official iOS setting)"
                     # tweak writes UIViewGlassLegibilitySetting to the managed
                     # com.apple.UIKit.plist, so the Liquid Glass reset must
                     # clear that file too (it is otherwise only nulled by the
                     # SpringBoard page reset).
                     files_to_null.append(FileLocation.uikit.value)
+                    lg_v4_null_paths.add(FileLocation.uikit.value)
                     # 2026-10-01: the per-app E0 experiments write
                     # FailSolariumHardwareCheck to per-bundle managed plists,
                     # so the Liquid Glass reset must clear those files too.
@@ -2245,6 +2256,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                      FileLocation.appCamera,
                                      FileLocation.appPhone):
                         files_to_null.append(_app_loc.value)
+                        lg_v4_null_paths.add(_app_loc.value)
                     dev_version = self.get_current_device_version()
                     if dev_version and Version(dev_version) >= Version("27.0"):
                         # Same B10 rule as InternalOptions above: the iOS 27
@@ -2294,18 +2306,23 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             _direct_total = len(files_to_restore)
 
             # Add the files to null from the list. Wave 10 P0: NEVER stage a
-            # zero-byte plist on iOS 26.x (or any other version). A truncated
-            # com.apple.springboard.plist can crash SpringBoard at boot on
-            # iOS 26.2+, and a forced restore from there lands on iOS 27
-            # because iOS 26.x is no longer signed. A valid empty plist is
-            # the safe reset payload for every file in this list: it parses
-            # and makes the system fall back to its default values. This
-            # replaces the old iOS 26 zero-byte branch outright; there is no
-            # version-dependent byte content anymore.
+            # zero-byte plist on iOS 26.x (or any other version) for the
+            # general reset pages. A truncated com.apple.springboard.plist
+            # can crash SpringBoard at boot on iOS 26.2+, and a forced
+            # restore from there lands on iOS 27 because iOS 26.x is no
+            # longer signed. A valid empty plist is the safe reset payload
+            # for those files: it parses and makes the system fall back to
+            # its default values.
             reset_contents = plistlib.dumps({})
+            # Liquid Glass reset paths keep the v4 byte semantics exactly
+            # (v4 @ 4f44415 device_manager reset writer; user order
+            # 2026-10-03): iOS 26 → zero-byte, iOS 27+ → empty plist. The
+            # version is read off the same device the branches above used.
+            _lg_contents = lg_reset_contents(self.get_current_device_version())
             for file_path in files_to_null:
                 self.concat_file(
-                    contents=reset_contents,
+                    contents=(_lg_contents if file_path in lg_v4_null_paths
+                              else reset_contents),
                     path=file_path,
                     files_to_restore=files_to_restore
                 )

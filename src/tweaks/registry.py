@@ -93,22 +93,26 @@ def _watchos_compatibility():
 GP = FileLocation.globalPreferences
 
 
-# Wave 10 Package 1: the five registry Feature Flags specs (ClockAnim,
-# Lockscreen, PhotoUI, AI, KioskMode) are removed from the active product
-# registry. Their delivery channel is dead for iOS 26.6.1 and the audit
-# kill list names them explicitly. The TweakID members remain only as
-# tombstones in src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old presets
-# naming them resolve to removed/skipped, never to a FeatureFlags payload.
+# The five registry Feature Flags specs (ClockAnim, Lockscreen, PhotoUI,
+# AI, KioskMode) stay removed from the active product registry — their
+# delivery channel is dead for iOS 26.6.1 and the audit kill list names
+# them explicitly. The single v4 SolariumFeatureFlags row returned
+# verbatim with the Liquid Glass restoration (2026-10-03) as a direct
+# SPECS entry capped at max_version 26.1. The TweakID members for the
+# removed five remain only as tombstones in
+# src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old presets naming them
+# resolve to removed/skipped, never to a FeatureFlags payload.
 _FF_SPECS: tuple[TweakSpec, ...] = ()
 
 SPECS: tuple[TweakSpec, ...] = (
     # --- Liquid Glass ---
-    # Wave 10 audit containment: apart from the user-ordered Hide Search
-    # presentation row, the active rows here are the three research-only
-    # forensic/binary-gated specs and the one user-retained icon exception
-    # below. They are not a full-disable claim and are not presented as
-    # supported on iOS 26.6.1; the central audit gate in
-    # src/tweaks/capabilities.py blocks research-only delivery on 23G83.
+    # The Liquid Glass section carries the WorkSlop v4 set restored
+    # verbatim (user order 2026-10-03): the v4 specs below are byte-
+    # identical to src/tweaks/registry.py @ 4f44415 (same key, file
+    # location, value/type, version gates). Blurr Motion is a separate
+    # 2026-10-03 addition, not part of the v4 set. Reset/write semantics
+    # follow v4 (device_manager LiquidGlass reset: GP + UIKit + per-app
+    # files; iOS 26 zero-byte contents, iOS 27+ empty plist).
 
     # --- SpringBoard ---
     _t(TweakID.LockScreenFootnote, Section.SPRINGBOARD, "Lock Screen Footnote Text",
@@ -160,6 +164,13 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SBDisableIconParallax, Section.SPRINGBOARD, "Disable Icon Parallax",
        FileLocation.springboard, "SBDisableParallax",
        description=QT_TRANSLATE_NOOP("Nugget", "Stops Home Screen icons from shifting with the device tilt (the parallax effect). Pair with Disable Icon Page-Control Parallax for a fully static Home Screen.")),
+    # Hide Search Button: v4 placement (SpringBoard section) and v4 spec,
+    # restored verbatim with the Liquid Glass set. Same writer as before:
+    # managed SpringBoard location, key SBHomeScreenShowsSearchAffordance,
+    # value False; the retired HideSearchAffordance name still aliases here.
+    _t(TweakID.SBHideSearchAffordance, Section.SPRINGBOARD, "Hide Search Button on Home Screen",
+       FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
+       description=QT_TRANSLATE_NOOP("Nugget", "Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.")),
 
     # --- Internal Options ---
     _t(TweakID.SBBuildNumber, Section.INTERNAL, "Show Build Version in Status Bar", GP, "UIStatusBarShowBuildVersion",
@@ -219,34 +230,80 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Plays a sound every time content is pasted anywhere on the device.")),
     _t(TweakID.AnnounceAllPastes, Section.INTERNAL, "Show Notifications for System Pastes", FileLocation.pasteboard, "AnnounceAllPastes",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a system notification whenever an app reads the pasteboard, acting as a privacy indicator for system-level pastes.")),
-    # === Round 6 (2026-10-02): 71 audited candidates, pre-beta developer release ===
-    # WARNING: All unverified on device. See AUDIT-KANDIDAT-BARU.md.
-    # Wave 10 Home/Hide Search package: the canonical Hide Search Button is
-    # presented in the Liquid Glass menu by explicit user order. This is a
-    # presentation move only — the single writer keeps the managed
-    # SpringBoard location, key SBHomeScreenShowsSearchAffordance, and
-    # value=False. The retired HideSearchAffordance name aliases here.
-    _t(TweakID.SBHideSearchAffordance, Section.LIQUID_GLASS, "Hide Search Button on Home Screen",
-       FileLocation.springboard, "SBHomeScreenShowsSearchAffordance", value=False,
-       description=QT_TRANSLATE_NOOP("Nugget", "Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.")),
+    # === Liquid Glass — WorkSlop v4 set restored VERBATIM (user order
+    # 2026-10-03: re-implement the v4 Liquid Glass code unchanged). Every
+    # spec below is byte-identical to v4 (src/tweaks/registry.py @
+    # 4f44415): same key, file location, value/type, and version gates.
+    # The Wave 10 replacement candidates and their UNPROVEN/device-test
+    # labelling are gone. Proof: tools/test_wave11_lg_v4_verbatim.py.
     _t(TweakID.SolariumForceFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
-    # REMOVED (Wave 10, user order 2026-10-02): GlassLegibility2 (K1),
-    # DisableSolariumSwiftUI (dead reader on iOS 26.6.1), and
-    # SolariumFeatureFlags (placeholder with no real flag set) are deleted
-    # from the v10 product registry. Their TweakID members remain only as
-    # tombstones in src/tweaks/capabilities.py::REMOVED_TWEAK_IDS; old
-    # presets naming them resolve to removed/skipped, never applied.
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.")),
+    _t(TweakID.DisableSolariumSwiftUI, Section.LIQUID_GLASS, "Disable Solarium (SwiftUI)", GP, "com.apple.SwiftUI.DisableSolarium",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium for SwiftUI. Reader removed in 26.1 — likely non-functional.")),
+    _t(TweakID.GlassLegibility2, Section.LIQUID_GLASS, "Glass Legibility Value 2", FileLocation.uikit, "UIViewGlassLegibilitySetting", value=2,
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Glass legibility value 2 = unobserved branch. 0=Clear, 1=Tinted (proven).")),
+    _t(TweakID.SolariumFeatureFlags, Section.FEATURE_FLAGS, "Solarium Feature Flags", FileLocation.featureflags, "SolariumFlags",
+       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "PLACEHOLDER: Specific Solarium flags not yet defined. Channel dead on 26.2+. WARNING: Can break Control Center.")),
     _t(TweakID.DisallowGlassTime, Section.LIQUID_GLASS, "Disallow Glass on LS Clock", GP, "SBDisallowGlassTime",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass effect on Lock Screen clock.")),
     _t(TweakID.DisableGlassDock, Section.LIQUID_GLASS, "Disable Glass on Dock", GP, "SBDisableGlassDock",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Liquid Glass on Dock — solid style. UNPROVEN — device test: audit-verified structure, on-device effect not proven.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Liquid Glass on Dock — solid style.")),
     _t(TweakID.FlatIconsEverywhere, Section.LIQUID_GLASS, "Flat Icons Everywhere", GP, "SBUseFlatIconsEverywhere",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "User-retained Wave 10 exception: force all icons flat, no 3D/glass effect. Pattern-grade; iOS 26.6.1 reader unproven.")),
-    # REMOVED (Wave 10, user order 2026-10-02): DisableGlassEverywhere and
-    # DisallowGlassEverywhere were predicted pattern-hypothesis keys
-    # presented as normal product toggles. Deleted from the v10 product
-    # registry; TweakID tombstones remain in REMOVED_TWEAK_IDS only.
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force all icons flat, no 3D/glass effect.")),
+    _t(TweakID.DisableWidgetSpecular, Section.LIQUID_GLASS, "Disable Widget Specular", GP, "SBDisableWidgetSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from widgets.")),
+    _t(TweakID.DisableDockSpecular, Section.LIQUID_GLASS, "Disable Dock Specular", GP, "SBDisableDockSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from dock.")),
+    _t(TweakID.DisableFolderSpecular, Section.LIQUID_GLASS, "Disable Folder Specular", GP, "SBDisableFolderSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular highlight from folders.")),
+    _t(TweakID.ExcludeClearGlassShadows, Section.LIQUID_GLASS, "Exclude Clear Glass Shadows", GP, "SBExcludeAllClearGlassShadows",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove all Clear Glass shadows.")),
+    _t(TweakID.ExcludeDockShadow, Section.LIQUID_GLASS, "Exclude Dock Shadow", GP, "SBExcludeDockShadow",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove dock drop shadow.")),
+    _t(TweakID.ExcludeSearchShadow, Section.LIQUID_GLASS, "Exclude Search Shadow", GP, "SBExcludeSearchShadow",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove search field shadow.")),
+    _t(TweakID.DisableOuterRefraction, Section.LIQUID_GLASS, "Disable Outer Refraction", GP, "SolariumDisableOuterRefraction",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable liquid bending at glass edges.")),
+    _t(TweakID.DisableSolariumHDR, Section.LIQUID_GLASS, "Disable Solarium HDR", GP, "SolariumAllowHDR", value=False,
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable HDR tone-mapping. Value=False.")),
+    _t(TweakID.DisableSpecularMotion, Section.LIQUID_GLASS, "Disable Specular Motion", GP, "SBDisableSpecularEverywhereUsingLSSAssertion",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable motion-based specular.")),
+    _t(TweakID.DisableSpecularEverywhere, Section.LIQUID_GLASS, "Disable Specular Everywhere", GP, "SBDisableSpecularEverywhere",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from all CC tiles.")),
+    _t(TweakID.DisableGlassEverywhere, Section.LIQUID_GLASS, "Disable Glass Everywhere (Predicted)", GP, "SBDisableGlassEverywhere",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Predicted key — pattern hypothesis.")),
+    _t(TweakID.DisallowGlassEverywhere, Section.LIQUID_GLASS, "Disallow Glass Everywhere (Predicted)", GP, "SBDisallowGlassEverywhere",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Predicted key — pattern hypothesis.")),
+    _t(TweakID.DisableLockScreenSpecular, Section.LIQUID_GLASS, "Disable LS Specular (Predicted)", GP, "SBDisableLockScreenSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from Lock Screen. Predicted.")),
+    _t(TweakID.DisableClockSpecular, Section.LIQUID_GLASS, "Disable Clock Specular (Predicted)", GP, "SBDisableClockSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from LS clock. Predicted.")),
+    _t(TweakID.DisableGlassLockScreen, Section.LIQUID_GLASS, "Disable Glass on LS (Predicted)", GP, "SBDisableGlassLockScreen",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Lock Screen. Predicted.")),
+    _t(TweakID.DisableCompactChrome, Section.LIQUID_GLASS, "Disable Compact Chrome", GP, "DisableSolariumCompactChrome",
+       min_version="27.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium compact chrome. Gate 27.0.")),
+    _t(TweakID.DisableGlassDI, Section.LIQUID_GLASS, "Disable Glass on DI (Predicted)", GP, "SBDisableGlassDynamicIsland",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Dynamic Island. Predicted.")),
+    _t(TweakID.DisallowGlassDI, Section.LIQUID_GLASS, "Disallow Glass on DI (Predicted)", GP, "SBDisallowGlassDynamicIsland",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow glass on DI. Predicted.")),
+    _t(TweakID.DisableIslandSpecular, Section.LIQUID_GLASS, "Disable Island Specular (Predicted)", GP, "SBDisableIslandSpecular",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove DI specular. Predicted.")),
+    _t(TweakID.ExcludeAllGlassShadows, Section.LIQUID_GLASS, "Exclude All Glass Shadows (Predicted)", GP, "SBExcludeAllGlassShadows",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove all glass shadows. Predicted.")),
+    _t(TweakID.FlatDockEverywhere, Section.LIQUID_GLASS, "Flat Dock Everywhere (Predicted)", GP, "SBUseFlatDockEverywhere",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Flat dock everywhere. Predicted.")),
+    _t(TweakID.DisableGlassBlur, Section.LIQUID_GLASS, "Disable Glass Blur (Predicted)", GP, "SBDisableGlassBlur",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass blur. Predicted.")),
+    _t(TweakID.DisallowGlassKeyboard, Section.LIQUID_GLASS, "Disallow Glass Keyboard (Predicted)", GP, "SBDisallowGlassKeyboard",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disallow keyboard glass. Predicted.")),
+    _t(TweakID.DisableRefractionEverywhere, Section.LIQUID_GLASS, "Disable Refraction Everywhere (Predicted)", GP, "SBDisableRefractionEverywhere",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable refraction everywhere. Predicted.")),
+    _t(TweakID.LGLPMGestalt, Section.LIQUID_GLASS, "LG Low Power Mode Signal", FileLocation.mga, "SAGvsp6O6kAQ4fEfDJpC4Q",
+       min_version="26.0", max_version="26.1", description=QT_TRANSLATE_NOOP("Nugget", "LGLPM MobileGestalt signal. BLOCKED on iOS 26.2+ (Apple locked MobileGestalt).")),
+    # Blurr Motion (2026-10-03, dossier candidate B-1 — NOT part of the
+    # v4 set; see tools/test_wave11_blurr_motion.py).
+    _t(TweakID.BlurrMotion, Section.LIQUID_GLASS, "Blurr Motion", GP, "SolariumIncreasedDiffusion",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Research candidate for thicker frost blur on Liquid Glass surfaces: its key was found in the DesignLibrary material cluster in the iOS 23G83 binary, but the effect on a real device is not proven yet. Back up fully first, turn Low Power Mode OFF, apply it on its own, reboot, then judge each surface on its own (Dock, Control Center, notifications, folders, App Switcher, Lock Screen clock). Turning it off and applying again removes the key.")),
     # === Non-glass candidates (audited) ===
     _t(TweakID.CustomLockDate, Section.SPRINGBOARD, "Custom Lock Screen Date", FileLocation.globalPreferencesHomeDomain, "AppleICUDateTimeSymbols",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Custom Lock Screen date format. Device-proven (iOS 26.0-26.7).")),

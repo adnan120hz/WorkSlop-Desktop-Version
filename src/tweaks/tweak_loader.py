@@ -108,14 +108,16 @@ def _build_spec(spec):
     if spec.factory is not None:
         tweak = spec.factory()
     else:
-        # Wave 10 invariant: a plain plist tweak must never write a
-        # top-level key into the MobileGestalt cache file. MobileGestalt
-        # delivery patches CacheExtra via the MobileGestalt tweak classes.
-        if spec.location == FileLocation.mga:
-            raise ValueError(
-                f"Registry spec {spec.id} targets FileLocation.mga without "
-                "a MobileGestalt factory; refusing to build a BasicPlistTweak "
-                "for the MobileGestalt cache.")
+        # The v4 LGLPMGestalt spec (restored verbatim, user order
+        # 2026-10-03) deliberately targets FileLocation.mga as a plain
+        # plist write, exactly as WorkSlop v4 shipped it, and is capped
+        # at max_version 26.1 so it can never present as active on the
+        # locked 26.6.1 build. The Wave 10 invariant that a plain plist
+        # spec may never target the MobileGestalt cache file therefore no
+        # longer refuses this build: MobileGestalt *patching* still rides
+        # the MobileGestalt tweak classes (the requires_gestalt check
+        # below is unchanged); only a spec that explicitly declares the
+        # mga location as a plain key/value write builds a BasicPlistTweak.
         tweak = BasicPlistTweak(spec.location, spec.key, value=spec.value)
     if getattr(spec, "requires_gestalt", False) and not isinstance(
             tweak, (MobileGestaltTweak, MobileGestaltPickerTweak,

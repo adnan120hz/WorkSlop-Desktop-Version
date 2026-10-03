@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
 from src.gui.ios.components import IOSCard, IOSDangerButton
 from src.gui.preset_widget import PresetWidget
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
-from src.tweaks.capabilities import is_audit_user_retained
 from src.tweaks.registry import Section, home_tweak_catalogue
 
 # Action tile: (title, subtitle, page_index, tile color, icon resource).
@@ -777,7 +776,6 @@ class IOSHomePage(QWidget):
             if entry["id_name"] not in hidden_names)
         self.tweak_catalogue_entries = entries
 
-        from src.tweaks.capabilities import is_device_test_candidate
         grouped = {section: [] for section in Section}
         plain = {section: [] for section in Section}
         for entry in entries:
@@ -817,24 +815,10 @@ class IOSHomePage(QWidget):
             title = QLabel(section.value, self._catalogue_rows_box)
             title.setStyleSheet(t("catalogue_section"))
             row.addWidget(title)
-            candidates = [e for (_l, e) in items
-                          if is_device_test_candidate(e["id"])]
-            retained = [e for (_l, e) in items
-                        if is_audit_user_retained(e["id"])]
-            badge_text = ""
-            if candidates and len(candidates) == len(items):
-                badge_text = QCoreApplication.translate(
-                    "Nugget", "UNPROVEN — device test")
-            elif candidates:
-                badge_text = QCoreApplication.translate(
-                    "Nugget", "some UNPROVEN — device test")
-            elif retained:
-                badge_text = QCoreApplication.translate(
-                    "Nugget", "user-retained")
-            if badge_text:
-                badge = QLabel(badge_text, self._catalogue_rows_box)
-                badge.setStyleSheet(t("catalogue_badge"))
-                row.addWidget(badge)
+            # Wave 11 (user order 2026-10-03): no status badge on the
+            # catalogue rows at all — no "UNPROVEN — device test" and no
+            # "user-retained". The catalogue lists the build's tweaks;
+            # support state lives on the Tweaks page rows themselves.
             row.addStretch(1)
             rows_layout.addLayout(row)
             chips = QGridLayout()

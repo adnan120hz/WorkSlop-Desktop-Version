@@ -252,13 +252,14 @@ def test_manager_integration():
               == "mobilegestalt_unsupported_build")
         sb_entries = [e for e in doc["tweaks"]
                       if e["tweak_id"] == "StatusBar"]
-        # The Status Bar family is audit research-only on the 26.6.1
-        # target, so the named feature is contained (skipped) there —
-        # it keeps its own journal identity but never delivers.
-        check("statusbar feature is its own (contained) entry",
+        # Wave 11 (user order 2026-10-03): the Status Bar feature is a
+        # normal active tweak — the AUDIT_RESEARCH_ONLY containment is
+        # gone, so on the 26.6.1 target it keeps its own journal
+        # identity AND delivers like any other special feature.
+        check("statusbar feature is its own entry and delivers",
               any(e["id"] == "statusbar.full_signal_bars_no_sim"
-                  and e["status"] == "skipped"
-                  and e["skip_reason"] == "AUDIT_RESEARCH_ONLY"
+                  and e["status"] == "delivered-by-restore"
+                  and e["files"]
                   for e in sb_entries), str(sb_entries))
         check("top-level files carry sha1/size",
               all(f["sha1"] and f["size"] is not None

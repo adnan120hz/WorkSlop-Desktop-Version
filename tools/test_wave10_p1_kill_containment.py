@@ -4,13 +4,18 @@
 Covers AUDIT-FINAL-WAVE10 Package 1/3/4 decisions that were executed in
 the registry and central capability gate:
 
-* 43 active registry rows are gone from SPECS_BY_ID: 38 resolve as
-  REMOVED_TWEAK tombstones and the five redundant duplicate rows alias to
-  their canonical writers (checked separately below).
+* The kill-list registry rows are gone from SPECS_BY_ID and resolve as
+  REMOVED_TWEAK tombstones; the five redundant duplicate rows alias to
+  their canonical writers (checked separately below). The 2026-10-03
+  verbatim v4 Liquid Glass restoration removed the Liquid Glass IDs from
+  this kill list entirely — they are active v4 specs again, and this
+  suite now pins them as RESTORED (spec present, not a tombstone).
 * The five redundant duplicate IDs alias to exactly one canonical writer.
-* Research-only IDs cannot deliver on iOS 26.6.1 / build 23G83, stale ON
-  state is cleared there, and the user-retained FlatIconsEverywhere row
-  stays active.
+* Research-only IDs are classification only since Wave 11 (user order
+  2026-10-03): they deliver as normal tweaks on iOS 26.6.1 / build 23G83,
+  stale ON state is never force-cleared for that reason, and the
+  user-retained FlatIconsEverywhere row stays active. Only the kill-list
+  tombstones and MobileGestalt-gated rows stay locked.
 * CustomGestaltTweaks is no longer rendered or applied as a product
   surface (static surface check; the backend only logs/ignores stale data).
 
@@ -120,14 +125,22 @@ REGISTRY_KILL_IDS = [
     # Wrong value / type
     TweakID.DisableSearchingWebsites, TweakID.SiriTriggerPhrase,
     TweakID.SiriVocab,
-    # Dead-reader / target-ineligible Liquid Glass + Feature Flags
+    # Dead Feature Flags channel (the five upstream FF specs stay dead)
+    TweakID.ClockAnim, TweakID.Lockscreen,
+    TweakID.PhotoUI, TweakID.AI, TweakID.KioskMode,
+]
+
+# v4 Liquid Glass IDs un-killed by the 2026-10-03 verbatim restoration:
+# these resolve to their v4 specs again (payload proof lives in
+# tools/test_wave11_lg_v4_verbatim.py). DisableCompactChrome is gated to
+# iOS 27+ exactly as in v4, so on the 26.6.1 target it reports
+# VERSION_BELOW_MIN, not OK.
+RESTORED_V4_LG_IDS = [
     TweakID.DisableWidgetSpecular, TweakID.DisableDockSpecular,
     TweakID.DisableFolderSpecular, TweakID.ExcludeClearGlassShadows,
     TweakID.ExcludeDockShadow, TweakID.ExcludeSearchShadow,
     TweakID.DisableOuterRefraction, TweakID.DisableSolariumHDR,
     TweakID.DisableSpecularMotion, TweakID.DisableSpecularEverywhere,
-    TweakID.DisableCompactChrome, TweakID.ClockAnim, TweakID.Lockscreen,
-    TweakID.PhotoUI, TweakID.AI, TweakID.KioskMode,
 ]
 
 DUPLICATE_ALIASES = {
@@ -176,6 +189,17 @@ def test_registry_kills_and_tombstones():
         ok, code, _ = tweak_deliverability(tid, **TARGET)
         check(f"{tid.name} cannot deliver on target",
               not ok and code == "REMOVED_TWEAK", code)
+    for tid in RESTORED_V4_LG_IDS:
+        check(f"{tid.name} restored: has an active v4 spec",
+              tid in SPECS_BY_ID)
+        check(f"{tid.name} restored: not a tombstone",
+              not is_removed_tweak(tid))
+        ok, code, _ = tweak_deliverability(tid, **TARGET)
+        check(f"{tid.name} restored: delivers on target",
+              ok and code == "OK", code)
+    ok, code, _ = tweak_deliverability(TweakID.DisableCompactChrome, **TARGET)
+    check("DisableCompactChrome restored but v4-gated to iOS 27",
+          not ok and code == "VERSION_BELOW_MIN", code)
 
 
 def test_duplicate_aliases_have_one_writer():
@@ -199,8 +223,11 @@ def test_duplicate_aliases_have_one_writer():
           not duplicates, str(duplicates))
 
 
-def test_ship_candidates_remain_but_research_is_contained():
-    print("\nShip-candidates remain; research-only rows are contained")
+def test_ship_candidates_remain_and_research_is_active():
+    # Wave 11 spec (user order 2026-10-03): research-only classification
+    # no longer contains delivery. Audit-passed rows — registry and
+    # non-registry families alike — are normal activatable tweaks.
+    print("\nShip-candidates remain; research-only rows are normal active tweaks")
     for tid in SHIP_CANDIDATES:
         check(f"{tid.name} retains an active spec", tid in SPECS_BY_ID)
         ok, code, _ = tweak_deliverability(tid, **TARGET)
@@ -209,19 +236,19 @@ def test_ship_candidates_remain_but_research_is_contained():
     for tid in REGISTRY_RESEARCH_IDS:
         check(f"{tid.name} retains a research spec", tid in SPECS_BY_ID)
         check(f"{tid.name} is audit research-only", is_audit_research_only(tid))
-        ok, code, _msg = tweak_deliverability(tid, **TARGET)
-        check(f"{tid.name} delivers only as UNPROVEN device test",
-              ok and code == "DEVICE_TEST_OK", code)
+        ok, code, msg = tweak_deliverability(tid, **TARGET)
+        check(f"{tid.name} delivers as a normal tweak (Wave 11)",
+              ok and code == "OK" and "UNPROVEN" not in msg, code)
     for tid in (TweakID.EUEnabler, TweakID.AIEligibility,
                 TweakID.CreateBRFolders, TweakID.DisableOTAFile,
                 TweakID.CustomResolution, TweakID.StatusBar, TweakID.Daemons,
                 TweakID.PosterBoard, TweakID.Templates):
         ok, code, _ = tweak_deliverability(tid, **TARGET)
-        check(f"non-registry {tid.name} cannot deliver on target",
-              not ok and code == "AUDIT_RESEARCH_ONLY", code)
+        check(f"non-registry {tid.name} delivers as a normal tweak (Wave 11)",
+              ok and code == "OK", code)
     ok, code, _ = tweak_deliverability(
         TweakID.EUEnabler, device_version="26.1", device_build="")
-    check("research containment is scoped to the audited target", ok, code)
+    check("research rows also deliver off-target", ok, code)
 
     check("FlatIconsEverywhere retains an active spec",
           TweakID.FlatIconsEverywhere in SPECS_BY_ID)
@@ -238,32 +265,39 @@ DEVICE_TEST_IDS = [
 
 
 def test_device_test_candidates_are_open_but_labelled():
-    print("\nDevice-test Liquid Glass candidates deliver with DEVICE_TEST_OK")
+    # Renamed in behaviour by the 2026-10-03 verbatim v4 restoration: the
+    # three Liquid Glass rows are normal tweaks now — no DEVICE_TEST_OK
+    # reason code, no UNPROVEN message, no device-test classification.
+    print("\nRestored Liquid Glass rows are normal tweaks (2026-10-03)")
     for tid in DEVICE_TEST_IDS:
-        check(f"{tid.name} retains an active spec", tid in SPECS_BY_ID)
-        check(f"{tid.name} is a device-test tweak", is_device_test_tweak(tid))
+        check(f"{tid.name} retains an active v4 spec", tid in SPECS_BY_ID)
+        check(f"{tid.name} is not a device-test tweak",
+              not is_device_test_tweak(tid))
         check(f"{tid.name} is not audit research-contained",
               not is_audit_research_only(tid))
         ok, code, msg = tweak_deliverability(tid, **TARGET)
-        check(f"{tid.name} delivers on target as device test",
-              ok and code == "DEVICE_TEST_OK", code)
-        check(f"{tid.name} deliverability message warns unproven",
-              "UNPROVEN" in msg, msg[:40])
-    # Stale ON state for a device-test candidate must NOT be force-cleared
-    # by the research containment sweep (it is testable now)...
+        check(f"{tid.name} delivers on target as a normal tweak",
+              ok and code == "OK", code)
+        check(f"{tid.name} deliverability message has no UNPROVEN label",
+              "UNPROVEN" not in msg, msg[:40])
+    # ON state for a restored (former device-test) row is not touched by
+    # the research containment sweep: it is an ordinary active tweak.
     dummy = _DummyTweak()
     cleared = clear_audit_research_only_state(
         "26.6.1", "23G83",
         tweaks_dict={TweakID.SolariumForceFallback: dummy})
-    check("device-test state survives the research clear",
+    check("restored row state survives the research clear",
           cleared == [] and dummy.enabled)
-    # ...while a genuine non-registry research family stays locked.
+    # ...and a non-registry research family is a normal tweak now too
+    # (Wave 11, user order 2026-10-03).
     ok, code, _ = tweak_deliverability(TweakID.StatusBar, **TARGET)
-    check("non-registry research family stays locked",
-              not ok and code == "AUDIT_RESEARCH_ONLY", code)
-    # Removed/killed stays locked with REMOVED_TWEAK.
+    check("non-registry research family is a normal tweak (Wave 11)",
+          ok and code == "OK", code)
+    # K1 (GlassLegibility2) was un-killed by the 2026-10-03 verbatim v4
+    # restoration: it is an active v4 spec and delivers as a normal tweak.
     ok, code, _ = tweak_deliverability(TweakID.GlassLegibility2, **TARGET)
-    check("killed K1 stays locked", not ok and code == "REMOVED_TWEAK", code)
+    check("K1 restored: delivers as normal tweak",
+          ok and code == "OK", code)
 
 
 class _DummyTweak:
@@ -279,13 +313,13 @@ def test_stale_state_and_loader_cleanup():
     dummy = _DummyTweak()
     cleared = clear_audit_research_only_state(
         "26.6.1", "23G83", tweaks_dict={TweakID.AnimDragCoeff: dummy})
-    check("registry research rows are NOT force-cleared (device-testable)",
+    check("registry research rows are NOT force-cleared (Wave 11)",
           cleared == [] and dummy.enabled, str(cleared))
     dummy2 = _DummyTweak()
     cleared = clear_audit_research_only_state(
         "26.6.1", "23G83", tweaks_dict={TweakID.StatusBar: dummy2})
-    check("non-registry research family is still force-cleared",
-          cleared == ["StatusBar"] and dummy2.enabled is False, str(cleared))
+    check("non-registry research family is NOT force-cleared either (Wave 11)",
+          cleared == [] and dummy2.enabled is True, str(cleared))
     dummy.enabled = True
     cleared = clear_audit_research_only_state(
         "26.1", "", tweaks_dict={TweakID.AnimDragCoeff: dummy})
@@ -326,7 +360,7 @@ def test_custom_gestalt_surface_is_killed():
 
 test_registry_kills_and_tombstones()
 test_duplicate_aliases_have_one_writer()
-test_ship_candidates_remain_but_research_is_contained()
+test_ship_candidates_remain_and_research_is_active()
 test_stale_state_and_loader_cleanup()
 test_device_test_candidates_are_open_but_labelled()
 test_custom_gestalt_surface_is_killed()

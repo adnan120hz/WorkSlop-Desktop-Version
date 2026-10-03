@@ -3,8 +3,10 @@
 
 Covers, without a device:
 
-* canonical ``SBHideSearchAffordance`` is presented in Section.LIQUID_GLASS,
-  not SpringBoard, with its payload unchanged (managed SpringBoard location,
+* canonical ``SBHideSearchAffordance`` is presented in Section.SPRINGBOARD,
+  its v4 placement, restored verbatim with the v4 Liquid Glass set (user
+  order 2026-10-03 — the earlier Wave 10 move into the Liquid Glass menu is
+  superseded), with its payload unchanged (managed SpringBoard location,
   key ``SBHomeScreenShowsSearchAffordance``, value False);
 * the retired ``HideSearchAffordance`` name has no spec of its own, aliases
   to the canonical ID, and the loader keeps exactly one runtime writer;
@@ -105,13 +107,13 @@ def check(name, cond, extra=""):
 def test_hide_search_section_and_single_writer():
     print("\nHide Search canonical presentation + single writer")
     spec = SPECS_BY_ID[TweakID.SBHideSearchAffordance]
-    check("canonical Hide Search spec is in Liquid Glass",
-          spec.section is Section.LIQUID_GLASS)
-    check("canonical Hide Search is not rendered from SpringBoard specs",
-          TweakID.SBHideSearchAffordance not in
-          [s.id for s in SPECS_BY_SECTION[Section.SPRINGBOARD]])
-    check("canonical Hide Search is in Liquid Glass specs",
+    check("canonical Hide Search spec is in SpringBoard (v4 placement)",
+          spec.section is Section.SPRINGBOARD)
+    check("canonical Hide Search is rendered from SpringBoard specs",
           TweakID.SBHideSearchAffordance in
+          [s.id for s in SPECS_BY_SECTION[Section.SPRINGBOARD]])
+    check("canonical Hide Search is not in Liquid Glass specs",
+          TweakID.SBHideSearchAffordance not in
           [s.id for s in SPECS_BY_SECTION[Section.LIQUID_GLASS]])
     check("payload location unchanged", spec.location is FileLocation.springboard)
     check("payload key unchanged",
@@ -149,10 +151,10 @@ def test_hide_search_section_and_single_writer():
 
 def test_hotload_feature_membership_follows_section():
     print("\nHotLoad feature membership follows the section move")
-    check("SBHideSearchAffordance belongs to Liquid Glass feature",
-          "SBHideSearchAffordance" in FEATURE_TWEAKS["Liquid Glass"])
-    check("SBHideSearchAffordance no longer belongs to Springboard feature",
-          "SBHideSearchAffordance" not in FEATURE_TWEAKS["Springboard"])
+    check("SBHideSearchAffordance belongs to Springboard feature (v4)",
+          "SBHideSearchAffordance" in FEATURE_TWEAKS["Springboard"])
+    check("SBHideSearchAffordance does not belong to Liquid Glass feature",
+          "SBHideSearchAffordance" not in FEATURE_TWEAKS["Liquid Glass"])
     check("duplicate name is not a separate HotLoad member",
           "HideSearchAffordance" not in FEATURE_TWEAKS["Liquid Glass"]
           and "HideSearchAffordance" not in FEATURE_TWEAKS["Springboard"])
@@ -164,10 +166,10 @@ def test_home_catalogue_is_registry_derived():
     by_name = {entry["id_name"]: entry for entry in entries}
     check("catalogue lists canonical Hide Search",
           "SBHideSearchAffordance" in by_name)
-    check("catalogue places Hide Search under Liquid Glass",
-          by_name["SBHideSearchAffordance"]["section"] is Section.LIQUID_GLASS)
-    check("catalogue feature for Hide Search is Liquid Glass",
-          by_name["SBHideSearchAffordance"]["feature"] == "Liquid Glass")
+    check("catalogue places Hide Search under SpringBoard (v4)",
+          by_name["SBHideSearchAffordance"]["section"] is Section.SPRINGBOARD)
+    check("catalogue feature for Hide Search is Springboard",
+          by_name["SBHideSearchAffordance"]["feature"] == "Springboard")
     check("catalogue has no duplicate Hide Search entry",
           "HideSearchAffordance" not in by_name)
     check("catalogue keeps FlatIconsEverywhere in Liquid Glass",

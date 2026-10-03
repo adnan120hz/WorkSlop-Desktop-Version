@@ -139,6 +139,11 @@ class TweakID(Enum):
     FlatDockEverywhere = auto()
     DisableGlassBlur = auto()
     DisallowGlassKeyboard = auto()
+    # Blurr Motion (2026-10-03): the single candidate from the DesignLibrary
+    # dossier whose key string is attested in the 23G83 binary
+    # (~/workspace/riset/wave11/DOSSIER-BLURR-MOTION.md). Normal tweak, no
+    # badge: unverified status lives in its description, not a lock.
+    BlurrMotion = auto()
     # status bar visual (non-glass)
     StatusBarOverrides = auto()
     ShowSystemServices = auto()
