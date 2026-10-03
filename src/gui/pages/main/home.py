@@ -71,16 +71,44 @@ class HomePage(Page):
         title = getattr(self.ui, "label_2", None)
         if title is not None:
             title.setText("WorkSlop Desktop")
-            # Developer credit block under the brand title (user order
-            # 2026-10-03): four clickable lines, recolored per flavor by
-            # set_full_nugget().
+            # Developer credit block (user order 2026-10-03), recolored
+            # per flavor by set_full_nugget(). It rides on the SAME
+            # horizontal band as the WS icon and the brand title —
+            # beside the title, never as a block below it (this classic
+            # Home serves both UI-2 and Full Nugget UI-3; the iOS-style
+            # Home of UI-1 is a different page and stays untouched).
             from src.gui.brand_credits import make_credits_label
             if getattr(self, "credits_lbl", None) is None:
+                from PySide6.QtCore import Qt
+                from PySide6.QtWidgets import QHBoxLayout
                 c0 = ColorThemeManager.instance().colors
                 self.credits_lbl = make_credits_label(
                     title.parentWidget(), c0.text_secondary, c0.accent,
                     align_center=False)
-                title.parentWidget().layout().addWidget(self.credits_lbl)
+                host = title.parentWidget().layout()
+                idx = host.indexOf(title)
+                row = QHBoxLayout()
+                row.setContentsMargins(0, 0, 0, 0)
+                row.setSpacing(12)
+                row.addWidget(title)
+                row.addWidget(self.credits_lbl)
+                row.addStretch(1)
+                host.insertLayout(idx, row)
+                title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.credits_lbl.setAlignment(
+                    Qt.AlignLeft | Qt.AlignVCenter)
+                # The one-line band (icon + title + credits) must fit
+                # the classic Home (932px in the WorkSlop-icon flavor,
+                # 964px in Full Nugget): trim the generated 50px band
+                # spacing and size the credit font so the full line —
+                # through "Official Website" — stays on screen
+                # (measured: 14px Inter fits both flavors).
+                band = getattr(self.ui, "horizontalWidget_14", None)
+                if band is not None and band.layout() is not None:
+                    band.layout().setSpacing(24)
+                self.credits_lbl.setStyleSheet(
+                    "background: transparent; font-size: 14px;"
+                    " font-weight: 500;")
         hero_btn = getattr(self.ui, "bigNuggetBtn", None)
         if hero_btn is not None:
             from PySide6.QtCore import QSize
