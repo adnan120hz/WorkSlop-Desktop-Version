@@ -5,8 +5,32 @@ from PySide6.QtWidgets import (
 import re
 
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSCard, IOSPrimaryButton, IOSDangerButton)
+    IOSSectionHeader, IOSCard, IOSPrimaryButton, IOSDangerButton,
+    apply_full_nugget_chrome)
 from src.gui.theme import ColorThemeManager, t
+from src.gui.theme.colors import NUGGET_DARK
+from src.gui.theme.styles import STYLES, FONT_FAMILY
+
+
+def _qss(style_key: str, colors) -> str:
+    """Render a global stylesheet template against an explicit palette."""
+    payload = dict(colors.__dict__)
+    payload["font_family"] = FONT_FAMILY
+    return STYLES[style_key].format_map(payload)
+
+
+def _nugget_primary_qss(c) -> str:
+    """Primary-button recipe for the Full Nugget palette (the global
+    template keys its background off text_primary, which is white in
+    the Nugget palette — upstream Nugget primaries are accent blue)."""
+    return (
+        f"QPushButton {{ background-color: {c.accent}; border: none;"
+        " border-radius: 14px; color: #FFFFFF; font-size: 15px;"
+        " font-weight: 700; padding: 12px 20px; }"
+        f"QPushButton:hover {{ background-color: {c.accent_hover}; color: #FFFFFF; }}"
+        f"QPushButton:pressed {{ background-color: {c.accent_pressed}; color: #FFFFFF; }}"
+        f"QPushButton:disabled {{ background-color: {c.bg_tertiary};"
+        f" color: {c.text_disabled}; }}")
 
 
 class IOSApplyPage(QWidget):
@@ -16,6 +40,7 @@ class IOSApplyPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
+        self._full_nugget = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -111,21 +136,50 @@ class IOSApplyPage(QWidget):
     def set_status(self, text: str):
         self.status_lbl.setText(text or "")
         match = re.search(r"(\d+(?:\.\d+)?)\s*%", text or "")
-        if match:
+        if not text:
+            self.progress_bar.hide()
+        elif match:
+            self.progress_bar.setRange(0, 100)
             self.progress_bar.setValue(
                 max(0, min(100, int(round(float(match.group(1)))))))
             self.progress_bar.show()
         else:
-            self.progress_bar.hide()
+            # Phase-only line (no percent reported): the bar stays
+            # visible and indeterminate, like the classic Apply page.
+            self.progress_bar.setRange(0, 0)
+            self.progress_bar.show()
 
     def set_busy(self, busy: bool):
         self.apply_btn.setEnabled(not busy)
         self.remove_btn.setEnabled(not busy)
 
+    # ---------- Full Nugget palette (third interface) ----------
+
+    def _palette(self):
+        """Active colors: upstream Nugget dark in the Full Nugget
+        interface, the themed WorkSlop palette everywhere else."""
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return ColorThemeManager.instance().colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle: this page takes the
+        Nugget-original dark palette like the other hosted pages
+        (Daemons / Posterboard / Settings); the other interfaces keep
+        the themed look untouched. Widgets, buttons and the apply flow
+        are identical — colors only."""
+        self._full_nugget = bool(enabled)
+        self._retheme()
+
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
         self.apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
         self.remove_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
         self.status_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
-        self.progress_bar.setStyleSheet(t("dialog_progress_bar"))
+        self.progress_bar.setStyleSheet(_qss("dialog_progress_bar", c))
+        self.apply_btn.setStyleSheet(
+            _nugget_primary_qss(c) if self._full_nugget
+            else _qss("primary_button", c))
+        self.remove_btn.setStyleSheet(_qss("danger_button", c))
+        apply_full_nugget_chrome(self, self._full_nugget)

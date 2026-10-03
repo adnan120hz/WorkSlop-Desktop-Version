@@ -193,9 +193,9 @@ check("research-only registry tweak is NOT a device-test candidate (Wave 11)",
 ok, code, _ = tweak_deliverability(TweakID.LockScreenFootnote, **TARGET)
 check("ship-candidate delivers OK", ok and code == "OK", code)
 
-print("\napp version is 11.0")
+print("\napp version is 11.0.1")
 from src.version import App_Version  # noqa: E402
-check("App_Version is 11.0", App_Version == "11.0", App_Version)
+check("App_Version is 11.0.1", App_Version == "11.0.1", App_Version)
 
 # ---------------------------------------------------------------- GUI ----
 try:

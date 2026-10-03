@@ -607,15 +607,17 @@ class SettingsMixin:
                 theme == ThemeManager.FULL_NUGGET)
         except Exception:
             pass
-        # The classic shell hosts Daemons / Posterboard / Settings from
-        # the page stacks; in Full Nugget those three take the
+        # The classic shell hosts Daemons / Posterboard / Settings /
+        # Themes / Apply from the page stacks; in Full Nugget they take the
         # Nugget-original dark palette like the vendored Nugget pages
         # (user report 2026-10-03: they were still WorkSlop-light). The
         # classic Daemons page (stack 2) and the iOS-stack Daemons page
         # both follow; UI-1 and UI-2 keep their themed look untouched.
         for _page in (getattr(self, "ios_daemons", None),
                       getattr(self, "ios_posterboard", None),
-                      getattr(self, "ios_settings", None)):
+                      getattr(self, "ios_settings", None),
+                      getattr(self, "ios_themes_hub", None),
+                      getattr(self, "ios_apply", None)):
             try:
                 if _page is not None:
                     _page.set_full_nugget(
@@ -1114,6 +1116,7 @@ class ApplyMixin:
             if txt:
                 self.ios_home.show_process_status(txt)
                 self.ios_apply.set_status(txt)
+                self.ios_backup.set_process_status(txt)
         except Exception:
             pass
 
@@ -1561,6 +1564,7 @@ class ApplyMixin:
 
     def _finish_full_restore(self, success: bool, error_msg: str = ""):
         self._full_restore_in_progress = False
+        self._mirror_backup_finish(success)
         if not success or error_msg:
             try:
                 self.alert_message(ApplyAlertMessage(
@@ -1629,6 +1633,7 @@ class ApplyMixin:
 
     def _finish_full_backup(self, success: bool, error_msg: str = ""):
         self._full_backup_in_progress = False
+        self._mirror_backup_finish(success)
         if not success or error_msg:
             try:
                 self.alert_message(ApplyAlertMessage(
@@ -1697,6 +1702,7 @@ class ApplyMixin:
 
     def _finish_protective_backup(self, success: bool, error_msg: str = ""):
         self._protective_backup_in_progress = False
+        self._mirror_backup_finish(success)
         if not success or error_msg:
             try:
                 self.alert_message(ApplyAlertMessage(
@@ -1767,12 +1773,22 @@ class ApplyMixin:
     def _update_restore_label(self, txt: str):
         try:
             self.ios_home.show_process_status(txt)
+            self.ios_backup.set_process_status(txt)
+        except Exception:
+            pass
+
+    def _mirror_backup_finish(self, success: bool):
+        """Settle the Backup page's bottom progress strip when a
+        backup/restore run ends (same runs that report above)."""
+        try:
+            self.ios_backup.finish_process_status(success)
         except Exception:
             pass
 
 
     def _finish_cache_restore(self, success: bool, error_msg: str = ""):
         self._cache_restore_in_progress = False
+        self._mirror_backup_finish(success)
         if not success or error_msg:
             try:
                 self.alert_message(ApplyAlertMessage(

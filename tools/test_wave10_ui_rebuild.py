@@ -16,7 +16,7 @@ Contract (user order 2026-10-03):
   same ``ui/theme`` choice.
 * About carries the English Nugget UI reference (user order
   2026-10-03) and no "3uTools" credit appears anywhere in the app; the
-  visible app version is exactly ``11.0``.
+  visible app version is exactly ``11.0.1``.
 * Pages are the real v4.0 pages restored from commit ``4f44415`` (hero
   Home with 9 feature tiles, SKY palette, white rail, v4 SkyBackground)
   integrated with the current backend — not the Wave 10 rebuild pages.
@@ -164,7 +164,7 @@ check("background floaters use the soft v4 tints",
       str(FLOAT_TINTS))
 for key in ("global", "modern_card", "sidebar_nav_button", "nav_bar"):
     check(f"style resolves: {key}", bool(t(key).strip()))
-check("app version is exactly 11.0", App_Version == "11.0", App_Version)
+check("app version is exactly 11.0.1", App_Version == "11.0.1", App_Version)
 check("app build adds no release label", App_Build == 0, str(App_Build))
 
 print("\nWorkSlop v4 sidebar (main UI)")
@@ -178,8 +178,8 @@ check("sidebar is the v4 WorkSlop menu set",
           ("backup", "Backup"), ("appdata", "App Data"),
           ("themes", "Themes"), ("settings", "Settings")],
       str(MENUS))
-check("sidebar version label is clean 11.0",
-      sidebar._version_lbl.text() == "WorkSlop Desktop v11.0",
+check("sidebar version label is clean 11.0.1",
+      sidebar._version_lbl.text() == "WorkSlop Desktop v11.0.1",
       sidebar._version_lbl.text())
 sidebar.select("tweaks")
 check("sidebar select checks Tweaks", sidebar._buttons["tweaks"][0].isChecked())
@@ -496,7 +496,7 @@ check("modern shell is not instantiated",
       and not hasattr(win, "device_panel"))
 check("window version label is branded and clean",
       "WorkSlop" in win.ui.appVersionLbl.text()
-      and "11.0" in win.ui.appVersionLbl.text()
+      and "11.0.1" in win.ui.appVersionLbl.text()
       and "GoldenNugget" not in win.ui.appVersionLbl.text()
       and "pre-release" not in win.ui.appVersionLbl.text().lower()
       and "beta" not in win.ui.appVersionLbl.text().lower()

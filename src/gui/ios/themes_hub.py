@@ -8,12 +8,36 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
 )
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
+from src.gui.ios.components import (
+    IOSCard, IOSPrimaryButton, IOSSectionHeader, apply_full_nugget_chrome)
 from src.gui.theme import t, ColorThemeManager
+from src.gui.theme.colors import NUGGET_DARK
+from src.gui.theme.styles import STYLES, FONT_FAMILY
 
 
 def tr(text: str) -> str:
     return QCoreApplication.translate("Nugget", text)
+
+
+def _qss(style_key: str, colors) -> str:
+    """Render a global stylesheet template against an explicit palette."""
+    payload = dict(colors.__dict__)
+    payload["font_family"] = FONT_FAMILY
+    return STYLES[style_key].format_map(payload)
+
+
+def _nugget_primary_qss(c) -> str:
+    """Primary-button recipe for the Full Nugget palette (the global
+    template keys its background off text_primary, which is white in
+    the Nugget palette — upstream Nugget primaries are accent blue)."""
+    return (
+        f"QPushButton {{ background-color: {c.accent}; border: none;"
+        " border-radius: 14px; color: #FFFFFF; font-size: 15px;"
+        " font-weight: 700; padding: 12px 20px; }"
+        f"QPushButton:hover {{ background-color: {c.accent_hover}; color: #FFFFFF; }}"
+        f"QPushButton:pressed {{ background-color: {c.accent_pressed}; color: #FFFFFF; }}"
+        f"QPushButton:disabled {{ background-color: {c.bg_tertiary};"
+        f" color: {c.text_disabled}; }}")
 
 
 class IOSThemesHubPage(QWidget):
@@ -22,6 +46,9 @@ class IOSThemesHubPage(QWidget):
         self.window = window
         self.setObjectName("iosContainer")
         self._tm = ColorThemeManager.instance()
+        self._full_nugget = False
+        self._fn_styled = []   # (widget, qss_fn) palette-baked labels
+        self._fn_buttons = []  # IOSPrimaryButton instances to repalette
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -61,18 +88,28 @@ class IOSThemesHubPage(QWidget):
         lay = QVBoxLayout(card)
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(8)
+
+        def title_qss(c):
+            return (f"color: {c.text_primary}; font-size: 15px;"
+                    " font-weight: 600; background-color: transparent;")
+
+        def desc_qss(c):
+            return (f"color: {c.text_secondary}; font-size: 14px;"
+                    " background-color: transparent;")
         title_lbl = QLabel(tr(title))
-        title_lbl.setStyleSheet(
-            "font-size: 15px; font-weight: 600; background-color: transparent;")
+        title_lbl.setStyleSheet(title_qss(self._palette()))
+        self._fn_styled.append((title_lbl, title_qss))
         lay.addWidget(title_lbl)
         desc_lbl = QLabel(tr(desc))
         desc_lbl.setWordWrap(True)
-        desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")
+        desc_lbl.setStyleSheet(desc_qss(self._palette()))
+        self._fn_styled.append((desc_lbl, desc_qss))
         lay.addWidget(desc_lbl)
         row = QHBoxLayout()
         row.addStretch(1)
         btn = IOSPrimaryButton(tr(btn_text))
         btn.clicked.connect(handler)
+        self._fn_buttons.append(btn)
         row.addWidget(btn)
         lay.addLayout(row)
         return card
@@ -80,7 +117,38 @@ class IOSThemesHubPage(QWidget):
     def refresh(self):
         pass
 
+    # ---------- Full Nugget palette (third interface) ----------
+
+    def _palette(self):
+        """Active colors: upstream Nugget dark in the Full Nugget
+        interface, the themed WorkSlop palette everywhere else."""
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return self._tm.colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle: this page takes the
+        Nugget-original dark palette like the other hosted pages
+        (Daemons / Posterboard / Settings); the other interfaces keep
+        the themed look untouched. Widgets and behavior are identical
+        — colors only."""
+        self._full_nugget = bool(enabled)
+        self._retheme()
+
     def _retheme(self):
-        c = self._tm.colors
+        c = self._palette()
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;")
+        for widget, qss_fn in self._fn_styled:
+            try:
+                widget.setStyleSheet(qss_fn(c))
+            except Exception:
+                pass
+        for btn in self._fn_buttons:
+            try:
+                btn.setStyleSheet(
+                    _nugget_primary_qss(c) if self._full_nugget
+                    else _qss("primary_button", c))
+            except Exception:
+                pass
+        apply_full_nugget_chrome(self, self._full_nugget)

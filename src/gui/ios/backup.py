@@ -1,12 +1,18 @@
-"""WorkSlop Desktop Backup page: full backup, restore, and backup location.
+"""WorkSlop Desktop Backup page: full backup, restore, and apply.
 
-The three actions reuse the exact flows already wired in the Settings page —
+The actions reuse the exact flows already wired in the Settings page —
 this page only gives them a dedicated home under the Backup sidebar menu.
+Where backups are kept is chosen when a backup starts (folder picker);
+the choice is remembered and the automatic protective backup before an
+apply uses it too.
 """
+import os
+import re
+
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFileDialog,
-    QMessageBox,
+    QMessageBox, QProgressBar,
 )
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSectionHeader
@@ -76,23 +82,61 @@ class IOSBackupPage(QWidget):
             tr("Restore..."),
             self._on_restore))
 
-        self._location_lbl = QLabel()
-        self._location_lbl.setWordWrap(True)
-        self._content_layout.addWidget(self._make_card(
-            tr("Backup Location"),
-            tr("The protective backup cache and temporary backup/restore "
-               "files are stored here. The protective backup runs "
-               "automatically before tweaks are applied."),
-            tr("Open Folder"),
-            self._on_open_location,
-            extra_widget=self._location_lbl))
-
         self._content_layout.addStretch(1)
         scroll.setWidget(content)
         layout.addWidget(scroll)
 
+        # Process indicator pinned to the bottom of the page: phase /
+        # percent text + progress bar, fed by the same worker progress
+        # text the classic Apply page shows (MainWindow mirrors it here),
+        # so a running backup/apply is visible without leaving this page.
+        self._footer = QWidget()
+        foot_lay = QVBoxLayout(self._footer)
+        foot_lay.setContentsMargins(16, 8, 16, 12)
+        foot_lay.setSpacing(6)
+        self._process_lbl = QLabel(tr("Ready."))
+        self._process_lbl.setWordWrap(True)
+        foot_lay.addWidget(self._process_lbl)
+        self._process_bar = QProgressBar()
+        self._process_bar.setRange(0, 100)
+        self._process_bar.setValue(0)
+        self._process_bar.setTextVisible(False)
+        self._process_bar.setFixedHeight(8)
+        foot_lay.addWidget(self._process_bar)
+        layout.addWidget(self._footer)
+
         self._retheme()
         self._tm.theme_changed.connect(self._retheme)
+
+    # -- process indicator ----------------------------------------------
+    def set_process_status(self, text: str):
+        """Mirror a worker progress line: a real percent from the backend
+        drives the bar; a phase-only line runs it indeterminate. Nothing
+        is invented — the text is shown exactly as reported."""
+        text = text or ""
+        self._process_lbl.setText(text)
+        self._style_process_label()
+        match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+        if match:
+            self._process_bar.setRange(0, 100)
+            self._process_bar.setValue(
+                max(0, min(100, int(round(float(match.group(1)))))))
+        else:
+            self._process_bar.setRange(0, 0)
+
+    def finish_process_status(self, success: bool):
+        c = self._tm.colors
+        self._process_bar.setRange(0, 100)
+        self._process_bar.setValue(100 if success else 0)
+        self._process_lbl.setStyleSheet(
+            f"color: {c.success if success else c.error}; font-size: 13px;"
+            " background-color: transparent;")
+
+    def _style_process_label(self):
+        c = self._tm.colors
+        self._process_lbl.setStyleSheet(
+            f"color: {c.text_primary}; font-size: 13px;"
+            " background-color: transparent;")
 
     # -- cards ----------------------------------------------------------
     def _make_card(self, title, desc, btn_text, handler, extra_widget=None):
@@ -204,6 +248,38 @@ class IOSBackupPage(QWidget):
                 tr("Apply is disabled: enable at least one tweak toggle "
                    "on any menu first."))
 
+    # -- backup folder choice --------------------------------------------
+    # There is no fixed "backup location" shown on this page any more:
+    # when a backup starts, the user picks the folder themselves. The
+    # choice is remembered (``backup_storage_dir`` — the same pref the
+    # backup storage root resolves from), so the protective backup that
+    # runs automatically before an apply lands in the picked place too.
+    # With nothing picked, the pipeline's historical default is used and
+    # created on demand, as before.
+    _PREF_KEY = "backup_storage_dir"
+
+    def _remembered_backup_root(self) -> str:
+        try:
+            return str(self.window.settings.value(
+                self._PREF_KEY, "", type=str)).strip()
+        except Exception:
+            return ""
+
+    def _choose_backup_folder(self, title: str) -> str:
+        """Ask where backups go; remember and return the pick ("" = cancel)."""
+        folder = QFileDialog.getExistingDirectory(
+            self.window, tr(title),
+            self._remembered_backup_root(),
+            QFileDialog.Option.ShowDirsOnly)
+        if not folder:
+            return ""
+        try:
+            os.makedirs(folder, exist_ok=True)
+            self.window.settings.setValue(self._PREF_KEY, folder)
+        except Exception:
+            pass
+        return folder
+
     # -- actions (same flows as Settings) -------------------------------
     def _on_protective_backup(self):
         reply = QMessageBox.warning(
@@ -217,6 +293,8 @@ class IOSBackupPage(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes)
         if reply != QMessageBox.StandardButton.Yes:
+            return
+        if not self._choose_backup_folder("Choose backup folder"):
             return
         self.window._start_protective_backup()
 
@@ -239,9 +317,7 @@ class IOSBackupPage(QWidget):
             QMessageBox.StandardButton.No)
         if reply != QMessageBox.StandardButton.Yes:
             return
-        folder = QFileDialog.getExistingDirectory(
-            self.window, tr("Where to save the full backup"), "",
-            QFileDialog.Option.ShowDirsOnly)
+        folder = self._choose_backup_folder("Where to save the full backup")
         if not folder:
             return
         self.window._start_full_backup(folder)
@@ -293,32 +369,21 @@ class IOSBackupPage(QWidget):
             return
         self.window._start_cache_restore()
 
-    def _on_open_location(self):
-        import os
-        path = self._backup_dir()
-        if path and os.path.isdir(path):
-            from PySide6.QtGui import QDesktopServices
-            from PySide6.QtCore import QUrl
-            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
-
     # -- helpers --------------------------------------------------------
-    def _backup_dir(self) -> str:
-        try:
-            custom = str(self.window.settings.value("backup_storage_dir", "", type=str)).strip()
-            if custom:
-                return custom
-            from src.restore.storage import cache_base
-            return str(cache_base())
-        except Exception:
-            return ""
-
     def refresh(self):
-        path = self._backup_dir()
-        self._location_lbl.setText(path if path else tr("Default (system drive)"))
         self.refresh_apply_state()
 
     def _retheme(self):
         c = self._tm.colors
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;")
+        self._footer.setStyleSheet(
+            f"background-color: {c.bg_primary};"
+            f" border-top: 1px solid {c.divider};")
+        self._process_bar.setStyleSheet(
+            "QProgressBar { background-color: "
+            f"{c.bg_tertiary}; border: none; border-radius: 4px; }}"
+            "QProgressBar::chunk { background-color: "
+            f"{c.accent}; border-radius: 4px; }}")
+        self._style_process_label()
         self.refresh()
