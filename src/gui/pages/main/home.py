@@ -18,8 +18,44 @@ class HomePage(Page):
         self.ui.phoneVersionLbl.linkActivated.connect(self.toggle_version_label)
         self.ui.discordBtn.clicked.connect(lambda: open_new_tab("https://discord.gg/Rm6r4zeE3y"))
 
+        # The device identity labels ("No Device / Please connect a
+        # device.", a phone name, ...) were clipped to a few characters
+        # by the generated layout; give the label column room and let
+        # long lines wrap instead of cutting mid-word.
+        from PySide6.QtWidgets import QSizePolicy
+        for _lbl in (self.ui.phoneNameLbl, self.ui.phoneVersionLbl):
+            _lbl.setWordWrap(True)
+            _lbl.setMinimumWidth(190)
+            _lbl.setSizePolicy(QSizePolicy.Policy.Expanding,
+                               QSizePolicy.Policy.Preferred)
+        self.ui.verticalWidget_15.setMinimumWidth(220)
+
         self._trim_to_logo_header()
         self._inject_preset_widget()
+        try:
+            from src.gui.ios.theme_manager import ThemeManager
+            self.set_full_nugget(
+                self.window.theme_manager.current_theme
+                == ThemeManager.FULL_NUGGET)
+        except Exception:
+            pass
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle of the preset block:
+        Nugget-color preset text on the dark Home, the "UI reference:
+        Nugget UI" credit with its GitHub button above the banner.
+        Other interfaces keep the themed look untouched."""
+        widget = getattr(self, "preset_widget", None)
+        if widget is not None:
+            widget.apply_full_nugget_style(enabled)
+        credits = getattr(self, "credits_lbl", None)
+        if credits is not None:
+            from src.gui.brand_credits import credits_html
+            if enabled:
+                credits.setText(credits_html("#e8e8e8", "#3b82f7"))
+            else:
+                c = ColorThemeManager.instance().colors
+                credits.setText(credits_html(c.text_secondary, c.accent))
 
     def _trim_to_logo_header(self):
         """Match the clean new-home look: big logo + title, no button clutter.
@@ -35,6 +71,16 @@ class HomePage(Page):
         title = getattr(self.ui, "label_2", None)
         if title is not None:
             title.setText("WorkSlop Desktop")
+            # Developer credit block under the brand title (user order
+            # 2026-10-03): four clickable lines, recolored per flavor by
+            # set_full_nugget().
+            from src.gui.brand_credits import make_credits_label
+            if getattr(self, "credits_lbl", None) is None:
+                c0 = ColorThemeManager.instance().colors
+                self.credits_lbl = make_credits_label(
+                    title.parentWidget(), c0.text_secondary, c0.accent,
+                    align_center=False)
+                title.parentWidget().layout().addWidget(self.credits_lbl)
         hero_btn = getattr(self.ui, "bigNuggetBtn", None)
         if hero_btn is not None:
             from PySide6.QtCore import QSize

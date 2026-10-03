@@ -8,6 +8,7 @@ iOS-style home pages so the active state is always visible.
 from PySide6.QtCore import QCoreApplication, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QToolButton,
 )
 
 from src.gui.theme import ColorThemeManager
@@ -115,6 +116,15 @@ class PresetWidget(QWidget):
         self._header = QLabel()
         layout.addWidget(self._header)
 
+        # Third interface only: the Nugget UI credit (with the GitHub
+        # button that the classic Nugget shell carries on its Home)
+        # sits directly above the preset banner (user order
+        # 2026-10-03), created lazily so the other interfaces never
+        # see it.
+        self._ref_lbl = None
+        self._ref_row = None
+        self._full_nugget = False
+
         self.banner = PresetBanner(ios_style=ios_style)
         self.banner.manage_btn.clicked.connect(self._on_manage_pressed)
         layout.addWidget(self.banner)
@@ -123,6 +133,9 @@ class PresetWidget(QWidget):
         ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
     def _retheme(self):
+        if getattr(self, "_full_nugget", False):
+            self.apply_full_nugget_style(True)
+            return
         c = ColorThemeManager.instance().colors
         if self._ios_style:
             self._header.setText(QCoreApplication.translate("Nugget", "PRESETS"))
@@ -133,6 +146,78 @@ class PresetWidget(QWidget):
             self._header.setText(QCoreApplication.translate("Nugget", "Presets"))
             self._header.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {c.text_primary};")
         self.banner._retheme()
+
+    def apply_full_nugget_style(self, enabled: bool):
+        """Dark upstream palette + the Nugget UI credit (UI-3 only).
+
+        The classic Home sits on upstream's #1e1e1e backdrop there, so
+        the WorkSlop palette's dark-on-light preset text was unreadable;
+        on the original Nugget colors (#3b3b3b card, #e8e8e8/#FFFFFF
+        text, #3b82f7 accent) the Presets block matches the page. Any
+        other interface restores the normal themed look untouched.
+        """
+        self._full_nugget = bool(enabled)
+        if not enabled:
+            if self._ref_row is not None:
+                self._ref_row.setVisible(False)
+            c = ColorThemeManager.instance().colors
+            self._header.setStyleSheet(
+                f"font-size: 16px; font-weight: 600; color: {c.text_primary};")
+            self.banner._retheme()
+            return
+        if self._ref_row is None:
+            from PySide6.QtCore import QSize
+            from PySide6.QtGui import QIcon
+            from webbrowser import open_new_tab
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(2, 0, 0, 0)
+            row_layout.setSpacing(6)
+            github_btn = QToolButton(row)
+            github_btn.setObjectName("nuggetGithubBtn")
+            github_btn.setIcon(QIcon(":/icon/github.svg"))
+            github_btn.setIconSize(QSize(18, 18))
+            github_btn.setCursor(Qt.PointingHandCursor)
+            github_btn.setStyleSheet(
+                "QToolButton { background: transparent; border: none; }"
+                "QToolButton:hover { background-color: #3b3b3b;"
+                " border-radius: 4px; }")
+            github_btn.setToolTip(
+                "github.com/adnan120hz/WorkSlop-Desktop-Version")
+            github_btn.clicked.connect(lambda: open_new_tab(
+                "https://github.com/adnan120hz/WorkSlop-Desktop-Version"))
+            row_layout.addWidget(github_btn)
+            self._ref_lbl = QLabel("UI reference: Nugget UI", row)
+            self._ref_lbl.setStyleSheet("font-size: 12px; color: #cfcfcf;")
+            row_layout.addWidget(self._ref_lbl)
+            row_layout.addStretch(1)
+            self.layout().insertWidget(1, row)
+            self._ref_row = row
+        self._ref_row.setVisible(True)
+        self._header.setStyleSheet(
+            "font-size: 16px; font-weight: 600; color: #e8e8e8;")
+        b = self.banner
+        b.setStyleSheet("""
+            PresetBanner {
+                background-color: #3b3b3b;
+                border-radius: 10px;
+                border: none;
+            }
+        """)
+        b.caption_lbl.setStyleSheet("font-size: 12px; color: #bdbdbd;")
+        b.active_lbl.setStyleSheet(
+            "font-size: 17px; font-weight: 600; color: #FFFFFF;")
+        b.manage_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #3b82f7;
+                font-size: 15px;
+                font-weight: 600;
+                border: none;
+                padding: 8px 12px;
+            }
+            QPushButton:hover { color: #5ea0ff; }
+        """)
 
     def _on_manage_pressed(self):
         """Open the animated preset popup under the Manage button.

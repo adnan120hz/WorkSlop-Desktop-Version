@@ -574,6 +574,19 @@ class SettingsMixin:
         # Classic-shell flavor (WorkSlop icons vs Full Nugget originals)
         # and the Nugget-only Liquid Glass subsection follow the mode.
         self._retheme_classic()
+        # The shared device bar repaints with its shell (dark in Full
+        # Nugget, the themed light pill otherwise).
+        try:
+            self._style_device_pill()
+        except Exception:
+            pass
+        # Full Nugget also restyles the classic Home's preset block
+        # (dark Nugget colors + the UI credit over the banner).
+        try:
+            self.pages[Page.Home].set_full_nugget(
+                theme == ThemeManager.FULL_NUGGET)
+        except Exception:
+            pass
         for _page in (getattr(self, "ios_liquidglass", None),
                       getattr(self, "ios_tweaks", None)):
             try:

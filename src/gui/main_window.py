@@ -492,15 +492,67 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
         The picker group moves to the right; the old title text becomes a
         plain expanding spacer.
+
+        Full Nugget flavor: the bar melts into upstream's dark window
+        (dark #1e1e1e strip, #3b3b3b pill, light text) — it is the only
+        interface whose shell is dark; the other two keep the themed
+        light pill below untouched.
         """
-        c = self._color_theme.colors
+        # The picker group moves to the right and the old title text is
+        # blanked first (every flavor shares this layout fixup).
         bar = self.ui.deviceBar
-        bar.setStyleSheet(f"background-color: {c.bg_primary};")
         layout = self.ui.horizontalLayout_4
-        # title spacer first (expanding), device pill last (right-aligned)
         layout.insertWidget(0, self.ui.titleBar)
         self.ui.titleBar.setText("")
-        self.ui.titleBar.setStyleSheet("background-color: transparent; border: none;")
+        self.ui.titleBar.setStyleSheet(
+            "background-color: transparent; border: none;")
+        if getattr(self, "theme_manager", None) is not None and \
+                self.theme_manager.current_theme == ThemeManager.FULL_NUGGET:
+            bar.setStyleSheet("background-color: #1e1e1e;")
+            self.ui.horizontalWidget_2.setStyleSheet("""
+                QWidget#horizontalWidget_2 {
+                    background-color: #3b3b3b;
+                    border: 1px solid #4b4b4b;
+                    border-radius: 19px;
+                }
+            """)
+            self.ui.devicePicker.setStyleSheet("""
+                QComboBox {
+                    background-color: transparent;
+                    border: none;
+                    color: #e8e8e8;
+                    font-size: 13px;
+                    font-weight: 500;
+                    min-height: 36px;
+                    padding-left: 10px;
+                }
+                QComboBox::drop-down { border: none; width: 22px; }
+                QComboBox::down-arrow {
+                    image: url(:/icon/caret-down-fill.svg);
+                    width: 12px; height: 12px; margin-right: 8px;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #3b3b3b;
+                    border: 1px solid #4b4b4b;
+                    border-radius: 10px;
+                    color: #e8e8e8;
+                    selection-background-color: #2860ca;
+                }
+            """)
+            self.ui.refreshBtn.setStyleSheet("""
+                QToolButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 14px;
+                    color: #FFFFFF;
+                }
+                QToolButton:hover { background-color: rgba(255, 255, 255, 0.12); }
+            """)
+            self.ui.phoneIconBtn.setStyleSheet(
+                "background-color: transparent; border: none;")
+            return
+        c = self._color_theme.colors
+        bar.setStyleSheet(f"background-color: {c.bg_primary};")
         pill = self.ui.horizontalWidget_2
         pill.setStyleSheet(f"""
             QWidget#horizontalWidget_2 {{

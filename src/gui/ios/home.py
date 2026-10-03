@@ -165,6 +165,15 @@ class IOSHomePage(QWidget):
         self.subtitle.setStyleSheet(t("home_subtitle"))
         hero.addWidget(self.subtitle)
 
+        # Developer credit block under the brand title (user order
+        # 2026-10-03): the four clickable lines, colored per shell.
+        from src.gui.brand_credits import make_credits_label, credits_html
+        c0 = ColorThemeManager.instance().colors
+        self.credits_lbl = make_credits_label(
+            self, c0.text_secondary, c0.accent)
+        self._credits_html = credits_html
+        hero.addWidget(self.credits_lbl)
+
         device_row = QHBoxLayout()
         device_row.setSpacing(10)
         device_row.setContentsMargins(0, 8, 0, 0)
@@ -304,6 +313,9 @@ class IOSHomePage(QWidget):
         self._paint_hero_logo()
         self._title.setStyleSheet(t("home_hero_title"))
         self.subtitle.setStyleSheet(t("home_subtitle"))
+        if hasattr(self, "credits_lbl"):
+            self.credits_lbl.setText(self._credits_html(
+                c.text_secondary, c.accent))
         self._style_device_combo()
         self._refresh_btn.setStyleSheet(t("home_icon_button"))
         self._apply_icon(self._refresh_btn, ":/icon/arrow-clockwise.svg")
