@@ -225,6 +225,9 @@ class DeviceBarMixin:
 
             self.ui.sidebarDiv2.hide()
             self.ui.applyPageBtn.hide()
+            _backup_btn = getattr(self.ui, "backupPageBtn", None)
+            if _backup_btn is not None:
+                _backup_btn.hide()
             self.ui.jjtechBtn.hide()
             self.ui.duyBtn.show()
 
@@ -253,6 +256,9 @@ class DeviceBarMixin:
 
             self.ui.sidebarDiv2.show()
             self.ui.applyPageBtn.show()
+            _backup_btn = getattr(self.ui, "backupPageBtn", None)
+            if _backup_btn is not None:
+                _backup_btn.show()
 
             # HotLoad-hidden features are carved out of the Sidebar and iOS home
             self._apply_hidden_feature_gating()
@@ -533,6 +539,20 @@ class SettingsMixin:
         Only the chrome changes — the current page stays put.
         """
         self.theme_manager.save_theme(theme)
+        # The OS window title bar follows the active interface: dark in
+        # Full Nugget (Windows immersive dark title bar via DWM), light
+        # in the other two. Best-effort off Windows — see
+        # src/gui/titlebar.py. The requested state is kept on
+        # self._titlebar_dark so tests can verify it without native
+        # chrome (offscreen renders have no OS title bar to capture).
+        try:
+            from src.gui.titlebar import (
+                apply_os_titlebar_dark, titlebar_dark_for_theme,
+            )
+            self._titlebar_dark = titlebar_dark_for_theme(theme)
+            apply_os_titlebar_dark(self, self._titlebar_dark)
+        except Exception:
+            pass
         is_ios = theme == ThemeManager.IOS
         self.ui.sidebar.setVisible(not is_ios)
         if hasattr(self, "workslop_sidebar"):
@@ -584,6 +604,26 @@ class SettingsMixin:
         # (dark Nugget colors + the UI credit over the banner).
         try:
             self.pages[Page.Home].set_full_nugget(
+                theme == ThemeManager.FULL_NUGGET)
+        except Exception:
+            pass
+        # The classic shell hosts Daemons / Posterboard / Settings from
+        # the page stacks; in Full Nugget those three take the
+        # Nugget-original dark palette like the vendored Nugget pages
+        # (user report 2026-10-03: they were still WorkSlop-light). The
+        # classic Daemons page (stack 2) and the iOS-stack Daemons page
+        # both follow; UI-1 and UI-2 keep their themed look untouched.
+        for _page in (getattr(self, "ios_daemons", None),
+                      getattr(self, "ios_posterboard", None),
+                      getattr(self, "ios_settings", None)):
+            try:
+                if _page is not None:
+                    _page.set_full_nugget(
+                        theme == ThemeManager.FULL_NUGGET)
+            except Exception:
+                pass
+        try:
+            self.pages[Page.Daemons].set_full_nugget(
                 theme == ThemeManager.FULL_NUGGET)
         except Exception:
             pass
@@ -711,7 +751,8 @@ class NavigationMixin:
                     self.ui.springboardOptionsPageBtn,
                     self.ui.internalOptionsPageBtn,
                     self.ui.liquidGlassPageBtn, self.ui.daemonsPageBtn,
-                    self.ui.applyPageBtn, self.ui.settingsPageBtn,
+                    self.ui.backupPageBtn, self.ui.applyPageBtn,
+                    self.ui.settingsPageBtn,
                     self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn,
                     self.ui.gestaltPageBtn)
             page_to_btn = {
@@ -721,11 +762,12 @@ class NavigationMixin:
                 8: 3,   # internal
                 9: 4,   # liquid glass
                 3: 5,   # daemons (iOS page hosted in classic)
-                6: 6,   # apply
-                4: 7,   # settings
-                5: 8,   # status bar
-                10: 9,  # icon themes
-                12: 10,  # mobilegestalt
+                13: 6,  # backup
+                6: 7,   # apply
+                4: 8,   # settings
+                5: 9,   # status bar
+                10: 10,  # icon themes
+                12: 11,  # mobilegestalt
             }
             idx = None
             if self.content_stack.currentIndex() == 0:
@@ -736,7 +778,7 @@ class NavigationMixin:
                 # Full Nugget stack: highlight by its section key.
                 keys = getattr(self, "_nugget_page_keys", [])
                 if keys:
-                    idx = {"statusbar": 8, "springboard": 2,
+                    idx = {"statusbar": 9, "springboard": 2,
                            "internal": 3, "liquidglass": 4}.get(
                                keys[self.nugget_stack.currentIndex()])
             elif self.content_stack.currentIndex() == 1:
@@ -1035,6 +1077,15 @@ class NavigationMixin:
 
     def on_applyPageBtn_clicked(self):
         self.show_ios_page(6)
+        self._sync_sidebar_selection()
+
+
+    def on_backupPageBtn_clicked(self):
+        # Classic-sidebar Backup entry (UI-2 & UI-3): opens the same
+        # Backup & Apply page as the main UI's Backup menu (iOS page
+        # 13 — Start Protective Backup + Apply Tweaks).
+        self.ios_backup.refresh()
+        self.show_ios_page(13)
         self._sync_sidebar_selection()
 
 

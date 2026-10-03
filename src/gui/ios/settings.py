@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSSwitch, IOSCard
+    IOSSectionHeader, IOSSwitch, IOSCard, apply_full_nugget_chrome
 )
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.controllers.preset_manager import PresetManager
@@ -15,6 +15,7 @@ from src.controllers.hotload import HotLoad
 from src.tweaks.tweaks import tweaks, TweakID
 from src.gui.thread_workers.apply_worker import ResetPairingThread
 from src.gui.theme import ColorThemeManager, AccentPicker
+from src.gui.theme.colors import NUGGET_DARK
 from src.gui.ios.preset_menu import (
     load_preset_flow, save_preset_flow, delete_preset_flow,
     export_preset_flow, partial_export_preset_flow, import_preset_flow,
@@ -29,6 +30,11 @@ class IOSSettingsPage(QWidget):
         self.setObjectName("iosContainer")
         self.preset_manager = PresetManager()
         self._tm = ColorThemeManager.instance()
+        self._full_nugget = False
+        # Widgets whose stylesheets were baked from the palette at build
+        # time, as (widget, qss_fn) pairs: set_full_nugget re-runs the
+        # same style builders with the Nugget dark palette (and back).
+        self._fn_styled = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -55,6 +61,39 @@ class IOSSettingsPage(QWidget):
         self._retheme()
         self._tm.theme_changed.connect(self._retheme)
 
+    # ---------- Full Nugget palette (third interface) ----------
+
+    def _palette(self):
+        """Active colors: upstream Nugget dark in the Full Nugget
+        interface, the themed WorkSlop palette everywhere else."""
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return self._tm.colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle: this page takes the
+        Nugget-original dark palette, exactly like the vendored Nugget
+        pages; the other interfaces keep the themed look untouched.
+        Widgets and behavior are identical — colors only."""
+        self._full_nugget = bool(enabled)
+        self._retheme()
+
+    def _track_styled(self, widget, qss_fn):
+        """Remember a widget whose stylesheet came from the palette, so
+        a palette switch re-runs the same builder with the new colors."""
+        self._fn_styled.append((widget, qss_fn))
+
+    def _restyle_tracked(self):
+        c = self._palette()
+        live = []
+        for widget, qss_fn in self._fn_styled:
+            try:
+                widget.setStyleSheet(qss_fn(c))
+                live.append((widget, qss_fn))
+            except Exception:
+                pass  # widget was rebuilt away (device rows refresh)
+        self._fn_styled = live
+
     # ---------- WorkSlop-style rows (icon tile + title + control) ----------
     # Mirrors the WorkSlop iOS app's SettingsView: grouped cards, an icon
     # tile per row, dividers between rows, controls indented or right-aligned.
@@ -75,40 +114,52 @@ class IOSSettingsPage(QWidget):
 
     def _ws_divider(self, lay):
         from PySide6.QtWidgets import QFrame
-        c = self._tm.colors
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet(
-            f"background-color: {c.border}; min-height: 1px; max-height: 1px; "
-            f"margin-left: 44px; border: none;")
+
+        def qss(c):
+            return (
+                f"background-color: {c.border}; min-height: 1px; max-height: 1px; "
+                f"margin-left: 44px; border: none;")
+        line.setStyleSheet(qss(self._palette()))
+        self._track_styled(line, qss)
         lay.addWidget(line)
 
     def _ws_icon(self, code: str) -> QLabel:
-        c = self._tm.colors
         lbl = QLabel(code)
         lbl.setFixedSize(32, 32)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet(
-            f"background-color: {c.bg_input}; color: {c.brand}; "
-            f"font-size: 11px; font-weight: 700; border-radius: 9px;")
+
+        def qss(c):
+            return (
+                f"background-color: {c.bg_input}; color: {c.brand}; "
+                f"font-size: 11px; font-weight: 700; border-radius: 9px;")
+        lbl.setStyleSheet(qss(self._palette()))
+        self._track_styled(lbl, qss)
         return lbl
 
     def _ws_title(self, text: str) -> QLabel:
-        c = self._tm.colors
         lbl = QLabel(text)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            f"color: {c.text_primary}; font-size: 14px; font-weight: 600; "
-            f"background-color: transparent;")
+
+        def qss(c):
+            return (
+                f"color: {c.text_primary}; font-size: 14px; font-weight: 600; "
+                f"background-color: transparent;")
+        lbl.setStyleSheet(qss(self._palette()))
+        self._track_styled(lbl, qss)
         return lbl
 
     def _ws_value(self, text: str) -> QLabel:
-        c = self._tm.colors
         lbl = QLabel(text)
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(
-            f"color: {c.text_secondary}; font-size: 13px; "
-            f"background-color: transparent;")
+
+        def qss(c):
+            return (
+                f"color: {c.text_secondary}; font-size: 13px; "
+                f"background-color: transparent;")
+        lbl.setStyleSheet(qss(self._palette()))
+        self._track_styled(lbl, qss)
         return lbl
 
     def _ws_switch_row(self, lay, code: str, title: str, checked: bool,
@@ -172,8 +223,9 @@ class IOSSettingsPage(QWidget):
         btn = QPushButton(title)
         btn.setCursor(Qt.PointingHandCursor)
         btn.clicked.connect(on_click)
-        c = self._tm.colors
-        btn.setStyleSheet(f"""
+
+        def btn_qss(c):
+            return f"""
             QPushButton {{
                 background-color: transparent;
                 border: none;
@@ -184,7 +236,9 @@ class IOSSettingsPage(QWidget):
                 padding: 10px 4px;
             }}
             QPushButton:hover {{ background-color: {c.bg_input}; }}
-        """)
+        """
+        btn.setStyleSheet(btn_qss(self._palette()))
+        self._track_styled(btn, btn_qss)
         row = QWidget()
         h = QHBoxLayout(row)
         h.setContentsMargins(0, 2, 0, 2)
@@ -192,9 +246,13 @@ class IOSSettingsPage(QWidget):
         h.addWidget(self._ws_icon(code))
         h.addWidget(btn, 1)
         chev = QLabel("›")
-        chev.setStyleSheet(
-            f"color: {c.text_secondary}; font-size: 18px; "
-            f"background-color: transparent;")
+
+        def chev_qss(c):
+            return (
+                f"color: {c.text_secondary}; font-size: 18px; "
+                f"background-color: transparent;")
+        chev.setStyleSheet(chev_qss(self._palette()))
+        self._track_styled(chev, chev_qss)
         h.addWidget(chev)
         # make the whole row clickable
         row.mousePressEvent = lambda e: on_click()
@@ -222,6 +280,32 @@ class IOSSettingsPage(QWidget):
             self._ws_info_row(lay, "--", tr("No device"),
                               tr("Connect an iPhone over USB"), first=True)
 
+    def _style_interface_buttons(self):
+        """Style the stacked interface-picker boxes from the active
+        palette: fluid rounded corners (16px, like the cards), the
+        active box outlined in the accent color with a check mark and
+        its name on the first line, a short caption on the second."""
+        c = self._palette()
+        for name, caption, theme in self._interface_choices:
+            btn = self.interface_buttons.get(theme)
+            if btn is None:
+                continue
+            active = btn.isChecked()
+            btn.setText(f"{'✓  ' if active else ''}{name}\n{caption}")
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {c.bg_secondary if active else c.bg_input};
+                    border: 2px solid {c.accent if active else c.border};
+                    border-radius: 16px;
+                    color: {c.text_primary};
+                    font-size: 14px;
+                    font-weight: 600;
+                    text-align: left;
+                    padding: 10px 14px;
+                }}
+                QPushButton:hover {{ background-color: {c.surface_hover}; }}
+            """)
+
     def refresh(self):
         """Called when navigating to Settings — picks up device changes."""
         self._build_device_rows()
@@ -234,6 +318,10 @@ class IOSSettingsPage(QWidget):
                     btn.blockSignals(True)
                     btn.setChecked(theme == current)
                     btn.blockSignals(False)
+            self._style_interface_buttons()
+        # Rows rebuilt above (and any card created since the last pass)
+        # take the palette of the interface currently active.
+        self._retheme()
 
     def _build_settings_ui(self):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
@@ -249,36 +337,42 @@ class IOSSettingsPage(QWidget):
         body = self._ws_control_row(ap_lay, "AP", tr("Accent color"), first=True)
         self._accent_picker = AccentPicker()
         body.addWidget(self._accent_picker)
-        # Interface picker (three UIs, user order 2026-10-03): WorkSlop
-        # v4 is the main UI; the second UI is the Nugget shell with
-        # WorkSlop icons; the third is Full Nugget — the original Nugget
-        # interface with only the app name/icon changed. Mirrors the
-        # first-launch InterfacePickerDialog choice (ui/theme), and the
-        # Settings page stays reachable in every shell so switching back
-        # always works.
+        # Interface picker (three UIs, user order 2026-10-03; renamed and
+        # restacked for the final build, user order 2026-10-03): three
+        # stacked box rows with fluid rounded corners, the active one
+        # clearly marked. Order and mapping:
+        #   "WorkSlop (Main)" -> ThemeManager.IOS (the main UI)
+        #   "WorkSlop 2"      -> ThemeManager.CLASSIC (Nugget shell,
+        #                        WorkSlop icons)
+        #   "Nugget"          -> ThemeManager.FULL_NUGGET (the original
+        #                        Nugget interface)
+        # The Settings page stays reachable from every shell, so the
+        # switch back always works from here.
         from src.gui.ios.theme_manager import ThemeManager
         ui_body = self._ws_control_row(ap_lay, "UI", tr("Interface"))
-        seg_row = QWidget()
-        seg = QHBoxLayout(seg_row)
-        seg.setContentsMargins(0, 0, 0, 0)
-        seg.setSpacing(6)
         self.interface_buttons = {}
+        self._interface_choices = (
+            (tr("WorkSlop (Main)"), tr("The WorkSlop interface"),
+             ThemeManager.IOS),
+            (tr("WorkSlop 2"), tr("Nugget layout with WorkSlop icons"),
+             ThemeManager.CLASSIC),
+            (tr("Nugget"), tr("The original Nugget interface"),
+             ThemeManager.FULL_NUGGET),
+        )
         self._interface_group = QButtonGroup(self)
         self._interface_group.setExclusive(True)
-        for label, theme in ((tr("WorkSlop"), ThemeManager.IOS),
-                             (tr("Nugget"), ThemeManager.CLASSIC),
-                             (tr("Full Nugget"), ThemeManager.FULL_NUGGET)):
-            btn = QPushButton(label)
+        for _name, _caption, theme in self._interface_choices:
+            btn = QPushButton()
             btn.setCheckable(True)
             btn.setChecked(
                 self.window.theme_manager.current_theme == theme)
+            btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(
                 lambda _checked=False, t=theme: self.window.apply_theme(t))
             self._interface_group.addButton(btn)
-            seg.addWidget(btn)
+            ui_body.addWidget(btn)
             self.interface_buttons[theme] = btn
-        seg.addStretch(1)
-        ui_body.addWidget(seg_row)
+        self._style_interface_buttons()
 
         # --- Safety (HotLoad) ---
         sf_lay = self._ws_section("Safety (HotLoad)")
@@ -429,7 +523,7 @@ class IOSSettingsPage(QWidget):
                                    "Please try again later."))
 
     def _on_text_row_edit(self, title: str, on_submit):
-        c = self._tm.colors
+        c = self._palette()
         dialog = QInputDialog(self)
         dialog.setWindowTitle(title)
         dialog.setLabelText(QCoreApplication.translate("Nugget", "Enter value:"))
@@ -489,7 +583,6 @@ class IOSSettingsPage(QWidget):
 
     def _make_org_name_row(self, lay):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
-        c = self._tm.colors
         pref = self.window.device_manager.pref_manager
         self._ws_divider(lay)
         row = QWidget()
@@ -503,8 +596,12 @@ class IOSSettingsPage(QWidget):
             else QCoreApplication.translate("MainWindow", "None"))
         h.addWidget(self.org_value_lbl)
         edit_btn = QLabel("\u270e")
-        edit_btn.setStyleSheet(
-            f"color: {c.brand}; font-size: 17px; background-color: transparent;")
+
+        def edit_qss(c):
+            return (
+                f"color: {c.brand}; font-size: 17px; background-color: transparent;")
+        edit_btn.setStyleSheet(edit_qss(self._palette()))
+        self._track_styled(edit_btn, edit_qss)
         edit_btn.setCursor(Qt.PointingHandCursor)
         edit_btn.mousePressEvent = lambda e: self._on_text_row_edit(
             tr("Enter Organization Name"), self._on_org_name_edited)
@@ -548,20 +645,52 @@ class IOSSettingsPage(QWidget):
         body.addLayout(btns_row)
 
     def _retheme(self):
-        c = self._tm.colors
+        c = self._palette()
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;"
         )
         self._accent_picker.setStyleSheet(
             f"background-color: {c.bg_primary};"
         )
+        apply_full_nugget_chrome(self, self._full_nugget)
+        self._restyle_tracked()
         if hasattr(self, '_preset_name_txt'):
             self._retheme_preset_inputs()
         if hasattr(self, '_preset_list'):
             self._retheme_preset_list()
+        if hasattr(self, 'update_channel_drp'):
+            self._retheme_update_combo()
+        if getattr(self, "interface_buttons", None):
+            self._style_interface_buttons()
+
+    def _retheme_update_combo(self):
+        # Only the Full Nugget dark palette needs an explicit combo
+        # style; the themed interfaces keep the native look untouched.
+        if not self._full_nugget:
+            self.update_channel_drp.setStyleSheet("")
+            return
+        c = self._palette()
+        self.update_channel_drp.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {c.bg_input};
+                border: 1px solid {c.border};
+                border-radius: 10px;
+                color: {c.text_primary};
+                font-size: 14px;
+                padding: 8px 12px;
+            }}
+            QComboBox::drop-down {{ border: none; width: 24px; }}
+            QComboBox QAbstractItemView {{
+                background-color: {c.bg_elevated};
+                border: 1px solid {c.border};
+                border-radius: 10px;
+                color: {c.text_primary};
+                selection-background-color: {c.accent};
+            }}
+        """)
 
     def _retheme_preset_inputs(self):
-        c = self._tm.colors
+        c = self._palette()
         for edit in (self._preset_name_txt, self._preset_desc_txt):
             edit.setStyleSheet(f"""
                 QLineEdit {{
@@ -575,7 +704,7 @@ class IOSSettingsPage(QWidget):
             """)
 
     def _retheme_preset_list(self):
-        c = self._tm.colors
+        c = self._palette()
         self._preset_list.setStyleSheet(f"""
             QListWidget {{
                 background-color: {c.bg_input};
@@ -850,10 +979,11 @@ class IOSSettingsPage(QWidget):
 
     def _make_mini_button(self, title: str):
         from PySide6.QtWidgets import QPushButton
-        c = self._tm.colors
         btn = QPushButton(title)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(f"""
+
+        def qss(c):
+            return f"""
             QPushButton {{
                 background-color: {c.scrollbar};
                 border: none;
@@ -863,7 +993,9 @@ class IOSSettingsPage(QWidget):
                 padding: 8px 12px;
             }}
             QPushButton:hover {{ background-color: {c.surface_hover}; }}
-        """)
+        """
+        btn.setStyleSheet(qss(self._palette()))
+        self._track_styled(btn, qss)
         return btn
 
     def scroll_to_presets(self):

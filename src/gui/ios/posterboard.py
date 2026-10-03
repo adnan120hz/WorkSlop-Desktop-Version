@@ -9,8 +9,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QIcon, QImageReader
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton
+from src.gui.ios.components import (
+    IOSCard, IOSPrimaryButton, apply_full_nugget_chrome,
+)
 from src.gui.theme import ColorThemeManager
+from src.gui.theme.colors import NUGGET_DARK
 from src.tweaks.tweaks import tweaks, TweakID
 
 
@@ -38,6 +41,7 @@ class IOSPosterboardPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
+        self._full_nugget = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -121,8 +125,9 @@ class IOSPosterboardPage(QWidget):
         db_btns.addWidget(sel_db_btn)
         db_btns.addStretch(1)
         config_layout.addLayout(db_btns)
-        config_layout.addWidget(QLabel(QCoreApplication.translate(
-            "Nugget", "Saved Configuration IDs"), self._config_card))
+        self._saved_ids_lbl = QLabel(QCoreApplication.translate(
+            "Nugget", "Saved Configuration IDs"), self._config_card)
+        config_layout.addWidget(self._saved_ids_lbl)
         self.saved_ids_list = QListWidget(self._config_card)
         self._saved_ids_list = self.saved_ids_list
         config_layout.addWidget(self.saved_ids_list)
@@ -137,6 +142,7 @@ class IOSPosterboardPage(QWidget):
         ids_btns.addWidget(remove_btn)
         ids_btns.addStretch(1)
         config_layout.addLayout(ids_btns)
+        self._pb_db_btns = [get_db_btn, sel_db_btn, clear_btn, remove_btn]
         self._config_card.hide()
         layout.addWidget(self._config_card)
         self._refresh_saved_ids()
@@ -183,8 +189,24 @@ class IOSPosterboardPage(QWidget):
 
         ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
+    def _palette(self):
+        """Active colors: upstream Nugget dark in the Full Nugget
+        interface, the themed WorkSlop palette everywhere else."""
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return ColorThemeManager.instance().colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle: this page takes the
+        Nugget-original dark palette, exactly like the vendored Nugget
+        pages; the other interfaces keep the themed look untouched.
+        Widgets and behavior are identical — colors only."""
+        self._full_nugget = bool(enabled)
+        self._retheme()
+
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
+        self.setStyleSheet(f"background-color: {c.bg_primary};")
         self._reset_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {c.scrollbar};
@@ -220,9 +242,53 @@ class IOSPosterboardPage(QWidget):
         self._retheme_tendies_tab()
         self._retheme_templates_tab()
         self._retheme_video_tab()
+        apply_full_nugget_chrome(self, self._full_nugget)
+        for card in self.findChildren(TemplatePreviewCard):
+            if self._full_nugget:
+                card.setStyleSheet(
+                    "QLabel { background-color: #3b3b3b; border-radius: 12px;"
+                    " border: 1px solid #4B4B4B; }")
+            else:
+                card._retheme()
+        self._retheme_config_card()
+
+    def _retheme_config_card(self):
+        c = self._palette()
+        dark = self._full_nugget
+        lbl_qss = (f"color: {c.text_primary}; font-size: 13px;"
+                   " background-color: transparent;") if dark else ""
+        self.pb_db_lbl.setStyleSheet(lbl_qss)
+        if hasattr(self, "_saved_ids_lbl"):
+            self._saved_ids_lbl.setStyleSheet(lbl_qss)
+        for btn in getattr(self, "_pb_db_btns", []):
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {c.bg_secondary};
+                    border: 1px solid {c.border};
+                    border-radius: 10px;
+                    color: {c.text_primary};
+                    font-size: 13px;
+                    padding: 8px 12px;
+                }}
+                QPushButton:hover {{ background-color: {c.surface_hover}; }}
+            """ if dark else "")
+        if hasattr(self, "saved_ids_list"):
+            self.saved_ids_list.setStyleSheet(f"""
+                QListWidget {{
+                    background-color: {c.bg_input};
+                    border: 1px solid {c.border};
+                    border-radius: 8px;
+                    color: {c.text_primary};
+                    font-size: 13px;
+                    padding: 4px;
+                }}
+                QListWidget::item {{ padding: 6px; }}
+                QListWidget::item:selected {{
+                    background-color: {c.accent}; color: {c.text_inverse}; }}
+            """ if dark else "")
 
     def _retheme_tendies_tab(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         if hasattr(self, '_tendies_scroll'):
             self._tendies_scroll.setStyleSheet(
                 f"background-color: {c.bg_primary}; border: none;"
@@ -253,7 +319,7 @@ class IOSPosterboardPage(QWidget):
             )
 
     def _retheme_templates_tab(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         if hasattr(self, '_templates_scroll'):
             self._templates_scroll.setStyleSheet(
                 f"background-color: {c.bg_primary}; border: none;"
@@ -264,7 +330,7 @@ class IOSPosterboardPage(QWidget):
             )
 
     def _retheme_video_tab(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         if hasattr(self, '_video_scroll'):
             self._video_scroll.setStyleSheet(
                 f"background-color: {c.bg_primary}; border: none;"
@@ -657,6 +723,9 @@ class IOSPosterboardPage(QWidget):
                 self._refresh_saved_ids()
         except Exception:
             pass
+        # Cards/widgets created since the last pass (tendies, template
+        # previews) pick up the active palette, Full Nugget dark included.
+        self._retheme()
 
     def _on_mode_toggled(self, configs: bool, state):
         # stateChanged delivers Qt.CheckState (an enum, not an int, in
@@ -765,7 +834,7 @@ class IOSPosterboardPage(QWidget):
         self.tendies_grid.addWidget(self.add_tendies_card, row, col)
 
     def _create_tendie_card(self, tendie) -> QWidget:
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         card = IOSCard()
         card.setFixedSize(140, 160)
         card.setCursor(Qt.PointingHandCursor)
@@ -903,7 +972,7 @@ class IOSPosterboardPage(QWidget):
         self.refresh_tendies()
 
     def _reset_posterboard(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         from PySide6.QtWidgets import (
             QDialog, QVBoxLayout, QLabel, QCheckBox, QDialogButtonBox, QMessageBox,
         )

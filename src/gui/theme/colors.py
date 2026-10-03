@@ -286,6 +286,63 @@ DARK = ThemeColors(
 
 
 # ---------------------------------------------------------------------------
+# Nugget-original dark palette (Full Nugget interface, third UI): sampled
+# from the vendored upstream form (src/qt/nugget741_ui.py) — window
+# #1e1e1e, widgets #3b3b3b, borders #4B4B4B, text #FFFFFF, checked/accent
+# #2860ca. Used ONLY by the pages the Full Nugget shell hosts (Daemons /
+# Posterboard / Settings) while that interface is active; the other two
+# interfaces keep the SKY palette untouched.
+# ---------------------------------------------------------------------------
+NUGGET_DARK = ThemeColors(
+    bg_primary="#1e1e1e",
+    bg_secondary="#3b3b3b",
+    bg_tertiary="#2c2c2c",
+    bg_input="#2c2c2c",
+    bg_elevated="#262626",
+
+    text_primary="#FFFFFF",
+    text_secondary="#b8b8b8",
+    text_disabled="#6e6e6e",
+    text_inverse="#FFFFFF",
+
+    accent="#2860ca",
+    accent_hover="#3a74d6",
+    accent_pressed="#1f4ea3",
+
+    success="#34C759",
+    error="#FF453A",
+    error_hover="#FF6B62",
+    error_pressed="#D93A30",
+    warning="#FFD60A",
+
+    border="#4B4B4B",
+    divider="#3a3a3a",
+
+    scrollbar="#3b3b3b",
+    scrollbar_pressed="#4b4b4b",
+    selection="#2860ca",
+
+    card_border="#4B4B4B",
+    surface_hover="#464646",
+    danger_text="#FF6B62",
+
+    bg_gradient_start="#1e1e1e",
+    bg_gradient_end="#1e1e1e",
+    glass_bg="#262626",
+    glass_border="#4B4B4B",
+    bubble="rgba(255, 255, 255, 0.06)",
+
+    menu_bg="#1e1e1e",
+    menu_text="#FFFFFF",
+    menu_dim="#b8b8b8",
+    menu_active_bg="#2860ca",
+    menu_active_text="#FFFFFF",
+    brand="#5B9BFF",
+    brand_dim="#2860ca",
+)
+
+
+# ---------------------------------------------------------------------------
 # Accent presets: (normal, hover, pressed)
 # ---------------------------------------------------------------------------
 ACCENT_PRESETS = {

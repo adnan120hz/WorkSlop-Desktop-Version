@@ -239,12 +239,26 @@ def test_ship_candidates_remain_and_research_is_active():
         ok, code, msg = tweak_deliverability(tid, **TARGET)
         check(f"{tid.name} delivers as a normal tweak (Wave 11)",
               ok and code == "OK" and "UNPROVEN" not in msg, code)
-    for tid in (TweakID.EUEnabler, TweakID.AIEligibility,
-                TweakID.CreateBRFolders, TweakID.DisableOTAFile,
+    for tid in (TweakID.DisableOTAFile,
                 TweakID.CustomResolution, TweakID.StatusBar, TweakID.Daemons,
                 TweakID.PosterBoard, TweakID.Templates):
         ok, code, _ = tweak_deliverability(tid, **TARGET)
         check(f"non-registry {tid.name} delivers as a normal tweak (Wave 11)",
+              ok and code == "OK", code)
+    # Eligibility exception (user order 2026-10-03, final build): the
+    # Eligibility family (EUEnabler / AIEligibility / CreateBRFolders) is
+    # blocked from iOS 26.2 beta 2 upward under the SAME shared
+    # MobileGestalt build boundary — locked on the 26.6.1 target, still
+    # open through iOS 26.2 beta 1. Full matrix in
+    # tools/test_eligibility_boundary.py.
+    for tid in (TweakID.EUEnabler, TweakID.AIEligibility,
+                TweakID.CreateBRFolders):
+        ok, code, _ = tweak_deliverability(tid, **TARGET)
+        check(f"non-registry {tid.name} is build-locked on the target "
+              f"(Eligibility boundary)", not ok and code != "OK", code)
+        ok, code, _ = tweak_deliverability(
+            tid, device_version="26.2", device_build="23C5027f")
+        check(f"non-registry {tid.name} still delivers through 26.2 beta 1",
               ok and code == "OK", code)
     ok, code, _ = tweak_deliverability(
         TweakID.EUEnabler, device_version="26.1", device_build="")

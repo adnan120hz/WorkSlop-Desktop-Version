@@ -224,15 +224,20 @@ check("WorkSlop persists and reloads",
 print("\nfirst-launch interface picker")
 picker = InterfacePickerDialog()
 picker_text = " ".join(w.text() for w in picker.findChildren(QLabel))
-check("picker offers WorkSlop as the main UI", "WorkSlop" in picker_text,
-      picker_text)
-check("picker offers Nugget as the second UI", "Nugget" in picker_text,
-      picker_text)
-check("picker says Nugget uses WorkSlop icons",
+check("picker offers WorkSlop (Main) as the main UI",
+      "WorkSlop (Main)" in picker_text, picker_text)
+check("picker offers WorkSlop 2 as the second UI",
+      "WorkSlop 2" in picker_text, picker_text)
+check("picker says WorkSlop 2 uses WorkSlop icons",
       "WorkSlop icons" in picker_text, picker_text)
-check("picker offers Full Nugget as the third UI",
-      "Full Nugget" in picker_text
+check("picker offers Nugget as the third UI",
+      "Nugget" in picker_text
       and "original Nugget interface" in picker_text, picker_text)
+check("picker stacks the three names in order",
+      picker_text.index("WorkSlop (Main)") < picker_text.index("WorkSlop 2")
+      < picker_text.index("original Nugget interface"), picker_text)
+check("picker has no old Full Nugget label",
+      "Full Nugget" not in picker_text, picker_text)
 picker._pick("classic")
 check("picker records the Nugget choice", picker.choice == "classic")
 picker._pick("full_nugget")

@@ -50,6 +50,7 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 from PySide6.QtCore import QCoreApplication
 
 from src.exceptions.nugget_exception import NuggetException
+from src.utils.stall_watchdog import run_with_stall_watchdog
 from src.restore.afc_media import (  # noqa: F401  (re-exported public API)
     AFC_MEDIA_TREES,
     afc_media_dir_for,
@@ -771,9 +772,14 @@ async def perform_protective_backup(
             else:
                 progress_callback("Creating protective backup (unencrypted)...")
             try:
-                await mb.backup(full=not incremental_ok, backup_directory=backup_root,
-                                progress_callback=progress_callback,
-                                filter_callback=_filter_callback)
+                await run_with_stall_watchdog(
+                    lambda tracking_cb: mb.backup(
+                        full=not incremental_ok, backup_directory=backup_root,
+                        progress_callback=tracking_cb,
+                        filter_callback=_filter_callback),
+                    progress_callback,
+                    operation="backup",
+                )
             except NotEnoughDiskSpaceError:
                 log_warn("Device sent disk space purge request — ignoring, backup data is preserved")
     except Exception:

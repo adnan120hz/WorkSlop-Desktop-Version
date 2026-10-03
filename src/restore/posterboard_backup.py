@@ -24,6 +24,7 @@ from src.restore.storage import legacy_backups_dir, posterboard_dir as _posterbo
 from src.exceptions.nugget_exception import NuggetException
 from src.devicemanagement.constants import is_build_supported
 from src.utils.async_retry import async_retry
+from src.utils.stall_watchdog import run_with_stall_watchdog
 
 
 async def backup_posterboard_database(udid: str, update_label=lambda x: None, update_progress=lambda x: None) -> str:
@@ -58,7 +59,13 @@ async def backup_posterboard_database(udid: str, update_label=lambda x: None, up
                     "Please use the original Nugget for iOS 26.1 and earlier.")
             async with Mobilebackup2Service(service_provider) as backup_client:
                 try:
-                    await backup_client.backup(full=needs_full, backup_directory=app_data_path, progress_callback=update_progress)
+                    await run_with_stall_watchdog(
+                        lambda tracking_cb: backup_client.backup(
+                            full=needs_full, backup_directory=app_data_path,
+                            progress_callback=tracking_cb),
+                        update_progress,
+                        operation="backup",
+                    )
                 except Exception as e:
                     if _is_device_locked_error(e):
                         raise NuggetException("Device locked during backup. Please unlock your device, keep it awake (tap screen periodically), and try again.")
@@ -147,9 +154,14 @@ async def targeted_posterboard_database_backup(udid: str, update_label=lambda x:
                         return (_domain_match(device_name, POSTERBOARD_DB_DOMAIN)
                                 or _posterboard_db_match(device_name))
                     try:
-                        await backup_client.backup(
-                            full=True, backup_directory=backup_dir,
-                            progress_callback=update_progress, filter_callback=_pb_only)
+                        await run_with_stall_watchdog(
+                            lambda tracking_cb: backup_client.backup(
+                                full=True, backup_directory=backup_dir,
+                                progress_callback=tracking_cb,
+                                filter_callback=_pb_only),
+                            update_progress,
+                            operation="backup",
+                        )
                     except Exception as e:
                         if _is_device_locked_error(e):
                             raise NuggetException(

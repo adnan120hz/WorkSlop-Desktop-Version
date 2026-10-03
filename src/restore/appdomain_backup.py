@@ -23,6 +23,7 @@ from src.devicemanagement.session import lockdown_session
 from src.restore.protective import _domain_match
 from src.exceptions.nugget_exception import NuggetException
 from src.utils.async_retry import async_retry
+from src.utils.stall_watchdog import run_with_stall_watchdog
 
 
 def app_domain(bundle_id: str) -> str:
@@ -65,10 +66,14 @@ async def targeted_app_domain_backup(
 
                 try:
                     update_label(f"Backing up {bundle_id} (app data only)...")
-                    await backup_client.backup(
-                        full=True, backup_directory=backup_dir,
-                        progress_callback=update_progress,
-                        filter_callback=_app_only)
+                    await run_with_stall_watchdog(
+                        lambda tracking_cb: backup_client.backup(
+                            full=True, backup_directory=backup_dir,
+                            progress_callback=tracking_cb,
+                            filter_callback=_app_only),
+                        update_progress,
+                        operation="backup",
+                    )
                 except Exception as e:
                     if _is_device_locked_error(e):
                         raise NuggetException(

@@ -56,6 +56,41 @@ MOBILEGESTALT_TWEAK_IDS = frozenset({
     TweakID.SpoofCPU,
 })
 
+# The eligibility files-based family (EUEnabler / AIEligibility /
+# CreateBRFolders) writes eligibility.plist and the os_eligibility folders,
+# not the MobileGestalt cache — but by user order (2026-10-03) Eligibility
+# is blocked from iOS 26.2 beta 2 upward, exactly the MobileGestalt build
+# boundary: open through iOS 26.2 beta 1 (build 23C5027f), locked from
+# build 23C5035e (and every later build, 23G82/23G83 included). These IDs
+# are therefore gated by the SAME shared ``mobilegestalt_decision`` — one
+# source of truth for the boundary, no second version check anywhere.
+# The spoofing members of the Eligibility page (AIGestalt / SpoofModel /
+# SpoofHardware / SpoofCPU) are MobileGestalt tweaks and already live in
+# MOBILEGESTALT_TWEAK_IDS above.
+ELIGIBILITY_BOUNDARY_TWEAK_IDS = frozenset({
+    TweakID.EUEnabler, TweakID.AIEligibility, TweakID.CreateBRFolders,
+})
+
+# User-facing explanation shown wherever an Eligibility control is locked
+# by the shared build boundary (UI tooltip + backend skip reason).
+ELIGIBILITY_LOCKED_MESSAGE = (
+    "Eligibility is blocked on iOS 26.2 beta 2 and later "
+    "(build 23C5035e and newer); it is only available through "
+    "iOS 26.2 beta 1 (build 23C5027f)."
+)
+
+
+def requires_eligibility_boundary(tweak_id) -> bool:
+    """True when *tweak_id* belongs to the Eligibility files-based family
+    that shares the MobileGestalt build boundary (see
+    ``ELIGIBILITY_BOUNDARY_TWEAK_IDS``). Classification is by tweak ID,
+    never by title text."""
+    try:
+        return canonical_tweak_id(tweak_id) in ELIGIBILITY_BOUNDARY_TWEAK_IDS
+    except Exception:
+        return False
+
+
 # RdarFix is presented from the MobileGestalt page flow even though its
 # payload is the managed IOMobileGraphicsFamily resolution plist, not a
 # MobileGestalt cache patch. It is therefore gated by the same shared
@@ -426,6 +461,18 @@ def tweak_deliverability(tweak_id, device_version: str = "",
         if not decision.supported:
             return (False, decision.reason_code, decision.user_message)
 
+    if requires_eligibility_boundary(canonical):
+        # Eligibility (EUEnabler / AIEligibility / CreateBRFolders) is
+        # blocked from iOS 26.2 beta 2 upward by user order (2026-10-03).
+        # The boundary is the SAME shared mobilegestalt_decision used
+        # above — exact build authoritative, version fallback, unknown
+        # fail-closed. No second version comparison lives here; the
+        # locked reason_code is the decision's own, only the explanation
+        # names Eligibility.
+        decision = mobilegestalt_decision(device_build, device_version)
+        if not decision.supported:
+            return (False, decision.reason_code, ELIGIBILITY_LOCKED_MESSAGE)
+
     # Wave 11 (user order 2026-10-03): the audit research-only
     # classification no longer gates delivery. Registry rows and
     # non-registry families alike (Internal, SpringBoard, Status Bar,
@@ -447,6 +494,12 @@ def clear_unsupported_mobilegestalt_state(decision: MobileGestaltDecision = None
     survive into the model, a summary, AutoSave, or an apply. Returns the
     names of the tweaks that were cleared. A supported decision clears
     nothing. RdarFix is included via the MobileGestalt-page flow set.
+
+    The Eligibility files-based family (``ELIGIBILITY_BOUNDARY_TWEAK_IDS``)
+    shares this decision's build boundary (blocked from iOS 26.2 beta 2
+    up, user order 2026-10-03), so the same locked/unknown decision also
+    force-clears those tweaks here — one clearer for everything the
+    boundary locks, called from the same places as before.
     """
     if decision is None:
         decision = mobilegestalt_decision(build, version)
@@ -458,7 +511,8 @@ def clear_unsupported_mobilegestalt_state(decision: MobileGestaltDecision = None
     for tweak_id, tweak in list(tweaks_dict.items()):
         if tweak is None or not getattr(tweak, "enabled", False):
             continue
-        if not requires_gestalt(tweak_id, tweak):
+        if not (requires_gestalt(tweak_id, tweak)
+                or requires_eligibility_boundary(tweak_id)):
             continue
         try:
             tweak.set_enabled(False)

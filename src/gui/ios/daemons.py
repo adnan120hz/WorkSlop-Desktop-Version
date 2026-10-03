@@ -6,8 +6,11 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect, QSizePolicy,
 )
 
-from src.gui.ios.components import IOSSectionHeader, IOSSwitch
+from src.gui.ios.components import (
+    IOSSectionHeader, IOSSwitch, apply_full_nugget_chrome,
+)
 from src.gui.theme import ColorThemeManager
+from src.gui.theme.colors import NUGGET_DARK
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_daemons
 from src.tweaks.daemons_tweak import Daemon, RECOMMENDED_ANALYTICS
@@ -145,6 +148,7 @@ class IOSDaemonsContent(QWidget):
     def __init__(self, window, parent=None):
         super().__init__(parent)
         self.window = window
+        self._full_nugget = False
 
         # Ensure daemons tweaks are loaded
         load_daemons()
@@ -504,8 +508,23 @@ class IOSDaemonsContent(QWidget):
             recommended_switch.setChecked(self._recommended_all_on())
             recommended_switch.blockSignals(False)
 
+    def _palette(self):
+        """Active colors: upstream Nugget dark in the Full Nugget
+        interface, the themed WorkSlop palette everywhere else."""
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return ColorThemeManager.instance().colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface) restyle: this page takes the
+        Nugget-original dark palette, exactly like the vendored Nugget
+        pages; the other interfaces keep the themed look untouched.
+        Widgets and behavior are identical — colors only."""
+        self._full_nugget = bool(enabled)
+        self._retheme()
+
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         self._master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
         for lbl in self._daemon_labels:
             lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
@@ -516,6 +535,7 @@ class IOSDaemonsContent(QWidget):
                 f"color: {c.text_primary}; font-size: 15px; font-weight: 600;")
         if hasattr(self, '_screen_time_label'):
             self._screen_time_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        apply_full_nugget_chrome(self, self._full_nugget)
 
 
 class IOSDaemonsPage(QWidget):
@@ -523,24 +543,36 @@ class IOSDaemonsPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
+        self._full_nugget = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        c = ColorThemeManager.instance().colors
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
         self._scroll = scroll
         self.content = IOSDaemonsContent(window, self)
         scroll.setWidget(self.content)
         layout.addWidget(scroll)
+        self._retheme()
 
     def refresh_from_tweaks(self):
         self.content.refresh_from_tweaks()
 
+    def _palette(self):
+        if getattr(self, "_full_nugget", False):
+            return NUGGET_DARK
+        return ColorThemeManager.instance().colors
+
+    def set_full_nugget(self, enabled: bool):
+        """Full Nugget (third interface): dark Nugget palette for the
+        whole page (scroll backdrop + content); restored on switch."""
+        self._full_nugget = bool(enabled)
+        self.content.set_full_nugget(enabled)
+        self._retheme()
+
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
+        c = self._palette()
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
         self.content._retheme()

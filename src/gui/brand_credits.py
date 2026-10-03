@@ -43,3 +43,32 @@ def make_credits_label(parent, text_color: str, link_color: str,
     if align_center:
         lbl.setAlignment(Qt.AlignCenter)
     return lbl
+
+
+# Beta tester team block (user order 2026-10-03, corrected twice the
+# same day): shown on Home with the credit/attribution text above the
+# AutoSave banner. All three names are PLAIN TEXT with no links at all
+# (the TikTok links and the Telegram link were both removed by user
+# order); Davy is written with his handle as plain text.
+BETA_TESTER_NAMES = ("Charlie", "rfrz1d_", "Davy (@Davydavpn)")
+
+
+def beta_testers_html(text_color: str, link_color: str = "") -> str:
+    lines = [
+        f'<span style="color:{text_color}; font-weight: 700;">'
+        "Beta tester team</span>"
+    ]
+    for i, name in enumerate(BETA_TESTER_NAMES, 1):
+        lines.append(f'<span style="color:{text_color}">{i}. {name}</span>')
+    return "<br/>".join(lines)
+
+
+def make_beta_testers_label(parent, text_color: str, link_color: str = "") -> QLabel:
+    lbl = QLabel(parent)
+    lbl.setObjectName("betaTesters")
+    lbl.setTextFormat(Qt.TextFormat.RichText)
+    lbl.setWordWrap(True)
+    lbl.setText(beta_testers_html(text_color, link_color))
+    lbl.setStyleSheet(
+        "background: transparent; font-size: 12px; padding: 0 2px;")
+    return lbl

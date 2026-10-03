@@ -523,3 +523,39 @@ class IOSValueLabel(QLabel):
 
     def _retheme(self):
         self.setStyleSheet(t("value_label"))
+
+
+# -- Full Nugget chrome (third interface) ---------------------------------
+# The pages the Full Nugget shell hosts from the iOS-style stack (Daemons /
+# Posterboard / Settings) restyle their IOSCard / IOSSectionHeader chrome
+# with upstream Nugget's dark palette while that interface is active (the
+# vendored Nugget pages are already dark; these three were still drawn in
+# the WorkSlop palette). Card/header geometry mirrors the "card" and
+# "section_header" templates exactly — only the colors change.
+NUGGET_CARD_QSS = (
+    "IOSCard { background-color: #3b3b3b; border-radius: 18px;"
+    " border: 1px solid #4B4B4B; }"
+)
+NUGGET_SECTION_HEADER_QSS = (
+    "font-size: 12px; font-weight: 700; color: #FFFFFF;"
+    " letter-spacing: 1.5px; padding-left: 4px;"
+    " background-color: transparent;"
+)
+
+
+def apply_full_nugget_chrome(root, enabled: bool):
+    """Restyle every IOSCard / IOSSectionHeader under *root*.
+
+    Dark upstream colors when *enabled*; otherwise each widget's own
+    themed look is restored through its ``_retheme``.
+    """
+    for card in root.findChildren(IOSCard):
+        if enabled:
+            card.setStyleSheet(NUGGET_CARD_QSS)
+        else:
+            card._retheme()
+    for header in root.findChildren(IOSSectionHeader):
+        if enabled:
+            header.setStyleSheet(NUGGET_SECTION_HEADER_QSS)
+        else:
+            header._retheme()

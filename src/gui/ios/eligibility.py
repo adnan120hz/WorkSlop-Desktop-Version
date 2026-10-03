@@ -22,7 +22,9 @@ from src.gui.ios.components import (
 from src.gui.theme import t
 from src.devicemanagement.constants import mobilegestalt_decision
 from src.tweaks.capabilities import (
-    clear_unsupported_mobilegestalt_state, requires_gestalt,
+    ELIGIBILITY_LOCKED_MESSAGE,
+    clear_unsupported_mobilegestalt_state, requires_eligibility_boundary,
+    requires_gestalt,
 )
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_eligibility
@@ -75,6 +77,7 @@ class EligibilitySection(QWidget):
         self.window = window
         self._switches = {}
         self._cards = {}
+        self._cards_all = {}
         self._built = False
 
         self._layout = QVBoxLayout(self)
@@ -136,6 +139,10 @@ class EligibilitySection(QWidget):
         self._layout.addWidget(card)
         self._switches[tweak_id] = sw
         self._cards[tweak_id] = card
+        # Every card per id, not just the last one: CreateBRFolders has two
+        # switches (Eligibility Folder + Feature Flags Folder) on two cards
+        # and both must lock together.
+        self._cards_all.setdefault(tweak_id, []).append(card)
         return sw
 
     def _lineedit_style(self):
@@ -174,6 +181,7 @@ class EligibilitySection(QWidget):
         self._layout.addWidget(eu_note)
 
         region_card, region_lay = self._row_card()
+        self._region_card = region_card
         region_lbl = QLabel(tr("Region Code"))
         region_lbl.setStyleSheet("font-size: 15px; background-color: transparent;")
         region_lay.addWidget(region_lbl, 1)
@@ -222,11 +230,17 @@ class EligibilitySection(QWidget):
         self._apply_gestalt_locks(self._current_decision())
 
     def _apply_gestalt_locks(self, decision):
-        """Lock the MobileGestalt-family controls when the shared decision
-        does not support this device. Visible but disabled, with the shared
-        reason as tooltip — never silently toggleable. Re-run on every
-        refresh so switching devices locks/unlocks in place, and force any
-        enabled MobileGestalt-backed state off while locked/unknown."""
+        """Lock the boundary-gated controls when the shared decision does
+        not support this device. Visible but disabled, with the lock reason
+        as tooltip — never silently toggleable. Re-run on every refresh so
+        switching devices locks/unlocks in place, and force any enabled
+        boundary-gated state off while locked/unknown.
+
+        Two families share the one decision: the MobileGestalt tweaks
+        (AIGestalt + spoofing, locked by the MobileGestalt boundary) and
+        the Eligibility files-based tweaks (EUEnabler / CreateBRFolders /
+        AIEligibility behind the "elig_file_group" switch, blocked from
+        iOS 26.2 beta 2 upward by user order 2026-10-03)."""
         supported = bool(getattr(decision, "supported", False))
         if not supported:
             clear_unsupported_mobilegestalt_state(decision)
@@ -242,6 +256,19 @@ class EligibilitySection(QWidget):
         if spoof_card is not None:
             spoof_card.setEnabled(supported)
             spoof_card.setToolTip("" if supported else reason)
+        # Eligibility files-based family: same boundary, Eligibility
+        # explanation. Covers the EU Enabler switch, both folder switches,
+        # the eligibility-file group switch, and the region code row.
+        elig_reason = tr(ELIGIBILITY_LOCKED_MESSAGE)
+        for tweak_id in (TweakID.EUEnabler, TweakID.CreateBRFolders,
+                         "elig_file_group"):
+            for card in self._cards_all.get(tweak_id, []):
+                card.setEnabled(supported)
+                card.setToolTip("" if supported else elig_reason)
+        region_card = getattr(self, "_region_card", None)
+        if region_card is not None:
+            region_card.setEnabled(supported)
+            region_card.setToolTip("" if supported else elig_reason)
 
     def _setup_spoof_models(self, device):
         """Fill the spoof dropdown like Nugget's setup_spoofedModelDrp_models.
@@ -273,20 +300,28 @@ class EligibilitySection(QWidget):
 
     # -- handlers (mirror Nugget's EligibilityPage.on_* 1:1) -----------------
     def _on_switch(self, tweak_id, checked: bool):
-        if tweak_id == "elig_file_group":
-            self._on_elig_file_toggled(checked)
-            return
         # State-level guard: the widget lock is presentation only. A
-        # MobileGestalt-backed tweak can never be switched on while the
-        # shared decision is locked/unknown.
-        if checked and requires_gestalt(tweak_id, tweaks.get(tweak_id)):
+        # boundary-gated tweak (MobileGestalt family, or the Eligibility
+        # files-based family blocked from iOS 26.2 beta 2 up) can never be
+        # switched on while the shared decision is locked/unknown. The
+        # "elig_file_group" switch drives AIEligibility, so it is guarded
+        # here before it is routed to its group handler.
+        if checked and (tweak_id == "elig_file_group"
+                        or requires_gestalt(tweak_id, tweaks.get(tweak_id))
+                        or requires_eligibility_boundary(tweak_id)):
             decision = self._current_decision()
             if not decision.supported:
-                if tweak_id in tweaks:
-                    tweaks[tweak_id].set_enabled(False)
+                targets = (TweakID.AIEligibility,) if tweak_id == "elig_file_group" \
+                    else (tweak_id,)
+                for tid in targets:
+                    if tid in tweaks:
+                        tweaks[tid].set_enabled(False)
                 self._apply_gestalt_locks(decision)
                 self._sync_controls()
                 return
+        if tweak_id == "elig_file_group":
+            self._on_elig_file_toggled(checked)
+            return
         if tweak_id in tweaks:
             # Nugget: the hardware/CPU checkboxes only take effect when a
             # spoof model is actually selected (selected_option != 0).

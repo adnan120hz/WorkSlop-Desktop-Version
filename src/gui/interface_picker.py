@@ -25,7 +25,7 @@ def _render_svg(path: str, width: int, height: int) -> QPixmap:
 
 
 class InterfacePickerDialog(QDialog):
-    """First-launch dialog: pick WorkSlop, Nugget, or Full Nugget UI."""
+    """First-launch dialog: pick WorkSlop (Main), WorkSlop 2, or Nugget UI."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,11 +52,11 @@ class InterfacePickerDialog(QDialog):
         self._frames = []
         self._descs = []
         for art, name, desc, choice in (
-            ("ui_ios.svg", "WorkSlop",
+            ("ui_ios.svg", "WorkSlop (Main)",
              "The WorkSlop v4 interface (main UI)", "ios"),
-            ("ui_classic.svg", "Nugget",
+            ("ui_classic.svg", "WorkSlop 2",
              "Classic desktop sidebar layout with WorkSlop icons", "classic"),
-            ("ui_classic.svg", "Full Nugget",
+            ("ui_classic.svg", "Nugget",
              "The original Nugget interface — only the app name and icon are WorkSlop",
              "full_nugget"),
         ):

@@ -9,6 +9,7 @@ from pymobiledevice3.services.diagnostics import DiagnosticsService
 from pymobiledevice3.lockdown import LockdownClient
 
 from . import backup
+from src.utils.stall_watchdog import run_with_stall_watchdog
 
 async def reboot_device(reboot: bool = False, lockdown_client: LockdownClient = None):
     if reboot and lockdown_client != None:
@@ -42,7 +43,14 @@ async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_
                 # either way (verified on iOS 27 beta 6).
                 # Note: may trigger an iOS passcode prompt — unlock the
                 # device to proceed.
-                await mb.restore(backup_dir, system=True, reboot=False, copy=False, source=".", progress_callback=progress_callback, skip_apps=False)
+                await run_with_stall_watchdog(
+                    lambda tracking_cb: mb.restore(
+                        backup_dir, system=True, reboot=False, copy=False,
+                        source=".", progress_callback=tracking_cb,
+                        skip_apps=False),
+                    progress_callback,
+                    operation="restore",
+                )
             # reboot the device
             await reboot_device(reboot, lockdown_client)
     except PyMobileDevice3Exception as e:

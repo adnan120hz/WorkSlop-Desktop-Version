@@ -12,7 +12,7 @@ from .daemons_tweak import DANGEROUS_KEYS, INTERFACE_KEYS, UPSTREAM_DEFAULT_DAEM
 from src.devicemanagement.constants import mobilegestalt_decision
 from src.tweaks.capabilities import (
     canonical_tweak_id, clear_unsupported_mobilegestalt_state,
-    is_removed_tweak, requires_gestalt,
+    is_removed_tweak, requires_eligibility_boundary, requires_gestalt,
 )
 
 
@@ -228,6 +228,14 @@ def load_eligibility(dev=None, decision=None):
     locked/unknown device the non-gestalt eligibility tweaks still load,
     and any previously registered gestalt state is forced off.
 
+    Final v11 gating (user order 2026-10-03): Eligibility itself is blocked
+    from iOS 26.2 beta 2 upward, so the files-based members (EUEnabler /
+    AIEligibility) now follow the SAME shared decision — on a locked or
+    unknown device they are never registered as deliverable either, and
+    the shared clearer force-disables any stale enabled state (including
+    CreateBRFolders, which lives in the static tweaks dict). The payload
+    definitions below are untouched; this is exposure gating only.
+
     Wave 10 P0: AIFeatureFlags / AIFeatureFlagsUI are removed tombstones.
     They wrote the FeatureFlags Global.plist channel with no version cap;
     that channel is dead past iOS 26.1, so they are never registered here.
@@ -379,12 +387,14 @@ def load_eligibility(dev=None, decision=None):
         additional_tweaks[TweakID.SpoofHardware].value[0] = dev.hardware
         additional_tweaks[TweakID.SpoofCPU].value[0] = dev.cpu
     # Add only what is missing (never clobber live switch state), and never
-    # register deliverable MobileGestalt-backed tweaks on a locked/unknown
-    # device.
+    # register deliverable MobileGestalt-backed or Eligibility-boundary
+    # tweaks on a locked/unknown device.
     for tid, tw in additional_tweaks.items():
         if is_removed_tweak(tid):
             continue
         if requires_gestalt(tid, tw) and not gestalt_ok:
+            continue
+        if requires_eligibility_boundary(tid) and not gestalt_ok:
             continue
         if tid not in tweaks:
             tweaks[tid] = tw

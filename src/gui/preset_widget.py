@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.gui.theme import ColorThemeManager
+from src.gui.brand_credits import beta_testers_html, make_beta_testers_label
 
 
 class PresetBanner(QFrame):
@@ -116,6 +117,15 @@ class PresetWidget(QWidget):
         self._header = QLabel()
         layout.addWidget(self._header)
 
+        # Beta tester team block (user order 2026-10-03): rides with the
+        # credit/attribution text above the preset banner on every Home
+        # (in the Full Nugget interface it stacks directly under the
+        # "UI reference" / "Based on" block). Plain names, no links.
+        _c0 = ColorThemeManager.instance().colors
+        self._beta_lbl = make_beta_testers_label(
+            self, _c0.text_primary, _c0.accent)
+        layout.addWidget(self._beta_lbl)
+
         # Third interface only: the Nugget UI credit (with the GitHub
         # button that the classic Nugget shell carries on its Home)
         # sits directly above the preset banner (user order
@@ -132,6 +142,14 @@ class PresetWidget(QWidget):
         self._retheme()
         ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
+    def _refresh_beta_label(self, text_color=None, link_color=None):
+        """Recolor the beta tester block for the active palette (themed
+        light, or the Full Nugget dark colors when overridden)."""
+        if text_color is None:
+            c = ColorThemeManager.instance().colors
+            text_color, link_color = c.text_primary, c.accent
+        self._beta_lbl.setText(beta_testers_html(text_color, link_color))
+
     def _retheme(self):
         if getattr(self, "_full_nugget", False):
             self.apply_full_nugget_style(True)
@@ -145,6 +163,7 @@ class PresetWidget(QWidget):
         else:
             self._header.setText(QCoreApplication.translate("Nugget", "Presets"))
             self._header.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {c.text_primary};")
+        self._refresh_beta_label()
         self.banner._retheme()
 
     def apply_full_nugget_style(self, enabled: bool):
@@ -165,6 +184,7 @@ class PresetWidget(QWidget):
             c = ColorThemeManager.instance().colors
             self._header.setStyleSheet(
                 f"font-size: 16px; font-weight: 600; color: {c.text_primary};")
+            self._refresh_beta_label()
             self.banner._retheme()
             return
         if self._ref_row is None:
@@ -237,6 +257,7 @@ class PresetWidget(QWidget):
         self._ref_row.setVisible(True)
         if getattr(self, "_upstream_lbl", None) is not None:
             self._upstream_lbl.setVisible(True)
+        self._refresh_beta_label("#e8e8e8", "#3b82f7")
         self._header.setStyleSheet(
             "font-size: 16px; font-weight: 600; color: #e8e8e8;")
         b = self.banner

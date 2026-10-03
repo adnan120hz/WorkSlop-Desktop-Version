@@ -81,6 +81,7 @@ _HIDDEN_THEMED_ICONS = {
     "daemonsPageBtn": ":/icon/ws-sliders.svg",
     "iconThemesPageBtn": ":/icon/ws-wallpaper.svg",
     "applyPageBtn": ":/icon/ws-backup.svg",
+    "backupPageBtn": ":/icon/ws-backup.svg",
     "posterboardPageBtn": ":/icon/ws-poster.svg",
     "settingsPageBtn": ":/icon/ws-gear.svg",
     "mainDevBtn": ":/icon/github.svg",
@@ -111,6 +112,7 @@ _CLASSIC_ORIGINAL_ICONS = {
     "daemonsPageBtn": ":/icon/toggles.svg",
     "iconThemesPageBtn": ":/icon/brush.svg",
     "applyPageBtn": ":/icon/check-circle.svg",
+    "backupPageBtn": ":/icon/shippingbox.svg",
     "settingsPageBtn": ":/icon/gear.svg",
     "mainDevBtn": ":/icon/github.svg",
     "discordBtn": ":/icon/discord.svg",
@@ -198,6 +200,31 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.applyPageBtn.hide()
         self.ui.sidebarDiv1.hide()
         self.ui.sidebarDiv2.hide()
+
+        # Backup entry for the classic sidebar (the two Nugget shells):
+        # the generated UI has no Backup button (the main UI's rail has
+        # one), so — like the other runtime chrome — it is created here
+        # instead of editing the generated file. It sits right above
+        # Apply, follows the menu order of the main UI (Backup before
+        # Apply), and opens the same Backup & Apply page (iOS page 13).
+        # Its icon follows the active flavor through the
+        # _HIDDEN_THEMED_ICONS / _CLASSIC_ORIGINAL_ICONS maps above, and
+        # the device-refresh flow shows/hides it together with Apply.
+        backup_btn = QtWidgets.QToolButton(self.ui.sidebar)
+        backup_btn.setObjectName("backupPageBtn")
+        backup_btn.setSizePolicy(self.ui.applyPageBtn.sizePolicy())
+        backup_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        backup_btn.setCheckable(True)
+        backup_btn.setAutoExclusive(True)
+        backup_btn.setToolButtonStyle(
+            QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        backup_btn.setProperty("cls", "sidebarBtn")
+        backup_btn.setText(QCoreApplication.translate("Nugget", "Backup"))
+        self.ui.verticalLayout.insertWidget(
+            self.ui.verticalLayout.indexOf(self.ui.applyPageBtn),
+            backup_btn)
+        backup_btn.hide()
+        self.ui.backupPageBtn = backup_btn
 
         # pre-load the pages
         self.pages = {
@@ -402,6 +429,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.iconThemesPageBtn.clicked.connect(self.on_iconThemesPageBtn_clicked)
         self.ui.posterboardPageBtn.clicked.connect(self.on_posterboardPageBtn_clicked)
         self.ui.applyPageBtn.clicked.connect(self.on_applyPageBtn_clicked)
+        self.ui.backupPageBtn.clicked.connect(self.on_backupPageBtn_clicked)
         self.ui.settingsPageBtn.clicked.connect(self.on_settingsPageBtn_clicked)
 
         # Apply the initial themed global stylesheet
