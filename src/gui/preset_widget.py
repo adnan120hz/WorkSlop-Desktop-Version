@@ -160,6 +160,8 @@ class PresetWidget(QWidget):
         if not enabled:
             if self._ref_row is not None:
                 self._ref_row.setVisible(False)
+            if getattr(self, "_upstream_lbl", None) is not None:
+                self._upstream_lbl.setVisible(False)
             c = ColorThemeManager.instance().colors
             self._header.setStyleSheet(
                 f"font-size: 16px; font-weight: 600; color: {c.text_primary};")
@@ -193,7 +195,48 @@ class PresetWidget(QWidget):
             row_layout.addStretch(1)
             self.layout().insertWidget(1, row)
             self._ref_row = row
+            # Upstream license attributions (user order 2026-10-03):
+            # names + URLs are copied verbatim from the credits data
+            # already recorded in the repo (Settings > About >
+            # Credits, src/gui/dialogs/dialogs.py) — nothing invented.
+            up_a = '<a style="text-decoration:none; color:#3b82f7" href='
+            up_sep = '<span style="color:#cfcfcf"> · </span>'
+            self._upstream_lbl = QLabel(self)
+            self._upstream_lbl.setObjectName("upstreamCredits")
+            self._upstream_lbl.setTextFormat(
+                Qt.TextFormat.RichText)
+            self._upstream_lbl.setOpenExternalLinks(True)
+            self._upstream_lbl.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextBrowserInteraction)
+            self._upstream_lbl.setWordWrap(True)
+            self._upstream_lbl.setText(
+                '<span style="color:#cfcfcf">Based on: </span>'
+                f'{up_a}"https://github.com/GoldenNugget-Team/GoldenNugget">'
+                'GoldenNugget</a>'
+                f'{up_sep}{up_a}"https://github.com/leminlimez/Nugget">'
+                'Nugget by leminlimez</a><br/>'
+                '<span style="color:#cfcfcf">Also credited: </span>'
+                f'{up_a}"https://github.com/awesomenull-dev">awesomenull</a>'
+                f'{up_sep}{up_a}"https://github.com/Wind0ws11Aero">'
+                'Wind0ws11Aero</a>'
+                f'{up_sep}{up_a}"https://discord.gg/gWtzTVhMvh">'
+                'PosterRestore</a>'
+                f'{up_sep}{up_a}"https://github.com/doronz88/pymobiledevice3">'
+                'pymobiledevice3</a>'
+                f'{up_sep}{up_a}"https://doc.qt.io/qtforpython-6/">PySide6</a>'
+                f'{up_sep}{up_a}"https://github.com/Mikasa-san/QuietDaemon">'
+                'Quiet Daemon (Mikasa-san)</a>'
+                f'{up_sep}{up_a}"https://github.com/0xilis/python-aar-stuff">'
+                'Snoolie</a>'
+                f'{up_sep}{up_a}"https://github.com/f1shy-dev">f1shy-dev</a>'
+                f'{up_sep}{up_a}"https://github.com/JJTech0130">JJTech0130</a>'
+            )
+            self._upstream_lbl.setStyleSheet(
+                "font-size: 11px; padding: 0 2px;")
+            self.layout().insertWidget(2, self._upstream_lbl)
         self._ref_row.setVisible(True)
+        if getattr(self, "_upstream_lbl", None) is not None:
+            self._upstream_lbl.setVisible(True)
         self._header.setStyleSheet(
             "font-size: 16px; font-weight: 600; color: #e8e8e8;")
         b = self.banner
