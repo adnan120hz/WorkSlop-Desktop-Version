@@ -219,7 +219,7 @@ def main() -> int:
     translator.load_translations()
 
     from PySide6.QtGui import QIcon
-    icon_path = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "nugget.ico")
+    icon_path = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "workslop.ico")
     app.setWindowIcon(QIcon(icon_path))
 
     # Restore the preset that was loaded right before the app restarted (pages

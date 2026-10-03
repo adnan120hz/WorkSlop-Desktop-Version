@@ -203,7 +203,29 @@ check("Default disables the tweak (stages nothing)",
 
 win.apply_theme(ThemeManager.FULL_NUGGET)
 app.processEvents()
-check("visible in Full Nugget UI", box.isVisible())
+# Full Nugget (third interface) does not host the iOS-style page at
+# all: it lands on the vendored original Nugget v7.4.1 Liquid Glass
+# page whose tri-state radios drive this same Nugget set.
+check("Full Nugget shows the original Nugget Liquid Glass page",
+      win.content_stack.currentWidget() is win.nugget_stack
+      and win.nugget_stack.currentWidget()
+      is win._nugget_ui.liquidGlassPage)
+check("iOS-hosted Liquid Glass page is not the Full Nugget surface",
+      not box.isVisible())
+from PySide6.QtWidgets import QRadioButton  # noqa: E402
+_radios = win._nugget_ui.forceSolariumFallbackBtns
+_enabled = None
+for _i in range(_radios.count()):
+    _w = _radios.itemAt(_i).widget()
+    if isinstance(_w, QRadioButton) and _w.text() == "Enabled":
+        _enabled = _w
+check("original Nugget radio row exists (Force Solarium Fallback)",
+      _enabled is not None)
+_ff = tweaks[TweakID.NuggetForceSolariumFallback]
+_enabled.click()
+app.processEvents()
+check("Full Nugget radio drives the same Nugget tweak object",
+      _ff.enabled and _ff.value is True)
 win.apply_theme(ThemeManager.IOS)
 app.processEvents()
 check("hidden again back in WorkSlop UI", not box.isVisible())

@@ -570,6 +570,26 @@ app.processEvents()
 check("Nugget Liquid Glass set is visible in Full Nugget",
       win.ios_liquidglass.content._nugget_lg_box is not None
       and not win.ios_liquidglass.content._nugget_lg_box.isHidden())
+# The Full Nugget Liquid Glass button opens the vendored original
+# Nugget v7.4.1 page (dark layout, tri-state radios), not the hosted
+# iOS-style page.
+win.ui.liquidGlassPageBtn.click()
+app.processEvents()
+check("Full Nugget Liquid Glass button opens the original Nugget page",
+      win.content_stack.currentWidget() is win.nugget_stack
+      and win.nugget_stack.currentWidget()
+      is win._nugget_ui.liquidGlassPage)
+from PySide6.QtWidgets import QRadioButton as _RB
+_lg_radios = [win._nugget_ui.forceSolariumFallbackBtns.itemAt(i).widget()
+              for i in range(
+                  win._nugget_ui.forceSolariumFallbackBtns.count())]
+check("original Nugget tri-state row is built (Default/Enabled/Disabled)",
+      [getattr(w, "text", lambda: "")() for w in _lg_radios
+       if isinstance(w, _RB)] == ["Default", "Enabled", "Disabled"])
+win.ui.statusBarPageBtn.click()
+app.processEvents()
+check("Full Nugget Status Bar button opens the original Nugget page",
+      win.nugget_stack.currentWidget() is win._nugget_ui.statusBarPage)
 win.ios_settings.interface_buttons[ThemeManager.CLASSIC].click()
 app.processEvents()
 win.show_ios_page(9)

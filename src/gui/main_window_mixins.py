@@ -562,6 +562,11 @@ class SettingsMixin:
             # the classic shell hides the shared header except on pages
             # that need it (Icon Themes keeps "+ Add Icon")
             self._update_shared_nav(self.ios_pages.currentIndex())
+            if theme == ThemeManager.FULL_NUGGET:
+                self._land_full_nugget_view()
+            elif self.content_stack.currentIndex() == 3:
+                # Left Full Nugget with its page stack on screen.
+                self.show_home()
             if self.content_stack.currentIndex() == 1 \
                     and self.ios_pages.currentIndex() == 0:
                 # the iOS home has no meaning inside the classic shell
@@ -714,6 +719,13 @@ class NavigationMixin:
                 idx = 0
             elif self.content_stack.currentIndex() == 2:
                 idx = 5  # classic daemons page
+            elif self.content_stack.currentIndex() == 3:
+                # Full Nugget stack: highlight by its section key.
+                keys = getattr(self, "_nugget_page_keys", [])
+                if keys:
+                    idx = {"statusbar": 8, "springboard": 2,
+                           "internal": 3, "liquidglass": 4}.get(
+                               keys[self.nugget_stack.currentIndex()])
             elif self.content_stack.currentIndex() == 1:
                 idx = page_to_btn.get(self.ios_pages.currentIndex())
             target = btns[idx] if idx is not None else None
@@ -764,6 +776,82 @@ class NavigationMixin:
     def show_ios_page(self, index: int):
         self.content_stack.setCurrentIndex(1)
         self.ios_pages.setCurrentIndex(index)
+
+    # -- Full Nugget pages (third interface) -------------------------------
+
+    def _full_nugget_active(self) -> bool:
+        return getattr(self.theme_manager, "current_theme", None) \
+            == ThemeManager.FULL_NUGGET
+
+    def _ensure_nugget_pages(self):
+        """Build the vendored Nugget v7.4.1 pages on first use.
+
+        The upstream form is set up on a throwaway window (kept alive
+        on self) because setupUi() paints the window stylesheet and
+        builds the whole widget tree; the tweak-section pages are then
+        reparented into this window's Nugget stack and wired by the
+        ported page builders in src/gui/nugget_pages/.
+        """
+        if self._nugget_ui is not None:
+            return
+        from src.qt.nugget741_ui import Ui_Nugget741
+        from src.gui.nugget_pages import (
+            NuggetInternalPage, NuggetLiquidGlassPage,
+            NuggetSpringboardPage, NuggetStatusBarPage,
+        )
+        host = QtWidgets.QMainWindow()
+        ui = Ui_Nugget741()
+        ui.setupUi(host)
+        self._nugget_ui_host = host
+        self._nugget_ui = ui
+        pages = (
+            ("statusbar", ui.statusBarPage, NuggetStatusBarPage(ui)),
+            ("springboard", ui.springboardOptionsPage,
+             NuggetSpringboardPage(ui)),
+            ("internal", ui.internalOptionsPage, NuggetInternalPage(ui)),
+            ("liquidglass", ui.liquidGlassPage, NuggetLiquidGlassPage(ui)),
+        )
+        for key, widget, page in pages:
+            widget.setParent(None)
+            self.nugget_stack.addWidget(widget)
+            self._nugget_pages[key] = page
+            self._nugget_page_keys.append(key)
+        # Upstream's window stylesheet is the dark chrome of the form;
+        # scoping it to the stack themes the stolen pages exactly as
+        # upstream's window does, without touching the other shells.
+        sheet = host.styleSheet()
+        if sheet:
+            self.nugget_stack.setStyleSheet(sheet)
+
+    #: iOS-page index -> Nugget stack key, for theme-switch landing.
+    _IOS_TO_NUGGET_PAGE = {5: "statusbar", 7: "springboard",
+                           8: "internal", 9: "liquidglass"}
+
+    def _land_full_nugget_view(self):
+        """Pick the Full Nugget view matching what is on screen."""
+        if self.content_stack.currentIndex() == 1:
+            key = self._IOS_TO_NUGGET_PAGE.get(self.ios_pages.currentIndex())
+            if key is not None:
+                self.show_nugget_page(key)
+                return
+            self.show_home()
+        # Classic Home / classic Daemons / the Nugget stack stay as-is.
+
+    def show_nugget_page(self, key: str):
+        """Open one original-Nugget tweak page (Full Nugget mode)."""
+        self._ensure_nugget_pages()
+        page = self._nugget_pages[key]
+        was_loaded = page.loaded
+        page.load()
+        if was_loaded and key == "statusbar":
+            # Reflect overrides changed in another shell.
+            try:
+                page.load_status_bar()
+            except Exception:
+                pass
+        self.content_stack.setCurrentWidget(self.nugget_stack)
+        self.nugget_stack.setCurrentIndex(self._nugget_page_keys.index(key))
+        self._sync_sidebar_selection()
 
 
     def open_presets_section(self):
@@ -872,21 +960,33 @@ class NavigationMixin:
 
 
     def on_statusBarPageBtn_clicked(self):
+        if self._full_nugget_active():
+            self.show_nugget_page("statusbar")
+            return
         self.show_ios_page(5)
         self._sync_sidebar_selection()
 
 
     def on_springboardOptionsPageBtn_clicked(self):
+        if self._full_nugget_active():
+            self.show_nugget_page("springboard")
+            return
         self.show_ios_page(7)
         self._sync_sidebar_selection()
 
 
     def on_internalOptionsPageBtn_clicked(self):
+        if self._full_nugget_active():
+            self.show_nugget_page("internal")
+            return
         self.show_ios_page(8)
         self._sync_sidebar_selection()
 
 
     def on_liquidGlassPageBtn_clicked(self):
+        if self._full_nugget_active():
+            self.show_nugget_page("liquidglass")
+            return
         self.show_ios_page(9)
         self._sync_sidebar_selection()
 

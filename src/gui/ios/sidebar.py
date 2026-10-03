@@ -43,6 +43,14 @@ class WorkSlopSidebar(QWidget):
         layout.setContentsMargins(12, 16, 12, 12)
         layout.setSpacing(6)
 
+        # Brand: WorkSlop icon above the wordmark.
+        from PySide6.QtGui import QIcon
+        self._brand_icon = QLabel(self)
+        self._brand_icon.setPixmap(
+            QIcon(":/icon/ws-brand.svg").pixmap(QSize(38, 38)))
+        self._brand_icon.setStyleSheet("background: transparent;")
+        layout.addWidget(self._brand_icon)
+
         # Wordmark.
         self._brand = QLabel("WORKSLOP", self)
         self._brand.setObjectName("sidebarBrand")

@@ -316,6 +316,17 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.content_stack.addWidget(ios_root)             # 1 = iOS pages
         self.content_stack.addWidget(self.ui.daemonsPage)  # 2 = classic daemons
         self.content_stack.setStyleSheet("background: transparent;")
+        # Full Nugget (third interface): the original Nugget v7.4.1
+        # tweak pages (vendored src/qt/nugget741_ui.py, builders in
+        # src/gui/nugget_pages/) live in their own stack here and are
+        # built lazily on first use — see NavigationMixin.
+        self.nugget_stack = QtWidgets.QStackedWidget(self)
+        self.nugget_stack.setStyleSheet("background: transparent;")
+        self.content_stack.addWidget(self.nugget_stack)  # 3 = Nugget pages
+        self._nugget_ui = None
+        self._nugget_ui_host = None
+        self._nugget_pages = {}       # key -> page builder
+        self._nugget_page_keys = []   # keys in stack order
         shell = QtWidgets.QWidget(self)
         shell.setProperty("cls", "central")
         # Wave 11 shell: animated blue Apple-logo background behind the
