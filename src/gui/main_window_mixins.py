@@ -183,14 +183,62 @@ class DeviceBarMixin:
 
 
     def warn_for_dev_beta(self):
+        """Warn once per app session per device on developer-beta iOS.
+
+        Trigger set is unchanged: iOS > 26.0 whose build string ends in a
+        letter (a beta build). Two fixes vs the inherited version:
+
+        * The text names the detected major version (an iOS 27 device no
+          longer reads "iOS 26 beta" -- the old string was inherited
+          verbatim and never updated).
+        * The box is deferred until the device-switch flow has finished
+          and is shown NON-modally, at most once per session per device.
+          The old modal ``QMessageBox.exec()`` inside
+          ``change_selected_device`` could kill the app outright on
+          Linux/Wayland compositors (v11.0.1 user report, 2026-10-03:
+          "The Wayland connection broke") and it re-appeared on every
+          device switch.
+        """
         ver = self.device_manager.get_current_device_version()
         if ver == "":
             return
-        if Version(ver) > Version("26.0") and not self.device_manager.get_current_device_build()[-1].isdigit():
-            self.alert_message(ApplyAlertMessage(
-                txt=self.tr("Warning: You are on iOS 26 beta.\n\nThis has been known to cause problems and potentially lead to bootloops.\n\nUse at your own risk!"),
-                title="Warning", icon=QtWidgets.QMessageBox.Warning
-            ), log_to_console=False)
+        try:
+            parsed = Version(ver)
+        except Exception:
+            return
+        build = self.device_manager.get_current_device_build() or ""
+        if not (parsed > Version("26.0") and build
+                and not build[-1].isdigit()):
+            return
+        warned = getattr(self, "_beta_warned_devices", None)
+        if warned is None:
+            warned = self._beta_warned_devices = set()
+        device_key = self.device_manager.get_current_device_udid() or build
+        if device_key in warned:
+            return
+        warned.add(device_key)
+        txt = self.tr(
+            "Warning: You are on iOS %1 beta.\n\n"
+            "This has been known to cause problems and potentially lead "
+            "to bootloops.\n\nUse at your own risk!").replace(
+                "%1", str(parsed.major))
+        # Defer until the device-switch flow has fully finished; never
+        # run a modal loop from inside it.
+        QtCore.QTimer.singleShot(0, lambda: self._show_dev_beta_warning(txt))
+
+    def _show_dev_beta_warning(self, txt):
+        """Show the developer-beta warning non-modally (see above)."""
+        box = QtWidgets.QMessageBox(self)
+        box.setIcon(QtWidgets.QMessageBox.Warning)
+        box.setWindowTitle(self.tr("Warning"))
+        box.setText(txt)
+        box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        box.setModal(False)
+        box.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        # Keep a reference: the box is modeless, so it must not be
+        # garbage-collected while it is on screen.
+        self._dev_beta_warning_box = box
+        box.show()
 
 
     def refresh_devices_finished(self):

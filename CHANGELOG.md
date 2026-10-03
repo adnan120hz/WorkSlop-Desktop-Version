@@ -1,8 +1,20 @@
 # Changelog
 
 Release history of WorkSlop Desktop. Versions marked *pre-release* were
-development builds published for testing; **v11.0.1** is the current public
+development builds published for testing; **v11.5** is the current public
 release.
+
+## v11.5 — 2026-10-03
+
+- Fixed the developer-beta warning naming the wrong iOS version: it now
+  names the detected major version (an iOS 27 beta device reads "iOS 27
+  beta", not "iOS 26 beta"). The warning text and the set of devices that
+  trigger it are unchanged.
+- The warning is now shown non-modally, once per app session per device.
+  It no longer closes the app on Linux/Wayland (previously, clicking OK in
+  the modal warning could break the Wayland session and terminate the
+  app) and no longer blocks the tweak menus.
+- No tweak or payload changes.
 
 ## v11.0.1 — 2026-10-03
 
