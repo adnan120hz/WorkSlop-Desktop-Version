@@ -550,9 +550,14 @@ class SettingsMixin:
                 self.ios_pages.setCurrentIndex(0)
             self._update_shared_nav(self.ios_pages.currentIndex())
         else:
-            # Nugget mode: padding around the desktop shell
-            self.shell_layout.setContentsMargins(16, 16, 16, 16)
-            self.shell_layout.setSpacing(12)
+            # Nugget mode: padding around the desktop shell. Full Nugget
+            # sits flush like upstream (dark window edge to edge).
+            if theme == ThemeManager.FULL_NUGGET:
+                self.shell_layout.setContentsMargins(0, 0, 0, 0)
+                self.shell_layout.setSpacing(0)
+            else:
+                self.shell_layout.setContentsMargins(16, 16, 16, 16)
+                self.shell_layout.setSpacing(12)
             self.body_row.setSpacing(16)
             # the classic shell hides the shared header except on pages
             # that need it (Icon Themes keeps "+ Add Icon")
@@ -561,6 +566,16 @@ class SettingsMixin:
                     and self.ios_pages.currentIndex() == 0:
                 # the iOS home has no meaning inside the classic shell
                 self.show_home()
+        # Classic-shell flavor (WorkSlop icons vs Full Nugget originals)
+        # and the Nugget-only Liquid Glass subsection follow the mode.
+        self._retheme_classic()
+        for _page in (getattr(self, "ios_liquidglass", None),
+                      getattr(self, "ios_tweaks", None)):
+            try:
+                if _page is not None:
+                    _page.refresh_nugget_lg_visibility()
+            except Exception:
+                pass
         self._sync_sidebar_selection()
     def updateAppVersionLabel(self):
         new_text: str = self.ui.appVersionLbl.text()
@@ -596,8 +611,8 @@ class NavigationMixin:
     _classic_nav_pages = (10,)
 
     def _update_shared_nav(self, index: int):
-        classic = getattr(self.theme_manager, "current_theme",
-                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        classic = ThemeManager.is_classic(getattr(self.theme_manager,
+                          "current_theme", ThemeManager.IOS))
         if classic and index not in self._classic_nav_pages:
             # The classic (Nugget) shell hides the shared iOS header except
             # on pages that need it (Icon Themes keeps "+ Add Icon"); the
@@ -671,8 +686,8 @@ class NavigationMixin:
         """Move the checked highlight of the ACTIVE shell's rail to the
         active view: the WorkSlop v4 sidebar in IOS mode, the generated
         Nugget sidebar buttons in CLASSIC mode."""
-        classic = getattr(self.theme_manager, "current_theme",
-                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        classic = ThemeManager.is_classic(getattr(self.theme_manager,
+                          "current_theme", ThemeManager.IOS))
         if classic:
             btns = (self.ui.homePageBtn, self.ui.posterboardPageBtn,
                     self.ui.springboardOptionsPageBtn,
@@ -839,8 +854,8 @@ class NavigationMixin:
 
     def _go_back(self) -> bool:
         """Navigate back: subpage -> home (stay in the UI)."""
-        classic = getattr(self.theme_manager, "current_theme",
-                          ThemeManager.IOS) == ThemeManager.CLASSIC
+        classic = ThemeManager.is_classic(getattr(self.theme_manager,
+                          "current_theme", ThemeManager.IOS))
         if classic and self.content_stack.currentIndex() != 0:
             self.show_home()
             return True
@@ -883,8 +898,8 @@ class NavigationMixin:
 
 
     def on_daemonsPageBtn_clicked(self):
-        if getattr(self.theme_manager, "current_theme", ThemeManager.IOS) \
-                == ThemeManager.CLASSIC:
+        if ThemeManager.is_classic(getattr(
+                self.theme_manager, "current_theme", ThemeManager.IOS)):
             # The Nugget shell has its own classic Daemons page.
             self.pages[Page.Daemons].load()
             self.pages[Page.Daemons].refresh()

@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt, QCoreApplication, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QComboBox, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QInputDialog,
-    QFileDialog, QDialog, QPushButton
+    QFileDialog, QDialog, QPushButton, QButtonGroup
 )
 from pathlib import Path
 
@@ -225,14 +225,15 @@ class IOSSettingsPage(QWidget):
     def refresh(self):
         """Called when navigating to Settings — picks up device changes."""
         self._build_device_rows()
-        sw = getattr(self, "interface_switch", None)
-        if sw is not None:
+        btns = getattr(self, "interface_buttons", None)
+        if btns:
             from src.gui.ios.theme_manager import ThemeManager
-            want = self.window.theme_manager.current_theme == ThemeManager.IOS
-            if sw.isChecked() != want:
-                sw.blockSignals(True)
-                sw.setChecked(want)
-                sw.blockSignals(False)
+            current = self.window.theme_manager.current_theme
+            for theme, btn in btns.items():
+                if btn.isChecked() != (theme == current):
+                    btn.blockSignals(True)
+                    btn.setChecked(theme == current)
+                    btn.blockSignals(False)
 
     def _build_settings_ui(self):
         tr = lambda s: QCoreApplication.translate("Nugget", s)
@@ -248,16 +249,36 @@ class IOSSettingsPage(QWidget):
         body = self._ws_control_row(ap_lay, "AP", tr("Accent color"), first=True)
         self._accent_picker = AccentPicker()
         body.addWidget(self._accent_picker)
-        # Interface switch (restored Wave 11, user order 2026-10-03): the
-        # WorkSlop v4 shell is the main UI; turning this off switches the
-        # same window to the classic Nugget shell. Mirrors the first-launch
-        # InterfacePickerDialog choice (ui/theme).
+        # Interface picker (three UIs, user order 2026-10-03): WorkSlop
+        # v4 is the main UI; the second UI is the Nugget shell with
+        # WorkSlop icons; the third is Full Nugget — the original Nugget
+        # interface with only the app name/icon changed. Mirrors the
+        # first-launch InterfacePickerDialog choice (ui/theme), and the
+        # Settings page stays reachable in every shell so switching back
+        # always works.
         from src.gui.ios.theme_manager import ThemeManager
-        self.interface_switch = self._ws_switch_row(
-            ap_lay, "UI", tr("WorkSlop interface (off = Nugget interface)"),
-            self.window.theme_manager.current_theme == ThemeManager.IOS,
-            lambda ios_on: self.window.apply_theme(
-                ThemeManager.IOS if ios_on else ThemeManager.CLASSIC))
+        ui_body = self._ws_control_row(ap_lay, "UI", tr("Interface"))
+        seg_row = QWidget()
+        seg = QHBoxLayout(seg_row)
+        seg.setContentsMargins(0, 0, 0, 0)
+        seg.setSpacing(6)
+        self.interface_buttons = {}
+        self._interface_group = QButtonGroup(self)
+        self._interface_group.setExclusive(True)
+        for label, theme in ((tr("WorkSlop"), ThemeManager.IOS),
+                             (tr("Nugget"), ThemeManager.CLASSIC),
+                             (tr("Full Nugget"), ThemeManager.FULL_NUGGET)):
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setChecked(
+                self.window.theme_manager.current_theme == theme)
+            btn.clicked.connect(
+                lambda _checked=False, t=theme: self.window.apply_theme(t))
+            self._interface_group.addButton(btn)
+            seg.addWidget(btn)
+            self.interface_buttons[theme] = btn
+        seg.addStretch(1)
+        ui_body.addWidget(seg_row)
 
         # --- Safety (HotLoad) ---
         sf_lay = self._ws_section("Safety (HotLoad)")

@@ -191,3 +191,23 @@ class TweakID(Enum):
     # daemons
     Daemons = auto()
     ClearScreenTimeAgentPlist = auto()
+
+    # Liquid Glass Tweaks (Nugget) — verbatim from leminlimez/Nugget
+    # v7.4.1 (src/tweaks/nugget_lg.py). Own IDs so the Nugget set lives
+    # next to, never inside, the WorkSlop v4 set above.
+    NuggetForceSolariumFallback = auto()
+    NuggetDisableSolarium = auto()
+    NuggetIgnoreSolariumLinkedOnCheck = auto()
+    NuggetNoLiquidClock = auto()
+    NuggetNoLiquidDock = auto()
+    NuggetDisableSpecularMotion = auto()
+    NuggetDisableOuterRefraction = auto()
+    NuggetDisableSolariumHDR = auto()
+    NuggetSolariumFFSwiftUI = auto()
+    NuggetSolariumFFSpringBoard = auto()
+    NuggetSolariumFFIconServices = auto()
+    NuggetSolariumFFDocumentCamera = auto()
+    NuggetSolariumFFPhotos = auto()
+    NuggetSolariumFFAppleMediaServices = auto()
+    NuggetSolariumFFSharing = auto()
+    NuggetSolariumFFMail = auto()

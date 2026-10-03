@@ -91,7 +91,34 @@ _HIDDEN_THEMED_ICONS = {
     "leminKoFiBtn": ":/icon/currency-dollar.svg",
 }
 
-# Classic home "credits" buttons that hardcode dark borders in the .ui.
+# The original Nugget icon for every classic-shell button, exactly as
+# the generated .ui assigns them (src/qt/mainwindow_ui.py). The Full
+# Nugget interface (third UI) restores these untouched; the second UI
+# replaces them with the WorkSlop set above. Only the app name and app
+# icon differ from upstream Nugget in Full Nugget mode.
+_CLASSIC_ORIGINAL_ICONS = {
+    "phoneIconBtn": ":/icon/phone.svg",
+    "refreshBtn": ":/icon/arrow-clockwise.svg",
+    "homePageBtn": ":/icon/house.svg",
+    "posterboardPageBtn": ":/icon/wallpaper.svg",
+    "gestaltPageBtn": ":/icon/iphone-island.svg",
+    "euEnablerPageBtn": ":/icon/geo-alt.svg",
+    "statusBarPageBtn": ":/icon/wifi.svg",
+    "passcodePageBtn": ":/icon/lock.svg",
+    "springboardOptionsPageBtn": ":/icon/app-indicator.svg",
+    "internalOptionsPageBtn": ":/icon/hdd.svg",
+    "liquidGlassPageBtn": ":/icon/liquid-glass.svg",
+    "daemonsPageBtn": ":/icon/toggles.svg",
+    "iconThemesPageBtn": ":/icon/brush.svg",
+    "applyPageBtn": ":/icon/check-circle.svg",
+    "settingsPageBtn": ":/icon/gear.svg",
+    "mainDevBtn": ":/icon/github.svg",
+    "discordBtn": ":/icon/discord.svg",
+    "starOnGithubBtn": ":/icon/star.svg",
+    "leminGithubBtn": ":/icon/github.svg",
+    "leminTwitterBtn": ":/icon/twitter.svg",
+    "leminKoFiBtn": ":/icon/currency-dollar.svg",
+}
 _HIDDEN_BORDERED_BTNS = [
     "helpFromBtn", "posterRestoreBtn", "snoolieBtn", "disfordottieBtn",
     "mikasaBtn", "wind0ws11AeroBtn", "translatorsBtn", "libiBtn",
@@ -125,6 +152,17 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
+        # Snapshot the classic shell's as-generated stylesheets BEFORE any
+        # WorkSlop theming touches them: Full Nugget mode restores these
+        # verbatim (only the app name/icon are WorkSlop there).
+        self._orig_classic_qss = {
+            "sidebar": self.ui.sidebar.styleSheet(),
+            "phoneNameLbl": self.ui.phoneNameLbl.styleSheet(),
+        }
+        for _btn_name in _HIDDEN_BORDERED_BTNS:
+            _w = getattr(self.ui, _btn_name, None)
+            if _w is not None:
+                self._orig_classic_qss[_btn_name] = _w.styleSheet()
         # The generated UI pins setMaximumSize(1000, 600), which on Windows
         # disables the normal maximize button and can keep showFullScreen()
         # from covering the screen. Lift the clamp here (the generated file
@@ -372,11 +410,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         if not self.theme_manager.settings.contains("ui/theme"):
             from src.gui.interface_picker import InterfacePickerDialog
             dlg = InterfacePickerDialog(self)
-            if dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted \
-                    and dlg.choice == "classic":
-                self.theme_manager.save_theme(ThemeManager.CLASSIC)
-            else:
-                self.theme_manager.save_theme(ThemeManager.IOS)
+            picked = (dlg.exec() == QtWidgets.QDialog.DialogCode.Accepted
+                      and dlg.choice)
+            self.theme_manager.save_theme({
+                "classic": ThemeManager.CLASSIC,
+                "full_nugget": ThemeManager.FULL_NUGGET,
+            }.get(picked, ThemeManager.IOS))
             self.apply_theme(self.theme_manager.current_theme)
 
         # First launch: remind the user to back up the device before tweaking
@@ -496,7 +535,28 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
     def _retheme_classic(self):
         """Re-color the classic shell: chrome icons, device picker, version
-        link and the hardcoded-dark credit buttons."""
+        link and the hardcoded-dark credit buttons.
+
+        Flavor-aware (three-UI, user order 2026-10-03): the second UI
+        (Nugget with WorkSlop icons) gets the WorkSlop set + theming
+        below; the third UI (Full Nugget) keeps the original Nugget
+        icons and chrome, restored by _apply_full_nugget_chrome().
+        """
+        if getattr(self, "theme_manager", None) is not None and \
+                self.theme_manager.current_theme == ThemeManager.FULL_NUGGET:
+            self._apply_full_nugget_chrome()
+            return
+        # Leaving Full Nugget (or never entering it): the dark shell
+        # background must not stick to the WorkSlop / Nugget-WS shells.
+        try:
+            self._shell.layout().itemAt(1).widget().setStyleSheet(
+                "background: transparent;")
+        except Exception:
+            pass
+        for _page_name in ("homePage", "daemonsPage"):
+            _page = getattr(self.ui, _page_name, None)
+            if _page is not None:
+                _page.setStyleSheet("")
         c = self._color_theme.colors
 
         # Recolor white SVG chrome icons to the current text color
@@ -534,6 +594,51 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             widget = getattr(self.ui, obj_name, None)
             if widget is not None:
                 widget.setStyleSheet(bordered_style)
+
+    def _apply_full_nugget_chrome(self):
+        """Full Nugget flavor: original Nugget icons + dark chrome.
+
+        Restores the classic shell's icons (the generated .ui's own set,
+        untinted) and re-applies upstream's dark window look — upstream's
+        .ui paints white text/icons over a #1e1e1e central background
+        with #3b3b3b widgets — so the second UI's WorkSlop icons/colors
+        never leak into this flavor. The app name and window icon stay
+        WorkSlop (set at startup); everything else is upstream's look.
+        The dark shell is cleared again by _retheme_classic() whenever
+        another flavor becomes active.
+        """
+        from PySide6.QtGui import QIcon
+        for obj_name, res in _CLASSIC_ORIGINAL_ICONS.items():
+            widget = getattr(self.ui, obj_name, None)
+            if widget is not None:
+                widget.setIcon(QIcon(res))
+        # Dark window behind the classic shell (upstream [cls=central]).
+        try:
+            content = self._shell.layout().itemAt(1).widget()
+            content.setStyleSheet("background-color: #1e1e1e;")
+        except Exception:
+            pass
+        self.ui.sidebar.setStyleSheet(
+            "#sidebar { background-color: #1e1e1e; }\n"
+            "#sidebar QToolButton { color: #FFFFFF;"
+            " background: transparent; }\n"
+            "#sidebar QToolButton:hover { background-color: #3b3b3b; }\n"
+            "#sidebar QToolButton:checked { background-color: #3b3b3b; }\n"
+            "#sidebar QLabel { color: #FFFFFF; }")
+        # The classic pages' own labels inherit upstream's white text.
+        for _page_name in ("homePage", "daemonsPage"):
+            _page = getattr(self.ui, _page_name, None)
+            if _page is not None:
+                _page.setStyleSheet("QLabel { color: #FFFFFF; }")
+        orig = getattr(self, "_orig_classic_qss", {})
+        if "phoneNameLbl" in orig:
+            self.ui.phoneNameLbl.setStyleSheet(
+                orig["phoneNameLbl"] + "\ncolor: #FFFFFF;")
+        self.ui.phoneVersionLbl.setText("Version")
+        for obj_name in _HIDDEN_BORDERED_BTNS:
+            widget = getattr(self.ui, obj_name, None)
+            if widget is not None and obj_name in orig:
+                widget.setStyleSheet(orig[obj_name])
 
     def _on_color_theme_changed(self):
         """Called when the color theme (dark/light or accent) changes."""

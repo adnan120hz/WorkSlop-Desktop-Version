@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt, QCoreApplication, QRectF
 from PySide6.QtGui import QPixmap, QImage, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame
+    QDialog, QVBoxLayout, QLabel, QFrame
 )
 
 import os
@@ -25,13 +25,13 @@ def _render_svg(path: str, width: int, height: int) -> QPixmap:
 
 
 class InterfacePickerDialog(QDialog):
-    """First-launch dialog: pick Classic or iOS-style interface."""
+    """First-launch dialog: pick WorkSlop, Nugget, or Full Nugget UI."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(QCoreApplication.translate("Nugget", "Choose Interface"))
         self.setFixedWidth(420)
-        self.choice = None  # "classic" | "ios"
+        self.choice = None  # "ios" | "classic" | "full_nugget"
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
@@ -49,47 +49,37 @@ class InterfacePickerDialog(QDialog):
 
         layout.addSpacing(8)
 
-        # Classic option
-        self._classic_frame = QFrame()
-        cf_lay = QVBoxLayout(self._classic_frame)
-        cf_lay.setContentsMargins(16, 12, 16, 12)
-        classic_art = QLabel()
-        classic_art.setPixmap(_render_svg(
-            os.path.join(_ICON_DIR, "ui_classic.svg"), 340, 160))
-        classic_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        classic_art.setStyleSheet("border: none; background: transparent;")
-        cf_lay.addWidget(classic_art)
-        cf_title = QLabel(QCoreApplication.translate("Nugget", "Nugget"))
-        cf_title.setStyleSheet("font-size: 16px; font-weight: 600; border: none;")
-        self._cf_desc = QLabel(QCoreApplication.translate(
-            "Nugget", "Classic desktop sidebar layout with WorkSlop icons"))
-        self._cf_desc.setWordWrap(True)
-        cf_lay.addWidget(cf_title)
-        cf_lay.addWidget(self._cf_desc)
-        self._classic_frame.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._classic_frame.mousePressEvent = lambda e: self._pick("classic")
-        layout.addWidget(self._classic_frame)
-
-        # iOS-style option
-        self._ios_frame = QFrame()
-        io_lay = QVBoxLayout(self._ios_frame)
-        io_lay.setContentsMargins(16, 12, 16, 12)
-        ios_art = QLabel()
-        ios_art.setPixmap(_render_svg(
-            os.path.join(_ICON_DIR, "ui_ios.svg"), 340, 160))
-        ios_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        ios_art.setStyleSheet("border: none; background: transparent;")
-        io_lay.addWidget(ios_art)
-        io_title = QLabel(QCoreApplication.translate("Nugget", "WorkSlop"))
-        io_title.setStyleSheet("font-size: 16px; font-weight: 600; border: none;")
-        self._io_desc = QLabel(QCoreApplication.translate(
-            "Nugget", "The WorkSlop v4 interface (main UI)"))
-        self._io_desc.setWordWrap(True)
-        io_lay.addWidget(io_title)
-        io_lay.addWidget(self._io_desc)
-        self._ios_frame.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._ios_frame.mousePressEvent = lambda e: self._pick("ios")
-        layout.addWidget(self._ios_frame)
+        self._frames = []
+        self._descs = []
+        for art, name, desc, choice in (
+            ("ui_ios.svg", "WorkSlop",
+             "The WorkSlop v4 interface (main UI)", "ios"),
+            ("ui_classic.svg", "Nugget",
+             "Classic desktop sidebar layout with WorkSlop icons", "classic"),
+            ("ui_classic.svg", "Full Nugget",
+             "The original Nugget interface — only the app name and icon are WorkSlop",
+             "full_nugget"),
+        ):
+            frame = QFrame()
+            frame_lay = QVBoxLayout(frame)
+            frame_lay.setContentsMargins(16, 12, 16, 12)
+            art_lbl = QLabel()
+            art_lbl.setPixmap(_render_svg(
+                os.path.join(_ICON_DIR, art), 340, 160))
+            art_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            art_lbl.setStyleSheet("border: none; background: transparent;")
+            frame_lay.addWidget(art_lbl)
+            title_lbl = QLabel(QCoreApplication.translate("Nugget", name))
+            title_lbl.setStyleSheet("font-size: 16px; font-weight: 600; border: none;")
+            desc_lbl = QLabel(QCoreApplication.translate("Nugget", desc))
+            desc_lbl.setWordWrap(True)
+            frame_lay.addWidget(title_lbl)
+            frame_lay.addWidget(desc_lbl)
+            frame.setCursor(Qt.CursorShape.PointingHandCursor)
+            frame.mousePressEvent = lambda e, ch=choice: self._pick(ch)
+            layout.addWidget(frame)
+            self._frames.append(frame)
+            self._descs.append(desc_lbl)
 
         self._retheme()
         ColorThemeManager.instance().theme_changed.connect(self._retheme)
@@ -101,16 +91,13 @@ class InterfacePickerDialog(QDialog):
             QLabel {{ color: {c.text_primary}; background: transparent; }}
         """)
         self._subtitle.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
-        self._classic_frame.setStyleSheet(f"""
-            QFrame {{ background-color: {c.surface_hover}; border-radius: 12px; }}
-            QFrame:hover {{ background-color: {c.border}; }}
-        """)
-        self._cf_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; border: none;")
-        self._ios_frame.setStyleSheet(f"""
-            QFrame {{ background-color: {c.surface_hover}; border-radius: 12px; }}
-            QFrame:hover {{ background-color: {c.border}; }}
-        """)
-        self._io_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; border: none;")
+        for frame in self._frames:
+            frame.setStyleSheet(f"""
+                QFrame {{ background-color: {c.surface_hover}; border-radius: 12px; }}
+                QFrame:hover {{ background-color: {c.border}; }}
+            """)
+        for desc in self._descs:
+            desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; border: none;")
 
     def _pick(self, choice: str):
         self.choice = choice

@@ -2,6 +2,7 @@ from PySide6.QtCore import QCoreApplication, Qt
 from packaging.version import Version, InvalidVersion
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout,
+    QPushButton, QButtonGroup,
 )
 
 from src.gui.ios.components import (
@@ -17,6 +18,10 @@ from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
 from src.tweaks.registry import SPECS_BY_SECTION, SPECS_BY_ID, SECTION_FEATURES, Kind, Section
 from src.tweaks.tweak_loader import load_plist_tweaks, load_eligibility
+from src.tweaks.nugget_lg import (
+    load_nugget_lg_tweaks, NUGGET_LG_PLIST_ROWS, NUGGET_LG_FF_GROUPS,
+)
+from src.gui.ios.theme_manager import ThemeManager
 from src.tweaks.hidden import current_hidden_feature_names, current_hidden_tweak_names
 from src.gui.ios.eligibility import EligibilitySection
 from src.gui.ios.risky import RiskySection
@@ -157,6 +162,9 @@ class IOSSectionContent(QWidget):
 
         # Load tweaks (idempotent) so the sections below actually populate
         load_plist_tweaks()
+        # The Nugget Liquid Glass set (own registry, Nugget interfaces
+        # only) must exist before any apply, whichever page opens first.
+        load_nugget_lg_tweaks()
 
         # persistent root layout: keeps only a rebuildable inner widget
         root = QVBoxLayout(self)
@@ -193,6 +201,7 @@ class IOSSectionContent(QWidget):
         self._switch_labels = []
         self._switches = {}
         self.force_solarium_fallback_card = None
+        self._nugget_lg_box = None
 
         try:
             device_ver = self.window.device_manager.get_current_device_version()
@@ -421,6 +430,12 @@ class IOSSectionContent(QWidget):
                 collapsible.body_layout.addWidget(ff_warn)
             for spec in SPECS_BY_SECTION[section]:
                 renderers[spec.kind](spec, collapsible.body_layout)
+            if section == Section.LIQUID_GLASS:
+                # Bottom of the Liquid Glass section: the original
+                # Nugget tweak set (UI-2/UI-3 only; visibility follows
+                # the active UI mode). The WorkSlop set above is the
+                # only set the WorkSlop UI ever shows.
+                self._build_nugget_lg_subsection(collapsible.body_layout)
 
         # Eligibility section (ported from leminlimez/Nugget's eligibility
         # page: EU Enabler, Apple Intelligence, spoofing). Rendered as a
@@ -460,6 +475,109 @@ class IOSSectionContent(QWidget):
         # re-apply any remembered solarium-card visibility to the fresh card
         if self._solarium_visible is not None and self.force_solarium_fallback_card is not None:
             self.force_solarium_fallback_card.setVisible(self._solarium_visible)
+
+    # -- Liquid Glass Tweaks (Nugget) subsection -------------------------
+    # The original Nugget v7.4.1 set, rendered only inside the Nugget
+    # interfaces (UI-2/UI-3). Controls mirror upstream's own widgets:
+    # three-state radios (Default / Enabled / Disabled) for the plist
+    # tweaks — upstream's Enabled/Disabled stage the key with opposite
+    # values via set_value(), Default stages nothing — and one checkbox
+    # per upstream Feature-Flag group. Payload code is Nugget's
+    # (src/tweaks/nugget_lg.py); this is only the calling glue.
+
+    def _build_nugget_lg_subsection(self, body_layout):
+        tr = lambda s: QCoreApplication.translate("Nugget", s)
+        box = QWidget()
+        box_lay = QVBoxLayout(box)
+        box_lay.setContentsMargins(0, 8, 0, 0)
+        box_lay.setSpacing(_ROW_GAP)
+        c = ColorThemeManager.instance().colors
+        header = QLabel(tr("Liquid Glass Tweaks (Nugget)"))
+        header.setStyleSheet(
+            f"color: {c.text_primary}; font-size: 16px; font-weight: 600;"
+            " background-color: transparent;")
+        box_lay.addWidget(header)
+        for tweak_id, title, invert in NUGGET_LG_PLIST_ROWS:
+            self._nugget_tri_row(tweak_id, title, invert, box_lay)
+        for title, ids in NUGGET_LG_FF_GROUPS:
+            self._nugget_ff_row(title, ids, box_lay)
+        body_layout.addWidget(box)
+        self._nugget_lg_box = box
+        self.refresh_nugget_lg_visibility()
+
+    def refresh_nugget_lg_visibility(self):
+        """Show the Nugget set only in the two Nugget interfaces."""
+        box = getattr(self, "_nugget_lg_box", None)
+        if box is None:
+            return
+        theme = getattr(getattr(self.window, "theme_manager", None),
+                        "current_theme", ThemeManager.IOS)
+        box.setVisible(ThemeManager.is_classic(theme))
+
+    def _nugget_row_card(self, title: str):
+        card = IOSCard()
+        card.setMinimumHeight(ROW_CARD_MIN_HEIGHT)
+        row_layout = QHBoxLayout(card)
+        row_layout.setContentsMargins(
+            ROW_CARD_HMARGIN, ROW_CARD_VMARGIN,
+            ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
+        row_layout.setSpacing(12)
+        c = ColorThemeManager.instance().colors
+        label = QLabel(QCoreApplication.translate("Nugget", title))
+        label.setWordWrap(True)
+        label.setStyleSheet(
+            f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
+            " background-color: transparent;")
+        self._switch_labels.append(label)
+        row_layout.addWidget(label, 1)
+        return card, row_layout
+
+    def _nugget_tri_row(self, tweak_id, title, invert, target):
+        if tweak_id not in tweaks:
+            return
+        tweak = tweaks[tweak_id]
+        card, row_layout = self._nugget_row_card(title)
+        tr = lambda s: QCoreApplication.translate("Nugget", s)
+        c = ColorThemeManager.instance().colors
+        group = QButtonGroup(card)
+        group.setExclusive(True)
+        buttons = {}
+        for name in ("Default", "Enabled", "Disabled"):
+            btn = QPushButton(tr(name))
+            btn.setCheckable(True)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {c.text_primary};"
+                f" background-color: {c.surface_hover}; border: none;"
+                " border-radius: 8px; padding: 4px 10px; }"
+                f"QPushButton:checked {{ color: #FFFFFF;"
+                f" background-color: {c.accent}; }}")
+            group.addButton(btn)
+            row_layout.addWidget(btn)
+            buttons[name] = btn
+        if not tweak.enabled:
+            buttons["Default"].setChecked(True)
+        elif tweak.value == (not invert):
+            buttons["Enabled"].setChecked(True)
+        else:
+            buttons["Disabled"].setChecked(True)
+        buttons["Default"].clicked.connect(
+            lambda _=False, tw=tweak: tw.set_enabled(False))
+        buttons["Enabled"].clicked.connect(
+            lambda _=False, tw=tweak, inv=invert: tw.set_value(not inv))
+        buttons["Disabled"].clicked.connect(
+            lambda _=False, tw=tweak, inv=invert: tw.set_value(inv))
+        target.addWidget(card)
+
+    def _nugget_ff_row(self, title, ids, target):
+        members = [tweaks[i] for i in ids if i in tweaks]
+        if not members:
+            return
+        card, row_layout = self._nugget_row_card(title)
+        switch = IOSSwitch(all(m.enabled for m in members))
+        switch.toggled.connect(
+            lambda checked, ms=members: [m.set_enabled(checked) for m in ms])
+        row_layout.addWidget(make_switch_column(card, switch))
+        target.addWidget(card)
 
     def _current_compatible(self, tweak_id: TweakID) -> bool:
         """Re-check deliverability at mutation time (not just render time)."""
@@ -573,6 +691,9 @@ class IOSTweaksPage(QWidget):
     def set_force_solarium_fallback_visible(self, visible: bool):
         self.content.set_force_solarium_fallback_visible(visible)
 
+    def refresh_nugget_lg_visibility(self):
+        self.content.refresh_nugget_lg_visibility()
+
     def rebuild(self):
         self.content.rebuild()
 
@@ -607,6 +728,9 @@ class IOSSectionPage(QWidget):
 
     def set_force_solarium_fallback_visible(self, visible: bool):
         self.content.set_force_solarium_fallback_visible(visible)
+
+    def refresh_nugget_lg_visibility(self):
+        self.content.refresh_nugget_lg_visibility()
 
     def rebuild(self):
         self.content.rebuild()

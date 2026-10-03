@@ -204,6 +204,19 @@ check("fresh install defaults to WorkSlop UI",
 tm.save_theme(ThemeManager.CLASSIC)
 check("classic persists and reloads",
       ThemeManager(None).current_theme == ThemeManager.CLASSIC)
+tm.save_theme(ThemeManager.FULL_NUGGET)
+check("full nugget persists and reloads",
+      ThemeManager(None).current_theme == ThemeManager.FULL_NUGGET)
+_qs.setValue("ui/theme", "classic")
+_qs.sync()
+check("legacy 'classic' setting still means the WorkSlop-icon Nugget UI",
+      ThemeManager(None).current_theme == ThemeManager.CLASSIC)
+_qs.setValue("ui/theme", "nonsense")
+_qs.sync()
+check("unknown setting falls back to WorkSlop UI (no trap)",
+      ThemeManager(None).current_theme == ThemeManager.IOS)
+_qs.remove("ui/theme")
+_qs.sync()
 tm.save_theme(ThemeManager.IOS)
 check("WorkSlop persists and reloads",
       ThemeManager(None).current_theme == ThemeManager.IOS)
@@ -217,8 +230,14 @@ check("picker offers Nugget as the second UI", "Nugget" in picker_text,
       picker_text)
 check("picker says Nugget uses WorkSlop icons",
       "WorkSlop icons" in picker_text, picker_text)
+check("picker offers Full Nugget as the third UI",
+      "Full Nugget" in picker_text
+      and "original Nugget interface" in picker_text, picker_text)
 picker._pick("classic")
 check("picker records the Nugget choice", picker.choice == "classic")
+picker._pick("full_nugget")
+check("picker records the Full Nugget choice",
+      picker.choice == "full_nugget")
 picker.close()
 
 print("\nclassic Nugget chrome uses the WorkSlop icon set")
@@ -486,23 +505,35 @@ check("WorkSlop Tweaks menu opens the tweak stack",
 win.show_ios_page(9)  # Liquid Glass section page
 check("Liquid Glass section highlights the v4 Tweaks rail item",
       win.workslop_sidebar._buttons["tweaks"][0].isChecked())
+check("Nugget Liquid Glass set is hidden in the WorkSlop UI",
+      win.ios_liquidglass.content._nugget_lg_box is not None
+      and win.ios_liquidglass.content._nugget_lg_box.isHidden())
 win._on_workslop_menu("wallpaper")
 check("WorkSlop Wallpaper menu opens PosterBoard",
       win.ios_pages.currentIndex() == 2
       and win.workslop_sidebar._buttons["wallpaper"][0].isChecked())
-check("Settings switch starts on WorkSlop",
-      win.ios_settings.interface_switch.isChecked())
+check("Settings picker starts on WorkSlop",
+      win.ios_settings.interface_buttons[ThemeManager.IOS].isChecked())
 
-# Flip through the real Settings switch, exactly as a user would.
-win.ios_settings.interface_switch.setChecked(False)
+# Flip through the real Settings picker, exactly as a user would.
+win.ios_settings.interface_buttons[ThemeManager.CLASSIC].click()
 app.processEvents()
-check("Settings switch selects Nugget UI",
+check("Settings picker selects Nugget UI",
       win.theme_manager.current_theme == ThemeManager.CLASSIC)
 check("Nugget rail visible / WorkSlop rail hidden",
       not win.ui.sidebar.isHidden() and win.workslop_sidebar.isHidden())
 win.ios_settings.refresh()
-check("Settings switch reflects Nugget after refresh",
-      not win.ios_settings.interface_switch.isChecked())
+check("Settings picker reflects Nugget after refresh",
+      win.ios_settings.interface_buttons[ThemeManager.CLASSIC].isChecked())
+def _icon_hash(btn):
+    from PySide6.QtCore import QBuffer, QIODevice
+    import hashlib
+    pm = btn.icon().pixmap(24, 24)
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    pm.save(buf, "PNG")
+    return hashlib.sha256(bytes(buf.data())).hexdigest()
+ws_icon_hash = _icon_hash(win.ui.liquidGlassPageBtn)
 win.show_home()
 check("Nugget Home is classic stack page 0",
       win.content_stack.currentIndex() == 0
@@ -525,7 +556,30 @@ check("hosted Settings hides the shared header in Nugget UI",
       and win.ios_nav.isHidden()
       and win.ui.settingsPageBtn.isChecked())
 
-win.ios_settings.interface_switch.setChecked(True)
+# Third UI: Full Nugget (original icons + dark chrome), same shell.
+win.ios_settings.interface_buttons[ThemeManager.FULL_NUGGET].click()
+app.processEvents()
+check("Settings picker selects Full Nugget UI",
+      win.theme_manager.current_theme == ThemeManager.FULL_NUGGET)
+check("Full Nugget keeps the classic shell",
+      not win.ui.sidebar.isHidden() and win.workslop_sidebar.isHidden())
+check("Full Nugget sidebar icons are the originals, not the WorkSlop set",
+      _icon_hash(win.ui.liquidGlassPageBtn) != ws_icon_hash)
+win.show_ios_page(9)
+app.processEvents()
+check("Nugget Liquid Glass set is visible in Full Nugget",
+      win.ios_liquidglass.content._nugget_lg_box is not None
+      and not win.ios_liquidglass.content._nugget_lg_box.isHidden())
+win.ios_settings.interface_buttons[ThemeManager.CLASSIC].click()
+app.processEvents()
+win.show_ios_page(9)
+app.processEvents()
+check("Nugget Liquid Glass set is visible in Nugget UI too",
+      not win.ios_liquidglass.content._nugget_lg_box.isHidden())
+check("Nugget UI icons are back to the WorkSlop set",
+      _icon_hash(win.ui.liquidGlassPageBtn) == ws_icon_hash)
+
+win.ios_settings.interface_buttons[ThemeManager.IOS].click()
 app.processEvents()
 win.show_home()
 check("switching back restores WorkSlop Home",
