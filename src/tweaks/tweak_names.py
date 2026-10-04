@@ -211,3 +211,11 @@ class TweakID(Enum):
     NuggetSolariumFFAppleMediaServices = auto()
     NuggetSolariumFFSharing = auto()
     NuggetSolariumFFMail = auto()
+
+    # Liquid Glass Disable (Beta 1) — new feature (2026-10-04): two
+    # delivery routes for the Beta 1 SolariumForceFallback key. Own IDs so
+    # the frozen v4 set above (incl. TweakID.SolariumForceFallback, which
+    # stages the same key into the managed overlay) is never touched.
+    # See src/tweaks/lg_disable.py.
+    LGDisableG2 = auto()  # managed overlay (.GlobalPreferences.plist, ManagedPreferencesDomain)
+    LGDisableG1 = auto()  # device file merge (HomeDomain .GlobalPreferences.plist, diff-gated)

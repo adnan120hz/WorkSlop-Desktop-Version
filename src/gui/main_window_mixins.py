@@ -47,7 +47,7 @@ class DeviceBarMixin:
         # are constructed at startup before any device is known, so per-device
         # compatibility filtering (min_version / iphone_only / ipad_only) is
         # only correct when re-evaluated against the real connected device.
-        for page in ("ios_tweaks", "ios_springboard", "ios_internal", "ios_liquidglass"):
+        for page in ("ios_tweaks", "ios_springboard", "ios_internal", "ios_liquidglass", "ios_lgd"):
             section_page = getattr(self, page, None)
             if section_page is not None:
                 try:
@@ -785,6 +785,8 @@ class NavigationMixin:
             self.show_ios_page(15)
         elif menu_id == "themes":
             self.show_ios_page(14)
+        elif menu_id == "liquidglassdisable":
+            self.show_ios_page(16)
         elif menu_id == "settings":
             self.on_settingsPageBtn_clicked()
             return
@@ -847,6 +849,7 @@ class NavigationMixin:
             15: "appdata",
             10: "themes", 11: "themes", 14: "themes",
             4: "settings",
+            16: "liquidglassdisable",
         }
         menu = page_to_menu.get(self.ios_pages.currentIndex())
         if menu is not None and hasattr(self, "workslop_sidebar"):

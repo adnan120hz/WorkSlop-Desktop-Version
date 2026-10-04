@@ -48,6 +48,7 @@ from src.gui.ios.mobilegestalt import IOSMobileGestaltPage
 from src.gui.ios.apply import IOSApplyPage
 from src.gui.ios.settings import IOSSettingsPage
 from src.gui.ios.statusbar import IOSStatusBarPage
+from src.gui.ios.liquid_glass_disable import IOSLiquidGlassDisablePage
 from src.gui.ios.icon_themes import IOSIconThemesPage
 from src.gui.ios.passcode_theme import IOSPasscodeThemePage
 from src.tweaks.registry import Section
@@ -265,6 +266,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_backup = IOSBackupPage(self)
         self.ios_themes_hub = IOSThemesHubPage(self)
         self.ios_appdata = IOSAppDataPage(self)
+        self.ios_lgd = IOSLiquidGlassDisablePage(self)
         self.ios_pages.addWidget(self.ios_home)
         self.ios_pages.addWidget(self.ios_tweaks)
         self.ios_pages.addWidget(self.ios_posterboard)
@@ -283,6 +285,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.addWidget(self.ios_backup)
         self.ios_pages.addWidget(self.ios_themes_hub)
         self.ios_pages.addWidget(self.ios_appdata)
+        # 16 = Liquid Glass Disable (Beta 1) — appended after app data for
+        # the same reason: no existing page index ever shifts.
+        self.ios_pages.addWidget(self.ios_lgd)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -305,6 +310,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             13: QCoreApplication.translate("Nugget", "Backup"),
             14: QCoreApplication.translate("Nugget", "Themes"),
             15: QCoreApplication.translate("Nugget", "App Data"),
+            16: QCoreApplication.translate("Nugget", "Liquid Glass Disable (Beta 1)"),
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),

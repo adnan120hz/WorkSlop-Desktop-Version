@@ -166,6 +166,12 @@ class DeviceManager:
         # most applies — Phase 0 already paid for the check.
         self._known_backup_encryption: Optional[bool] = None
 
+        # Liquid Glass Disable (Beta 1): the live .GlobalPreferences.plist
+        # base captured by _lgd_prepare_g1 for the current apply pass
+        # (None = G1 not armed this pass). The verification gate diffs the
+        # staged whole-file payload against this dict.
+        self._lgd_g1_base: Optional[dict] = None
+
         # Set when the user chose to continue without data protection (e.g.
         # out of disk space) — Phase 1 must not re-run the protective backup.
         self._protective_backup_skipped = False
@@ -1503,6 +1509,245 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             else:
                 update_label(QCoreApplication.tr("Warning: could not back up the PosterBoard database automatically."))
 
+    ## LIQUID GLASS DISABLE (BETA 1)
+    async def _lgd_prepare_g1(self, update_label=lambda x: None, hotload=None, hotload_hidden_names=frozenset()):
+        """Arm the G1 route for this apply pass (device-base capture).
+
+        The G1 payload REPLACES the device's whole .GlobalPreferences.plist,
+        so it must be merged into the file the connected device actually
+        carries — never staged from a template. This runs before the
+        staging loop: it captures the live file (iOS 27+: the merge base
+        Phase 0 already extracted; otherwise a targeted one-file backup),
+        saves it as the rollback original (first capture wins), and hands
+        the parsed dict to the tweak via ``_lgd_base``.
+
+        Fails closed with NuggetException when the live file cannot be
+        obtained or parsed — the apply is cancelled and nothing is
+        written. When the tweak is disabled, version-locked or
+        HotLoad-flagged it disarms silently (the staging loop's own gates
+        record the skip exactly like any other tweak).
+        """
+        from src.tweaks import lg_disable
+        self._lgd_g1_base = None
+        g1 = tweaks.get(TweakID.LGDisableG1)
+        g2 = tweaks.get(TweakID.LGDisableG2)
+        # Reset per-pass staging markers so a tweak skipped by this pass's
+        # own gates can never look "staged" to the verification gate.
+        for _tw in (g1, g2):
+            if _tw is not None:
+                try:
+                    _tw.staged = False
+                except Exception:
+                    pass
+        if g1 is not None:
+            try:
+                g1._lgd_base = None
+            except Exception:
+                pass
+        if g1 is None or not getattr(g1, "enabled", False):
+            return
+        udid = self.get_current_device_udid()
+        if not udid:
+            raise NuggetException(QCoreApplication.tr(
+                "Liquid Glass Disable (Beta 1): no device is connected, so "
+                "the device's own .GlobalPreferences.plist cannot be read. "
+                "Connect the device and try again. Nothing was written."))
+        version = self.get_current_device_version()
+        build = self.get_current_device_build()
+        model = self.get_current_device_model()
+        is_iphone = model.startswith("iPhone") if model else True
+        deliverable, reason_code, reason = tweak_deliverability(
+            TweakID.LGDisableG1, device_version=version, device_build=build,
+            is_iphone=is_iphone, tweak=g1)
+        if not deliverable:
+            log_warn(f"Liquid Glass Disable (Beta 1) G1 not armed: "
+                     f"{reason_code} — {reason}")
+            return
+        if hotload is not None and (
+                TweakID.LGDisableG1.name in hotload_hidden_names
+                or hotload.rule_for(TweakID.LGDisableG1,
+                                    device_version=version,
+                                    device_model=model) is not None):
+            log_warn("Liquid Glass Disable (Beta 1) G1 not armed: flagged "
+                     "by HotLoad safety rules.")
+            return
+
+        update_label(QCoreApplication.tr(
+            "Reading the device's .GlobalPreferences.plist..."))
+        base = None
+        base_bytes = None
+        source = ""
+        if version:
+            try:
+                is_ios27 = Version(version) >= Version("27.0")
+            except Exception:
+                is_ios27 = False
+            if is_ios27:
+                gp_base = getattr(self, "_gp_base_plist", None)
+                if isinstance(gp_base, dict):
+                    base = dict(gp_base)
+                    source = "Phase 0 protective backup (this run)"
+        if base is None:
+            from src.restore.lgd_backup import fetch_device_gp_plist
+            base_bytes = await fetch_device_gp_plist(
+                udid, update_label, self._backup_progress(update_label))
+            source = "targeted device backup"
+            try:
+                base = lg_disable.load_plist_dict(base_bytes)
+            except Exception as exc:
+                raise NuggetException(QCoreApplication.tr(
+                    "Liquid Glass Disable (Beta 1): the .GlobalPreferences.plist "
+                    "read from the device could not be parsed (%1). Nothing "
+                    "was written.").arg(str(exc)))
+        if base_bytes is None:
+            base_bytes = plistlib.dumps(base)
+        # Save the pristine original BEFORE anything is written: first
+        # capture wins, so a later apply (whose base may already carry our
+        # key) can never replace the rollback source. A real write failure
+        # is fatal — applying G1 with no rollback copy is not acceptable.
+        try:
+            saved = lg_disable.save_original_if_absent(udid, base_bytes, {
+                "udid": udid,
+                "ios_version": version,
+                "build": build,
+                "source": source,
+                "key_count": len(base),
+            })
+        except OSError as save_err:
+            raise NuggetException(QCoreApplication.tr(
+                "Liquid Glass Disable (Beta 1): the device's original "
+                ".GlobalPreferences.plist could not be saved for rollback "
+                "(%1). Nothing was written.").arg(str(save_err)))
+        if saved:
+            log_info("Liquid Glass Disable (Beta 1): saved the device's "
+                     "original .GlobalPreferences.plist for rollback.")
+        g1._lgd_base = base
+        self._lgd_g1_base = base
+        log_info(f"Liquid Glass Disable (Beta 1): G1 base ready "
+                 f"({len(base)} live keys, source: {source}).")
+
+    def _lgd_verify_gate(self, files_to_restore):
+        """Liquid Glass Disable (Beta 1): verification gate for this pass.
+
+        Runs on the final restore list before start_restore. When either
+        route actually staged, its restore records must parse, carry the
+        candidate key as a real bool true, and (G1) pass the fail-hard
+        diff against the live device base captured by _lgd_prepare_g1 —
+        100% of the original keys intact, with only keys other enabled
+        tweaks deliberately staged into the same files allowed to differ.
+        Any problem cancels the apply; nothing has been written yet.
+        """
+        from src.tweaks.lg_disable import GP_KEY, verify_apply_gate
+        g2 = tweaks.get(TweakID.LGDisableG2)
+        g1 = tweaks.get(TweakID.LGDisableG1)
+        g2_active = bool(g2 is not None and getattr(g2, "enabled", False)
+                         and getattr(g2, "staged", False))
+        g1_active = bool(g1 is not None and getattr(g1, "enabled", False)
+                         and getattr(g1, "staged", False))
+        if not g2_active and not g1_active:
+            return
+        allowed_new = {GP_KEY}
+        for tid, tw in tweaks.items():
+            if tid in (TweakID.LGDisableG1, TweakID.LGDisableG2):
+                continue
+            if not getattr(tw, "enabled", False):
+                continue
+            if getattr(tw, "file_location", None) not in (
+                    FileLocation.globalPreferences,
+                    FileLocation.globalPreferencesHomeDomain):
+                continue
+            key = getattr(tw, "key", None)
+            if key:
+                allowed_new.add(key)
+            value = getattr(tw, "value", None)
+            if isinstance(value, dict):
+                # AdvancedPlistTweak-style multi-key staging.
+                allowed_new.update(
+                    k for k in value.keys() if isinstance(k, str))
+        problems = verify_apply_gate(
+            files_to_restore, g2_active=g2_active, g1_active=g1_active,
+            g1_base=self._lgd_g1_base, g1_allowed_new=allowed_new)
+        if problems:
+            raise NuggetException(QCoreApplication.tr(
+                "Liquid Glass Disable (Beta 1): the verification gate "
+                "failed, so the apply was cancelled and nothing was "
+                "written:\n") + "\n".join(f"• {p}" for p in problems))
+        log_info("Liquid Glass Disable (Beta 1): verification gate passed.")
+
+    def lgd_rollback(self, which: str, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        """Roll back one Liquid Glass Disable (Beta 1) route from the UI.
+
+        ``which`` is "g2" (restore an empty managed overlay — no candidate
+        key) or "g1" (write back the device original saved before the
+        first apply). Runs through the same start_restore machinery as
+        every other apply/reset.
+        """
+        install_windows_selector_policy()
+        asyncio.run(self._lgd_rollback(which, update_label, show_alert, prompt_choice))
+
+    async def _lgd_rollback(self, which: str, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        from src.tweaks import lg_disable
+        files_to_restore: list = []
+        final_alert = None
+        try:
+            self._raise_if_unsupported()
+            udid = self.get_current_device_udid()
+            if not udid:
+                raise NuggetException(QCoreApplication.tr("No device connected."))
+            done_id = None
+            if which == "g2":
+                # G2 rollback (payload-lab semantics): an overlay with none
+                # of our keys — an empty managed .GlobalPreferences.plist
+                # removes our override; the layer itself stays, harmless.
+                # Other WorkSlop GlobalPreferences tweaks re-stage their
+                # keys on the next Apply.
+                self.concat_file(
+                    contents=plistlib.dumps({}),
+                    path=FileLocation.globalPreferences.value,
+                    files_to_restore=files_to_restore)
+                done_id = TweakID.LGDisableG2
+            elif which == "g1":
+                original = lg_disable.load_original(udid)
+                if original is None:
+                    raise NuggetException(QCoreApplication.tr(
+                        "Liquid Glass Disable (Beta 1): no saved original "
+                        ".GlobalPreferences.plist for this device, so there "
+                        "is nothing safe to roll back to. The original is "
+                        "saved automatically before the first G1 apply."))
+                try:
+                    parsed = lg_disable.load_plist_dict(original)
+                except Exception:
+                    parsed = None
+                if not isinstance(parsed, dict):
+                    raise NuggetException(QCoreApplication.tr(
+                        "Liquid Glass Disable (Beta 1): the saved original "
+                        ".GlobalPreferences.plist is unreadable, so it was "
+                        "NOT written back."))
+                # The device's own file goes back byte-for-byte.
+                self.concat_file(
+                    contents=original,
+                    path=FileLocation.globalPreferencesHomeDomain.value,
+                    files_to_restore=files_to_restore)
+                done_id = TweakID.LGDisableG1
+            else:
+                raise NuggetException(QCoreApplication.tr(
+                    "Liquid Glass Disable (Beta 1): unknown rollback route."))
+            await self.add_skip_setup(files_to_restore, True)
+            final_alert = await self.start_restore(
+                files_to_restore, update_label, prompt_choice=prompt_choice)
+            tweak = tweaks.get(done_id) if done_id is not None else None
+            if tweak is not None:
+                try:
+                    tweak.set_enabled(False)
+                except Exception:
+                    pass
+            update_label(QCoreApplication.tr("Success!"))
+        except Exception as e:
+            final_alert = show_apply_error(e, update_label,
+                                           files_list=files_to_restore)
+        finally:
+            show_alert(final_alert)
+
     async def _apply_tweak_pass(self, update_label=lambda x: None, templates: list = None, prepared_backup_root=None, prompt_password=None, prompt_choice=None, skip_protective_backup: bool = False):
         """Generate all tweak files and restore them to the device in one pass.
 
@@ -1634,6 +1879,16 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 j_skip(_cname, "AUDIT_RESEARCH_ONLY")
 
         try:
+            # Liquid Glass Disable (Beta 1): when the G1 route is enabled,
+            # capture the device's live .GlobalPreferences.plist BEFORE the
+            # staging loop runs — the G1 tweak merges the candidate key
+            # into that base instead of staging a tweak-only dict over the
+            # live user file (see src/tweaks/lg_disable.py). Raises
+            # NuggetException (fail closed, nothing written) when the live
+            # file cannot be obtained.
+            await self._lgd_prepare_g1(
+                update_label, hotload=hotload,
+                hotload_hidden_names=hotload_hidden_names)
             # set the plist keys
             for tweak_name in tweaks:
                 tweak = tweaks[tweak_name]
@@ -2075,6 +2330,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                             "2. Or enable \"Use Encrypted Backups (Experimental)\" in WorkSlop Desktop Settings → enter your backup password when prompted.\n\n"
                             "Tip: Option 1 is simpler if you don't know your backup password."
                         ))
+
+            # Liquid Glass Disable (Beta 1): verification gate — when this
+            # feature staged, re-verify its restore records (parse, real
+            # bool value, G1 whole-file diff vs. the live device base)
+            # before anything reaches the device. A failure raises
+            # NuggetException and cancels the apply; nothing has been
+            # written yet at this point.
+            self._lgd_verify_gate(files_to_restore)
 
             # restore to the device
             # include_keychain only when backup encryption is active — iOS rejects

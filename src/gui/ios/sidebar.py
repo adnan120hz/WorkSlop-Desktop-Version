@@ -22,6 +22,7 @@ MENUS = [
     ("appdata", "App Data", ":/icon/hdd.svg"),
     ("themes", "Themes", ":/icon/brush.svg"),
     ("settings", "Settings", ":/icon/gear.svg"),
+    ("liquidglassdisable", "Liquid Glass Disable (Beta 1)", ":/icon/ws-glass.svg"),
 ]
 
 PILL_HEIGHT = 46

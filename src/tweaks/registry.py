@@ -20,6 +20,7 @@ class Section(Enum):
     SPRINGBOARD = "SpringBoard"
     FEATURE_FLAGS = "Feature Flags"
     INTERNAL = "Internal Options"
+    LIQUID_GLASS_DISABLE = "Liquid Glass Disable (Beta 1)"
 
 
 class Kind(Enum):
@@ -36,6 +37,7 @@ SECTION_FEATURES: dict[Section, str] = {
     Section.SPRINGBOARD: "Springboard",
     Section.FEATURE_FLAGS: "Feature Flags",
     Section.INTERNAL: "Internal",
+    Section.LIQUID_GLASS_DISABLE: "Liquid Glass",
 }
 
 
@@ -88,6 +90,16 @@ def _watchos_compatibility():
             "AdvertisingIdentifierSeed": "85E70251-1960-4DA0-A321-B68AC118FAB5",  # this prolly isn't needed either
             "minPairingCompatibilityVersion": 1
         })
+
+
+def _lgd_g2_factory():
+    from .lg_disable import LGDG2Tweak
+    return LGDG2Tweak()
+
+
+def _lgd_g1_factory():
+    from .lg_disable import LGDG1Tweak
+    return LGDG1Tweak()
 
 
 GP = FileLocation.globalPreferences
@@ -357,6 +369,24 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Route Siri voice through device speaker.")),
     _t(TweakID.SiriDeclined, Section.INTERNAL, "Siri Declined Flag", GP, "UserHasDeclinedEnable",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Flag for declined Siri setup.")),
+
+    # === Liquid Glass Disable (Beta 1) — new feature (2026-10-04) ===
+    # One Beta 1 candidate key (SolariumForceFallback = true) behind two
+    # delivery routes; the payload logic, diff gate and rollback store
+    # live in src/tweaks/lg_disable.py. HONEST STATUS: the key string is
+    # attested in the iOS 26.6.1 (23G83) DesignLibrary binary cluster, but
+    # it is NOT proven that iOS 26.6.1 reads it from either file — these
+    # rows are a structured device-test candidate, not a working
+    # "disable glass" claim. The frozen v4 set above is untouched.
+    _t(TweakID.LGDisableG2, Section.LIQUID_GLASS_DISABLE, "Managed Overlay (G2)",
+       GP, "SolariumForceFallback", factory=_lgd_g2_factory,
+       min_version="26.0",
+       description=QT_TRANSLATE_NOOP("Nugget", "Beta 1 — unproven. Writes SolariumForceFallback = true into the managed .GlobalPreferences.plist overlay (/var/Managed Preferences/mobile/). Whether iOS 26.6.1 reads this key from the managed overlay is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying). Roll back from the Liquid Glass Disable (Beta 1) page.")),
+    _t(TweakID.LGDisableG1, Section.LIQUID_GLASS_DISABLE, "Device File Merge (G1)",
+       FileLocation.globalPreferencesHomeDomain, "SolariumForceFallback",
+       factory=_lgd_g1_factory,
+       min_version="26.0",
+       description=QT_TRANSLATE_NOOP("Nugget", "Beta 1 — unproven. Builds the payload at apply time from your device's own .GlobalPreferences.plist (HomeDomain), inserts SolariumForceFallback = true, and writes it back only if 100% of your original keys survive (automatic diff gate; the apply is cancelled otherwise). Your original file is saved before the first apply for rollback. Whether iOS 26.6.1 reads this key is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
 ) + _FF_SPECS
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}
