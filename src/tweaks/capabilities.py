@@ -150,6 +150,15 @@ REMOVED_TWEAK_IDS = frozenset({
     TweakID.PhotoUI,                      # dead FeatureFlags channel on target
     TweakID.AI,                           # dead FeatureFlags channel on target
     TweakID.KioskMode,                    # dead FeatureFlags channel on target
+    # Wave 13 audit: the registry dropped both IDs (see the REMOVED
+    # comments in registry.py) but the tombstones were never recorded
+    # here, so an old preset naming either parsed fine, passed
+    # deliverability as OK, and was then dropped silently by the preset
+    # applier (target None). Neither ID has an active spec, so recording
+    # the tombstone changes no payload — presets now report them as
+    # removed/skipped like every other dropped tweak.
+    TweakID.GranularSpringBoard,          # invented key SBGranularGlass
+    TweakID.StatusBarOverrides,           # plist-key model replaced by StatusBar archive
 })
 
 # Backwards-compatible aliases for the five redundant duplicate rows in
