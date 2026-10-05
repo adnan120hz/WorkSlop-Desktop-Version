@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from src.devicemanagement.constants import mobilegestalt_decision
-from src.exceptions.NuggetException import NuggetException
+from src.exceptions.nugget_exception import NuggetException
 from src.tweaks.tweak_classes import MobileGestaltCacheDataTweak
 
 PASS = 0
