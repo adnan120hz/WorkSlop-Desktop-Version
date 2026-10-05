@@ -131,7 +131,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
         self._g2_btn = IOSDangerButton(
-            _tr("Roll Back G2 (Empty Overlay)"), footer)
+            _tr("Roll Back G2 (Restore Saved Overlay)"), footer)
         self._g2_btn.clicked.connect(lambda: self._confirm_rollback("g2"))
         btn_row.addWidget(self._g2_btn)
         self._g1_btn = IOSDangerButton(
@@ -143,8 +143,10 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         hint = QLabel(_tr(
             "Enable a route above, then press Apply Tweaks on the Apply "
             "page. The rollback buttons write to the device immediately "
-            "(G2 restores an empty managed overlay; G1 writes back the "
-            "original .GlobalPreferences.plist saved before your first "
+            "(G2 restores the device's managed overlay saved before "
+            "your first apply — or an empty overlay when none was "
+            "saved; G1 writes back the original "
+            ".GlobalPreferences.plist saved before your first "
             "G1 apply)."))
         hint.setWordWrap(True)
         hint.setStyleSheet(
@@ -258,11 +260,12 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             return
         if which == "g2":
             text = _tr(
-                "Restore an empty managed .GlobalPreferences.plist "
-                "overlay? This removes the SolariumForceFallback key "
-                "(other WorkSlop GlobalPreferences tweaks re-apply on "
-                "your next Apply). The device reboots if auto-reboot is "
-                "on.")
+                "Restore the managed .GlobalPreferences.plist overlay "
+                "saved before your first G1/G2 apply (or an empty "
+                "overlay when none was saved)? This removes the "
+                "SolariumForceFallback key (other WorkSlop "
+                "GlobalPreferences tweaks re-apply on your next Apply). "
+                "The device reboots if auto-reboot is on.")
         else:
             meta = lg_disable.load_original_meta(udid)
             if not meta:

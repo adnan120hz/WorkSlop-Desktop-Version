@@ -447,7 +447,34 @@ def main():
     test_staged_split()
     test_inject_and_verify()
     test_full_route_end_to_end()
+    test_merge_duplicates_hardened()
     print(f"\nALL {PASS} CHECKS PASSED")
+
+
+
+
+def test_merge_duplicates_hardened():
+    print("\nmerge_duplicates empty/unparseable tolerance (sparse path)")
+    from src.restore.restore import merge_duplicates
+    from src.utils.file_to_restore import FileToRestore
+
+    def rec(contents, path="Library/Preferences/.GlobalPreferences.plist"):
+        return FileToRestore(contents=contents, restore_path=path,
+                             domain="HomeDomain")
+
+    good = plistlib.dumps({"a": 1})
+    merged = merge_duplicates([rec(b""), rec(good)])
+    check("empty first record takes the valid duplicate",
+          len(merged) == 1 and plistlib.loads(merged[0].contents) == {"a": 1})
+    merged = merge_duplicates([rec(good), rec(b"")])
+    check("empty duplicate contributes nothing",
+          len(merged) == 1 and plistlib.loads(merged[0].contents) == {"a": 1})
+    merged = merge_duplicates([rec(good), rec(b"not a plist")])
+    check("unparseable duplicate is ignored, restore survives",
+          len(merged) == 1 and plistlib.loads(merged[0].contents) == {"a": 1})
+    merged = merge_duplicates([rec(good), rec(plistlib.dumps({"b": 2}))])
+    check("two valid duplicates still merge",
+          plistlib.loads(merged[0].contents) == {"a": 1, "b": 2})
 
 
 if __name__ == "__main__":

@@ -119,12 +119,32 @@ def merge_duplicates(original_files: list[FileToRestore]) -> list[FileToRestore]
             if not restore_path.endswith('.plist'):
                 print(f'cannot merge duplicate file, ignoring {file_loc}')
                 continue
-            # merge the data (plist files only)
+            # merge the data (plist files only). Empty or unparseable
+            # records must never take the whole restore down with a raw
+            # plistlib error: an empty duplicate contributes nothing,
+            # an empty initial record takes the duplicate's content,
+            # and an unparseable duplicate is ignored like a non-plist
+            # one (the LGD gate's fold semantics in _effective_plist).
+            try:
+                added_data = plistlib.loads(file.contents) if file.contents else {}
+            except Exception:
+                print(f'ignoring unparseable duplicate file {file_loc}')
+                continue
+            if not isinstance(added_data, dict):
+                print(f'ignoring non-dict duplicate file {file_loc}')
+                continue
+            if not added_data:
+                continue
+            target = no_dupe_files[existing_locations[file_loc]]
+            try:
+                initial_data = plistlib.loads(target.contents) if target.contents else {}
+            except Exception:
+                initial_data = {}
+            if not isinstance(initial_data, dict):
+                initial_data = {}
             print(f'merging duplicate files for {file_loc}')
-            initial_data = plistlib.loads(no_dupe_files[existing_locations[file_loc]].contents)
-            added_data = plistlib.loads(file.contents)
             initial_data.update(added_data)
-            no_dupe_files[existing_locations[file_loc]].contents = plistlib.dumps(initial_data)
+            target.contents = plistlib.dumps(initial_data)
             del initial_data, added_data
         else:
             # add it to the no dupes list
