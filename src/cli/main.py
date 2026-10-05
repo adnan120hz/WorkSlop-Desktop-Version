@@ -148,3 +148,7 @@ def main() -> int:
     import multiprocessing
     multiprocessing.freeze_support()
     return dispatch(list(sys.argv[1:]))
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
