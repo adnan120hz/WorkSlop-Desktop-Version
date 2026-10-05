@@ -2,6 +2,7 @@ from PySide6.QtCore import Signal, QThread
 from PySide6.QtWidgets import QMessageBox
 import traceback
 
+from src.devicemanagement.session import install_windows_selector_policy
 from src.gui.thread_workers.apply_worker import ApplyAlertMessage
 
 

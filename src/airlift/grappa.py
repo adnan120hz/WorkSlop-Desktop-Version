@@ -208,6 +208,7 @@ def _macos_token() -> Optional[bytes]:
 
 
 def _cf_dictionary(libobjc, cf, _, mapping: dict) -> Optional[int]:
+    import ctypes
     kCFTypeDictionaryKeyCallBacks = 412  # pointer-sized struct; we cheat with NULL
     keys = (ctypes.c_void_p * len(mapping))()
     vals = (ctypes.c_void_p * len(mapping))()

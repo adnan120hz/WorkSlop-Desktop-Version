@@ -324,5 +324,6 @@ def get_latest_version(channel: str = CHANNEL_STABLE):
     """Backward-compatible wrapper: the selected release's stripped tag,
     or None. Cannot express ``unknown`` — new code must not use it for
     decisions."""
+    from src.version import App_Version, App_Build
     result = check_for_update(App_Version, App_Build, channel)
     return result.latest.version if result.latest else None
