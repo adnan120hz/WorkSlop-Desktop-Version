@@ -26,6 +26,13 @@ release.
   fails the verification gate when a valid record exists.
 - No changes to any existing tweak payload (the Liquid Glass v4 set
   and the Nugget set are untouched).
+- Post-release audit fixes (same day): a crash that killed every G1
+  apply/rollback on the full-backup route before it could start; the
+  G2 overlay is now merged onto the device's own managed file from the
+  apply backup (pre-existing managed keys survive, and that file is
+  the rollback source); LGD full backups live in their own retained
+  pool instead of the iOS 27 protective-backup pool; the encrypted
+  backup refusal now fires before any backup analysis.
 
 ## v11.5 — 2026-10-03
 

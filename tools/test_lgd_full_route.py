@@ -242,11 +242,211 @@ def test_inject_and_verify():
         check("G1 rollback without a saved original refuses", raised)
 
 
+def _write_synthetic_backup(backup_root, udid, g1_dict, g2_dict, omit_g1=False):
+    device_dir = os.path.join(backup_root, udid)
+    os.makedirs(device_dir, exist_ok=True)
+    # Keep an older run's injected payload from leaking into this backup.
+    db_path = os.path.join(device_dir, "Manifest.db")
+    if os.path.exists(db_path):
+        os.unlink(db_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "CREATE TABLE Files (fileID TEXT PRIMARY KEY, domain TEXT, "
+        "relativePath TEXT, flags INTEGER, file BLOB)")
+
+    def add(domain, rel, data):
+        fid = hashlib.sha1(f"{domain}-{rel}".encode()).hexdigest()
+        payload_dir = os.path.join(device_dir, fid[:2])
+        os.makedirs(payload_dir, exist_ok=True)
+        with open(os.path.join(payload_dir, fid), "wb") as fh:
+            fh.write(data)
+        conn.execute(
+            "INSERT INTO Files VALUES (?, ?, ?, 1, ?)",
+            (fid, domain, rel, sqlite3.Binary(b"x" * 64)))
+
+    for i in range(3):
+        add("HomeDomain", f"Library/Preferences/com.apple.dummy{i}.plist",
+            plistlib.dumps({"i": i}))
+    if not omit_g1 and g1_dict is not None:
+        add(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
+            plistlib.dumps(g1_dict))
+    if g2_dict is not None:
+        add(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
+            plistlib.dumps(g2_dict))
+    conn.commit()
+    conn.close()
+
+
+def test_full_route_end_to_end():
+    print("\nfull route end-to-end (stubbed device stack)")
+    import asyncio
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from src.devicemanagement import session as session_mod
+    from src.restore import inject as inject_mod
+    from src.restore import protective as protective_mod
+    from src.restore import restore as restore_mod
+    from src.utils import stall_watchdog as watchdog_mod
+    from src.exceptions.nugget_exception import NuggetException
+
+    udid2 = "TESTUDIDLGDFULLROUTE00000000000000002"
+    base = {"AppleLocale": "en_US", "AppleLanguages": ["en-US"],
+            "ExistingKey": 7}
+    device_g2 = {"MDMKey": "keepme", "OtherKey": 3}
+    cfg = {"encrypted": False, "omit_g1": False}
+    calls = {"restore": 0}
+
+    class FakeMB:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get_will_encrypt(self):
+            return cfg["encrypted"]
+
+        async def backup(self, full, backup_directory, progress_callback=None):
+            _write_synthetic_backup(
+                backup_directory, udid2, base, device_g2,
+                omit_g1=cfg["omit_g1"])
+
+    @asynccontextmanager
+    async def fake_session(_udid):
+        yield object()
+
+    async def fake_disk(_lc, path=None):
+        return 10 ** 12
+
+    async def fake_watch(fn, _progress, operation=None):
+        return await fn(lambda _x: None)
+
+    async def fake_restore(_lc, backup_root, _udid, reboot,
+                           progress_callback, backup_password=""):
+        assert os.path.isfile(
+            os.path.join(backup_root, _udid, "Manifest.db"))
+        calls["restore"] += 1
+
+    saved_attrs = [
+        (session_mod, "lockdown_session", session_mod.lockdown_session),
+        (protective_mod, "check_disk_space_for_backup",
+         protective_mod.check_disk_space_for_backup),
+        (restore_mod, "_restore_protective_backup",
+         restore_mod._restore_protective_backup),
+        (restore_mod, "_start_mobilebackup2", restore_mod._start_mobilebackup2),
+        (watchdog_mod, "run_with_stall_watchdog",
+         watchdog_mod.run_with_stall_watchdog),
+        (inject_mod, "_is_encrypted_backup", inject_mod._is_encrypted_backup),
+        (lgd_full, "lgd_backup_base", lgd_full.lgd_backup_base),
+    ]
+    pool = tempfile.mkdtemp(prefix="lgd_full_pool_")
+    session_mod.lockdown_session = fake_session
+    protective_mod.check_disk_space_for_backup = fake_disk
+    restore_mod._restore_protective_backup = fake_restore
+    restore_mod._start_mobilebackup2 = lambda _lc: FakeMB()
+    watchdog_mod.run_with_stall_watchdog = fake_watch
+    lgd_full.lgd_backup_base = lambda _u: Path(pool)
+    try:
+        # A) Apply G1+G2: reaches the restore (this is the path that died
+        #    with UnboundLocalError before the audit fix), G2 is rebased
+        #    onto the device's own managed file.
+        payloads = lgd_full.plan_apply_payloads(
+            g1_active=True, g2_active=True, g1_base=base)
+        root = asyncio.run(lgd_full.run_full_backup_route(
+            udid2, payloads, g1_base=base,
+            version="26.6.1", build="23G83"))
+        check("apply route completes and restores", calls["restore"] == 1)
+        g2_disk = plistlib.loads(open(lgd_full.payload_disk_path(
+            root, udid2, lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH),
+            "rb").read())
+        check("G2 rebased: pre-existing managed keys survive",
+              g2_disk.get("MDMKey") == "keepme"
+              and g2_disk.get("OtherKey") == 3, str(g2_disk))
+        check("G2 rebased: candidate key present as bool true",
+              g2_disk.get(KEY) is True)
+        check("G1 original saved for rollback",
+              lg_disable.original_saved(udid2))
+        saved_g2 = lg_disable.load_g2_original(udid2)
+        check("G2 original captured from the apply backup",
+              saved_g2 is not None
+              and plistlib.loads(saved_g2).get("MDMKey") == "keepme")
+
+        # B) Rollback G2 via the same route restores the saved original.
+        rb = lgd_full.plan_rollback_payloads(
+            "g2", None, g2_original_bytes=saved_g2)
+        root_b = asyncio.run(lgd_full.run_full_backup_route(
+            udid2, rb, apply_mode=False, expect_candidate_key=False))
+        g2_disk = plistlib.loads(open(lgd_full.payload_disk_path(
+            root_b, udid2, lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH),
+            "rb").read())
+        check("G2 rollback restores pre-tweak overlay, key gone",
+              g2_disk.get("MDMKey") == "keepme" and KEY not in g2_disk,
+              str(g2_disk))
+        check("rollback did not poison the saved G2 original",
+              plistlib.loads(lg_disable.load_g2_original(udid2)).get(
+                  "MDMKey") == "keepme")
+
+        # C) Encrypted backup: refused honestly, restore never called.
+        cfg["encrypted"] = True
+        calls["restore"] = 0
+        try:
+            asyncio.run(lgd_full.run_full_backup_route(
+                udid2, lgd_full.plan_apply_payloads(
+                    g1_active=False, g2_active=True, g1_base=None)))
+            raised = None
+        except NuggetException as exc:
+            raised = exc
+        check("encrypted backup refused with friendly error",
+              raised is not None and "encrypted" in str(raised).lower())
+        check("encrypted refusal happens before any restore",
+              calls["restore"] == 0)
+        cfg["encrypted"] = False
+
+        # D) G1 with no base anywhere: friendly NuggetException, NOT an
+        #    UnboundLocalError, and no restore.
+        cfg["omit_g1"] = True
+        try:
+            asyncio.run(lgd_full.run_full_backup_route(
+                udid2, lgd_full.plan_apply_payloads(
+                    g1_active=True, g2_active=False, g1_base=base),
+                g1_base=None))
+            raised = None
+        except NuggetException as exc:
+            raised = exc
+        except Exception as exc:  # noqa: BLE001 - the regression itself
+            raised = exc
+        check("G1 without a readable device file fails friendly",
+              isinstance(raised, NuggetException), repr(raised))
+        cfg["omit_g1"] = False
+
+        # E) Pool pruning keeps only the newest completed LGD runs.
+        pool_e = tempfile.mkdtemp(prefix="lgd_full_pool_e_")
+        lgd_full.lgd_backup_base = lambda _u: Path(pool_e)
+        for i in range(4):
+            run_dir = os.path.join(pool_e, f"run{i}")
+            _write_synthetic_backup(
+                os.path.join(run_dir, "device_backup"), udid2, base, None)
+            os.utime(run_dir, (1000 + i, 1000 + i))
+        incomplete = os.path.join(pool_e, "run-incomplete")
+        os.makedirs(os.path.join(incomplete, "device_backup"), exist_ok=True)
+        removed = lgd_full.prune_lgd_backups(udid2, keep=2)
+        remaining = sorted(os.listdir(pool_e))
+        check("LGD pool pruning bounds disk usage",
+              removed == 2 and "run2" in remaining and "run3" in remaining,
+              str(remaining))
+        check("incomplete runs are never pruned",
+              "run-incomplete" in remaining)
+    finally:
+        for module, attr, value in saved_attrs:
+            setattr(module, attr, value)
+
+
 def main():
     test_gate()
     test_plan_payloads()
     test_staged_split()
     test_inject_and_verify()
+    test_full_route_end_to_end()
     print(f"\nALL {PASS} CHECKS PASSED")
 
 

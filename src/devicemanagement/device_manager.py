@@ -1673,7 +1673,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         except Exception:
             return False
 
-    async def _lgd_run_full_route(self, payloads, update_label=lambda x: None, *, reboot: bool = False, expect_candidate_key: bool = True, g1_base=None, g1_allowed_new=()):
+    async def _lgd_run_full_route(self, payloads, update_label=lambda x: None, *, reboot: bool = False, apply_mode: bool = True, expect_candidate_key: bool = True, g1_base=None, g1_allowed_new=()):
         """Run the gated iOS 26.6.x full-backup delivery for LGD payloads."""
         from src.restore.lgd_full import run_full_backup_route
         udid = self.get_current_device_udid()
@@ -1695,6 +1695,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             backup_progress=self._backup_progress(update_label),
             restore_progress=_restore_progress,
             reboot=reboot,
+            apply_mode=apply_mode,
             g1_base=g1_base,
             g1_allowed_new=g1_allowed_new,
             expect_candidate_key=expect_candidate_key,
@@ -1796,10 +1797,15 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 # full route created is never "undone" through a channel
                 # the device may not read the same way.
                 from src.restore.lgd_full import plan_rollback_payloads
-                rollback_payloads = plan_rollback_payloads(which, original)
+                rollback_payloads = plan_rollback_payloads(
+                    which, original,
+                    g2_original_bytes=(
+                        lg_disable.load_g2_original(udid)
+                        if which == "g2" else None))
                 await self._lgd_run_full_route(
                     rollback_payloads, update_label,
                     reboot=bool(self.pref_manager.auto_reboot),
+                    apply_mode=False,
                     expect_candidate_key=False,
                     g1_base=parsed if which == "g1" else None)
                 if self.pref_manager.auto_reboot:
@@ -2443,6 +2449,16 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                     and not files_to_restore),
                         g1_base=self._lgd_g1_base,
                         g1_allowed_new=self._lgd_gp_allowed_keys())
+                    # The LGD tweaks really are on the device now: mark
+                    # them delivered so a later sparse-pass failure does
+                    # not misreport them as not delivered.
+                    if journal is not None:
+                        for _entry in journal.data["tweaks"]:
+                            if (_entry.get("tweak_id") in (
+                                    TweakID.LGDisableG1.name,
+                                    TweakID.LGDisableG2.name)
+                                    and _entry.get("status") == TW_STAGED):
+                                _entry["status"] = TW_DELIVERED
                     log_info("Liquid Glass Disable (Beta 1): G1/G2 "
                              "delivered via the iOS 26.6 full-backup route.")
 

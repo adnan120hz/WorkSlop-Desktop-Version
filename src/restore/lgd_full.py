@@ -30,7 +30,15 @@ completely untouched):
   (parse, real-bool candidate key, G1 diff vs. the original file
   extracted from THIS backup) before the restore begins;
 * the pristine device original from this backup is saved for rollback
-  (first capture wins) before anything is written.
+  (first capture wins) before anything is written;
+* the G2 overlay is rebased onto the device's own managed file from
+  this backup, so a pre-existing managed key is never dropped by the
+  whole-file replace, and that file is captured as the G2 rollback
+  original;
+* LGD full backups live in a dedicated pool (``<udid>-lgd-full``) with
+  their own retention, never in the iOS 27 protective-backup pool, so
+  an LGD run can neither displace nor impersonate the user's wipe
+  rescue backup.
 
 The restore itself never erases the device: it is a normal
 mobilebackup2 restore of a complete backup, followed by a reboot only
@@ -101,9 +109,36 @@ def plan_apply_payloads(*, g1_active: bool, g2_active: bool,
     return payloads
 
 
-def plan_rollback_payloads(which: str, original_bytes: Optional[bytes]) -> list:
-    """Inject tuples for a rollback (same route, inverse payloads)."""
+def plan_rollback_payloads(which: str, original_bytes: Optional[bytes],
+                           g2_original_bytes: Optional[bytes] = None) -> list:
+    """Inject tuples for a rollback (same route, inverse payloads).
+
+    G2 prefers the device's pre-tweak managed overlay captured at apply
+    time; without one it falls back to an empty overlay, which removes
+    our key and nothing else was ever written there by this feature.
+    """
     if which == "g2":
+        if g2_original_bytes:
+            try:
+                parsed = lg_disable.load_plist_dict(g2_original_bytes)
+            except Exception:
+                parsed = None
+            if isinstance(parsed, dict):
+                # Rollback means OUR key goes away; if the captured
+                # overlay already carried it (an overlay captured after
+                # a Beta 1 sparse apply), strip exactly that one key
+                # and keep every other byte of content.
+                if lg_disable.GP_KEY in parsed:
+                    parsed = {
+                        k: v for k, v in parsed.items()
+                        if k != lg_disable.GP_KEY}
+                    return [_inject_tuple(
+                        lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
+                        plistlib.dumps(parsed, fmt=plistlib.FMT_BINARY,
+                                       sort_keys=True))]
+                return [_inject_tuple(lg_disable.G2_DOMAIN,
+                                      lg_disable.G2_REL_PATH,
+                                      g2_original_bytes)]
         return [_inject_tuple(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
                               plistlib.dumps({}))]
     if which == "g1":
@@ -193,6 +228,8 @@ def payload_disk_path(backup_root, udid, domain: str, rel_path: str) -> Path:
 def verify_injected_payloads(backup_root, udid, payloads,
                              g1_base: Optional[dict] = None,
                              g1_allowed_new=(),
+                             g2_base: Optional[dict] = None,
+                             g2_allowed=(),
                              expect_candidate_key: bool = True) -> list:
     """Re-read the injected backup from disk and verify it end to end.
 
@@ -235,6 +272,15 @@ def verify_injected_payloads(backup_root, udid, payloads,
                     problems.append(
                         "G2: injected overlay does not carry "
                         f"{lg_disable.GP_KEY!r} as a real bool true")
+            if isinstance(g2_base, dict):
+                # The payload was rebased onto the device's own managed
+                # file from this backup: every pre-existing key must
+                # survive unless a staged key deliberately overrode it.
+                allowed = set(g2_allowed or ()) | {lg_disable.GP_KEY}
+                problems.extend(
+                    f"G2: {p}" for p in lg_disable.diff_gate(
+                        g2_base, parsed,
+                        allowed_new=allowed, allowed_override=allowed))
         if (domain, rel_path) == (lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH):
             if not isinstance(g1_base, dict):
                 problems.append(
@@ -250,6 +296,63 @@ def verify_injected_payloads(backup_root, udid, payloads,
     return problems
 
 
+# --- dedicated backup pool -------------------------------------------------
+# The LGD route takes FULL device backups (tens of GB), so it must not share
+# the iOS 27 protective-backup pool: an LGD run counted as "the latest
+# protective backup" would pollute the wipe-recovery pool with a
+# tweak-injected copy, and the protective prune (keep=1) could silently
+# delete the user's only rescue backup in favour of an LGD one. LGD runs
+# live in a sibling pool with their own retention.
+
+LGD_BACKUP_KEEP = 2  # newest completed runs kept per device
+
+
+def lgd_backup_base(udid: str) -> Path:
+    from src.restore.protective import protective_persistent_base
+    safe = "".join(c for c in str(udid or "unknown") if c.isalnum() or c in "._-")
+    return protective_persistent_base() / f"{safe}-lgd-full"
+
+
+def new_lgd_backup_dir(udid: str) -> str:
+    """Fresh LGD backup root: <pool>/<ts>-<pid>-<rand>/device_backup."""
+    import time as _time
+    import uuid as _uuid
+    run_dir = (lgd_backup_base(udid)
+               / f"{_time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}-{_uuid.uuid4().hex[:8]}")
+    backup_root = run_dir / "device_backup"
+    backup_root.mkdir(parents=True, exist_ok=True)
+    return str(backup_root)
+
+
+def _lgd_run_is_complete(run_dir: Path, udid: str) -> bool:
+    for candidate in (run_dir / "device_backup" / str(udid),
+                      run_dir / "device_backup"):
+        if (candidate / "Manifest.db").is_file():
+            return True
+    return False
+
+
+def prune_lgd_backups(udid: str, keep: int = LGD_BACKUP_KEEP) -> int:
+    """Drop all but the newest ``keep`` completed LGD runs for ``udid``.
+
+    Runs without a Manifest.db are an interrupted backup still in flight
+    (or an empty shell) and are never touched. Returns removals.
+    """
+    import shutil
+    base = lgd_backup_base(udid)
+    if not base.is_dir():
+        return 0
+    runs = [e for e in base.iterdir()
+            if e.is_dir() and _lgd_run_is_complete(e, udid)]
+    runs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    removed = 0
+    for old in runs[max(keep, 0):]:
+        shutil.rmtree(old, ignore_errors=True)
+        if not old.exists():
+            removed += 1
+    return removed
+
+
 # --- the route --------------------------------------------------------------
 
 async def run_full_backup_route(udid: str, payloads: list, *,
@@ -257,6 +360,7 @@ async def run_full_backup_route(udid: str, payloads: list, *,
                                 backup_progress=lambda x: None,
                                 restore_progress=lambda x: None,
                                 reboot: bool = False,
+                                apply_mode: bool = True,
                                 g1_base: Optional[dict] = None,
                                 g1_allowed_new=(),
                                 expect_candidate_key: bool = True,
@@ -266,13 +370,16 @@ async def run_full_backup_route(udid: str, payloads: list, *,
     Raises NuggetException with a user-facing message on every gated
     failure; device/protocol errors from the backup/restore itself
     propagate. Nothing writes to the device before the final restore,
-    and every check above runs before that point.
+    and every check above runs before that point. ``apply_mode`` False
+    marks a rollback: the G2 overlay is never rebased and no "original"
+    is captured (the device state at rollback time is post-tweak, so
+    capturing it would poison the rollback store).
     """
     from src.devicemanagement.session import lockdown_session
     from src.restore.inject import _is_encrypted_backup, inject_files_into_backup
     from src.restore.protective import (
-        check_disk_space_for_backup, extract_gp_base_plist,
-        new_protective_backup_dir, verify_backup_payloads,
+        check_disk_space_for_backup, extract_backup_file,
+        extract_gp_base_plist, verify_backup_payloads,
     )
     from src.restore.restore import _restore_protective_backup, _start_mobilebackup2
     from src.utils.stall_watchdog import run_with_stall_watchdog
@@ -283,7 +390,11 @@ async def run_full_backup_route(udid: str, payloads: list, *,
             "Liquid Glass Disable (Beta 1): the full-backup route was "
             "given nothing to deliver."))
 
-    backup_root = new_protective_backup_dir(udid)
+    # Prune the LGD pool BEFORE this run lands so repeated applies
+    # cannot fill the disk with full backups; the run about to happen
+    # becomes one of the kept newest.
+    prune_lgd_backups(udid, keep=LGD_BACKUP_KEEP - 1)
+    backup_root = new_lgd_backup_dir(udid)
 
     # 1) Complete, unfiltered backup of the device (the iTunes/Finder
     #    kind), with disk space sized to the device checked first.
@@ -320,6 +431,18 @@ async def run_full_backup_route(udid: str, payloads: list, *,
             "Liquid Glass Disable (Beta 1): the full backup did not "
             "produce a usable backup, so nothing was restored. Your "
             "device was not changed."))
+
+    # Encrypted backups are refused HERE, before anything else reads the
+    # backup: the completeness check below cannot see inside an encrypted
+    # manifest and would otherwise pass vacuously.
+    if _is_encrypted_backup(device_dir):
+        raise NuggetException(QCoreApplication.translate(
+            "Nugget",
+            "Liquid Glass Disable (Beta 1): your device backup is "
+            "encrypted, and the full-backup route cannot write into an "
+            "encrypted backup safely. Turn off backup encryption "
+            "(Finder/iTunes: uncheck 'Encrypt local backup'), then try "
+            "again. Nothing was restored; your device was not changed."))
 
     # 2) The backup itself must be complete — hard gate, not a log line.
     missing = verify_backup_payloads(backup_root, udid)
@@ -360,6 +483,13 @@ async def run_full_backup_route(udid: str, payloads: list, *,
                         "original .GlobalPreferences.plist could not "
                         "be saved for rollback (%1). Nothing was "
                         "written.").replace("%1", str(save_err)))
+    # A caller-supplied base wins: an apply verifies against the base its
+    # payload was staged from, and a G1 rollback verifies the saved
+    # original against itself. The base extracted from this backup is
+    # the fallback and the rollback-save source. (This assignment must
+    # stay ABOVE the needs_g1 check — an earlier revision read diff_base
+    # before binding it and every G1 run died with UnboundLocalError.)
+    diff_base = g1_base if isinstance(g1_base, dict) else extracted_base
     needs_g1 = any(
         (d, r) == (lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH)
         for d, r, *_ in payloads)
@@ -370,21 +500,60 @@ async def run_full_backup_route(udid: str, payloads: list, *,
             ".GlobalPreferences.plist could not be read from the full "
             "backup, so the G1 payload cannot be verified. Nothing was "
             "restored; your device was not changed."))
-    # A caller-supplied base wins: an apply verifies against the base its
-    # payload was staged from, and a G1 rollback verifies the saved
-    # original against itself. The base extracted from this backup is
-    # the fallback and the rollback-save source.
-    diff_base = g1_base if isinstance(g1_base, dict) else extracted_base
 
-    # 4) Inject — encrypted backups are refused honestly, never faked.
-    if _is_encrypted_backup(device_dir):
-        raise NuggetException(QCoreApplication.translate(
-            "Nugget",
-            "Liquid Glass Disable (Beta 1): your device backup is "
-            "encrypted, and the full-backup route cannot write into an "
-            "encrypted backup safely. Turn off backup encryption "
-            "(Finder/iTunes: uncheck 'Encrypt local backup'), then try "
-            "again. Nothing was restored; your device was not changed."))
+    # 3b) G2 rebase (apply only): the staged overlay is a tweak-only dict
+    # that REPLACES the whole managed file. Merge it onto the device's
+    # own managed file from THIS backup so a pre-existing managed key is
+    # never silently dropped, and capture that file as the rollback
+    # original (first capture wins). When the backup carries no managed
+    # file there is nothing to preserve and the staged overlay stands.
+    g2_device_base = None
+    g2_staged_keys: list = []
+    if apply_mode:
+        g2_index = next(
+            (i for i, p in enumerate(payloads)
+             if (p[0], p[1]) == (lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH)),
+            None)
+        if g2_index is not None:
+            with tempfile.TemporaryDirectory(
+                    prefix="workslop_lgd_full_g2_") as tmp:
+                dest = os.path.join(tmp, "device_g2.plist")
+                extracted_g2 = extract_backup_file(
+                    backup_root, udid, lg_disable.G2_DOMAIN,
+                    lg_disable.G2_REL_PATH, dest)
+                if extracted_g2 and os.path.exists(extracted_g2):
+                    with open(extracted_g2, "rb") as fh:
+                        g2_bytes = fh.read()
+                    try:
+                        g2_parsed = lg_disable.load_plist_dict(g2_bytes)
+                    except Exception:
+                        g2_parsed = None
+                    if isinstance(g2_parsed, dict):
+                        try:
+                            lg_disable.save_g2_original_if_absent(
+                                udid, g2_bytes)
+                        except OSError:
+                            pass  # a merge base matters more; rollback
+                            # falls back to the empty-overlay semantics
+                        try:
+                            staged_parsed = plistlib.loads(
+                                bytes(payloads[g2_index][2]))
+                        except Exception:
+                            staged_parsed = None
+                        if isinstance(staged_parsed, dict):
+                            g2_device_base = g2_parsed
+                            g2_staged_keys = list(staged_parsed.keys())
+                            merged = dict(g2_parsed)
+                            merged.update(staged_parsed)
+                            payloads[g2_index] = _inject_tuple(
+                                lg_disable.G2_DOMAIN,
+                                lg_disable.G2_REL_PATH,
+                                plistlib.dumps(
+                                    merged, fmt=plistlib.FMT_BINARY,
+                                    sort_keys=True))
+
+    # 4) Inject (encryption was already refused above; the injector
+    #    re-checks on its own and reports failure counts either way).
     update_label(QCoreApplication.translate(
         "Nugget",
         "Liquid Glass Disable: writing the payload into the backup..."))
@@ -401,6 +570,7 @@ async def run_full_backup_route(udid: str, payloads: list, *,
     problems = verify_injected_payloads(
         backup_root, udid, payloads, g1_base=diff_base,
         g1_allowed_new=g1_allowed_new,
+        g2_base=g2_device_base, g2_allowed=g2_staged_keys,
         expect_candidate_key=expect_candidate_key)
     if problems:
         raise NuggetException(QCoreApplication.translate(

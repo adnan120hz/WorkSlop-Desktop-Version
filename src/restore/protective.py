@@ -1263,36 +1263,35 @@ GP_BASE_DOMAIN = "HomeDomain"
 GP_BASE_RELATIVE_PATH = "Library/Preferences/.GlobalPreferences.plist"
 
 
-def extract_gp_base_plist(backup_root: "str | Path", udid: str, dest_path: "str | Path") -> "Optional[str]":
-    """Pull the live .GlobalPreferences.plist out of a protective backup.
+def extract_backup_file(backup_root: "str | Path", udid: str, domain: str,
+                        relative_path: str, dest_path: "str | Path") -> "Optional[str]":
+    """Pull one file out of a backup by (domain, relativePath).
 
-    Returns the destination path, or None when the backup does not carry the
-    file (encrypted manifest, incomplete backup, ...). Callers must treat
-    None as "no merge base" and NEVER write a tweak-only dict over the live
-    user file (that was HIGH bug B1: it wiped language/region/keyboard).
+    Returns the destination path, or None when the backup does not carry
+    the file (encrypted manifest, incomplete backup, absent row/payload).
     """
     device_dir = Path(backup_root) / udid
     if not device_dir.is_dir():
         if (Path(backup_root) / "Manifest.db").is_file():
             device_dir = Path(backup_root)
         else:
-            log_debug(f"extract_gp_base_plist: no device dir and no Manifest.db under {backup_root}")
+            log_debug(f"extract_backup_file: no device dir and no Manifest.db under {backup_root}")
             return None
     manifest_db = device_dir / "Manifest.db"
     if not _validate_sqlite_db(manifest_db):
-        log_warn("extract_gp_base_plist: Manifest.db missing/encrypted/invalid "
+        log_warn("extract_backup_file: Manifest.db missing/encrypted/invalid "
                  "(backup may be incomplete or encrypted)")
         return None
     conn = sqlite3.connect(str(manifest_db))
     try:
         row = conn.execute(
             "SELECT fileID FROM Files WHERE domain = ? AND relativePath = ?",
-            (GP_BASE_DOMAIN, GP_BASE_RELATIVE_PATH),
+            (domain, relative_path),
         ).fetchone()
     finally:
         conn.close()
     if not row:
-        log_warn("extract_gp_base_plist: no HomeDomain .GlobalPreferences.plist row "
+        log_warn(f"extract_backup_file: no {domain}/{relative_path} row "
                  "in the backup manifest")
         return None
     file_id = row[0]
@@ -1301,13 +1300,25 @@ def extract_gp_base_plist(backup_root: "str | Path", udid: str, dest_path: "str 
         # legacy flat layout fallback
         payload = device_dir / file_id
         if not payload.is_file():
-            log_warn(f"extract_gp_base_plist: manifest row exists but payload "
+            log_warn(f"extract_backup_file: manifest row exists but payload "
                      f"{file_id} is missing from the backup")
             return None
     dest = Path(dest_path)
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(payload, dest)
     return str(dest)
+
+
+def extract_gp_base_plist(backup_root: "str | Path", udid: str, dest_path: "str | Path") -> "Optional[str]":
+    """Pull the live .GlobalPreferences.plist out of a protective backup.
+
+    Returns the destination path, or None when the backup does not carry the
+    file (encrypted manifest, incomplete backup, ...). Callers must treat
+    None as "no merge base" and NEVER write a tweak-only dict over the live
+    user file (that was HIGH bug B1: it wiped language/region/keyboard).
+    """
+    return extract_backup_file(
+        backup_root, udid, GP_BASE_DOMAIN, GP_BASE_RELATIVE_PATH, dest_path)
 
 
 def _iter_payload_files(device_dir: Path):

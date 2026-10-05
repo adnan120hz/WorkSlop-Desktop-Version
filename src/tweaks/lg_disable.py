@@ -442,6 +442,38 @@ def original_saved(udid) -> bool:
     return bool(udid) and os.path.exists(original_plist_path(udid))
 
 
+def g2_original_plist_path(udid) -> str:
+    return os.path.join(_store_dir(), f"{_safe_udid(udid)}.g2-original.plist")
+
+
+def save_g2_original_if_absent(udid, base_bytes: bytes) -> bool:
+    """Persist the device's pre-tweak managed overlay (first capture wins).
+
+    The G2 writer REPLACES the whole managed .GlobalPreferences.plist, so
+    the full-backup route captures the device's own copy out of the apply
+    backup before writing — both to merge onto (no pre-existing managed
+    key is lost) and to restore byte-exact on rollback.
+    """
+    plist_path = g2_original_plist_path(udid)
+    if os.path.exists(plist_path):
+        return False
+    tmp_path = plist_path + ".tmp"
+    with open(tmp_path, "wb") as fh:
+        fh.write(bytes(base_bytes))
+    os.replace(tmp_path, plist_path)
+    return True
+
+
+def load_g2_original(udid) -> Optional[bytes]:
+    """The saved pre-tweak managed overlay bytes, or None."""
+    try:
+        with open(g2_original_plist_path(udid), "rb") as fh:
+            data = fh.read()
+        return data or None
+    except OSError:
+        return None
+
+
 # --- tweak classes ---------------------------------------------------------
 
 class LGDG2Tweak(BasicPlistTweak):
