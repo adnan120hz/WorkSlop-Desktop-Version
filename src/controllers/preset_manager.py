@@ -435,7 +435,7 @@ class PresetManager:
                     if target is None:
                         continue
                     try:
-                        self._apply_tweak(target, tweak_data)
+                        self._apply_tweak(target, tweak_data, tweak_id=key)
                     except Exception as e:
                         print(f"Failed to apply tweak {name}: {e}")
 
@@ -455,9 +455,18 @@ class PresetManager:
         # stale gestalt state is cleared otherwise.
         tweak_loader.load_eligibility(None, decision)
 
-    def _apply_tweak(self, tweak, data: dict):
+    def _apply_tweak(self, tweak, data: dict, tweak_id=None):
         if "enabled" in data:
-            tweak.enabled = data["enabled"]
+            enabled = bool(data["enabled"])
+            if tweak_id is not None:
+                # Route through the model helper so mutual-exclusion pairs
+                # (spec.excludes + _EXTRA_EXCLUSIONS) are enforced and the
+                # change notification fires; direct attribute assignment
+                # could leave both sides of a pair ON (audit round 23).
+                from src.tweaks.tweaks import set_tweak_enabled
+                set_tweak_enabled(tweak_id, enabled)
+            else:
+                tweak.set_enabled(enabled)
 
         if isinstance(tweak, AdvancedPlistTweak):
             if "value" in data:
@@ -485,7 +494,7 @@ class PresetManager:
                         print(f"Failed to add template: {e}")
 
     def _apply_status_bar(self, tweak: StatusBarTweak, data: dict):
-        tweak.enabled = data.get("enabled", False)
+        tweak.set_enabled(bool(data.get("enabled", False)))
         tweak.setter.silly_mode = data.get("silly_mode", False)
         if "override_data" in data:
             try:

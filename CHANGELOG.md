@@ -33,6 +33,17 @@ release.
   the rollback source); LGD full backups live in their own retained
   pool instead of the iOS 27 protective-backup pool; the encrypted
   backup refusal now fires before any backup analysis.
+- Final audit fixes (25 rounds, 50 reviewers, same day): hiding the
+  "Liquid Glass" feature now covers the whole Liquid Glass set (the
+  feature map silently dropped the 32 v4 tweaks); an apply on a
+  supported MobileGestalt build with the Apply Journal on no longer
+  crashes; PosterBoard files can no longer be silently dropped on an
+  encrypted prepared backup — the apply now fails loudly before any
+  restore; preset loading enforces mutually exclusive tweak pairs and
+  rollback errors are shown instead of swallowed; the pre-apply
+  summary no longer counts tweaks that safety rules will skip; the
+  CLI returns a non-zero exit code when an apply fails. Regression
+  suite: tools/test_audit_final50.py (23 checks).
 
 ## v11.5 — 2026-10-03
 

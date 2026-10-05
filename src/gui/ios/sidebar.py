@@ -99,6 +99,12 @@ class WorkSlopSidebar(QWidget):
         if btn is not None:
             btn[0].setEnabled(enabled)
 
+    def set_menu_visible(self, menu_id: str, visible: bool):
+        """Hide/show one rail entry (HotLoad feature gating, round 21)."""
+        btn = self._buttons.get(menu_id)
+        if btn is not None:
+            btn[0].setVisible(visible)
+
     def set_gestalt_locked(self, locked: bool, tooltip: str = ""):
         """Lock the MobileGestalt entry on unsupported iOS (stays visible)."""
         btn, _ = self._buttons["gestalt"]

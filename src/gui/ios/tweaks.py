@@ -620,7 +620,11 @@ class IOSSectionContent(QWidget):
         # Mutual exclusion (B26): enabling one side of an Enable/Disable or
         # RTL/LTR pair turns the other side off in the model; keep the partner
         # switches visually in sync without re-firing their toggled signals.
+        # Only on enable: unchecking must not visually clear a partner the
+        # model deliberately kept ON (audit round 23 desync fix).
         set_tweak_enabled(tweak_id, checked)
+        if not checked:
+            return
         spec = SPECS_BY_ID.get(tweak_id)
         if spec is None:
             return

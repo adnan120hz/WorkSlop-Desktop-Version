@@ -440,7 +440,9 @@ class IOSHomePage(QWidget):
         try:
             ver = self.window.device_manager.get_current_device_version() or "—"
             build = self.window.device_manager.get_current_device_build() or "—"
-            self.subtitle.setText(QCoreApplication.translate("Nugget", "iPhone (iOS {0} {1})").format(ver, build))
+            model = self.window.device_manager.get_current_device_model() or ""
+            kind = "iPad" if model.startswith("iPad") else "iPhone"
+            self.subtitle.setText(QCoreApplication.translate("Nugget", "{0} (iOS {1} {2})").replace("{0}", kind).replace("{1}", ver).replace("{2}", build))
         except AttributeError:
             self.subtitle.setText(QCoreApplication.translate("Nugget", "iPhone (iOS —)"))
 
@@ -489,7 +491,7 @@ class IOSHomePage(QWidget):
             self.mobilegestalt_card.setGraphicsEffect(None)
             self.mobilegestalt_card.setCursor(Qt.PointingHandCursor)
             self.mobilegestalt_card.setToolTip(
-                QCoreApplication.translate("Nugget", "Device feature flags (iOS 16.0 – 26.2b1)"))
+                QCoreApplication.translate("Nugget", "Device feature flags (iOS 26.1-)"))
 
     def set_statusbar_locked(self, locked: bool):
         """Lock the Status Bar tile on iOS 27 builds.
@@ -515,7 +517,8 @@ class IOSHomePage(QWidget):
             self._tile_locks.pop(self.statusbar_card, None)
             self.statusbar_card.setGraphicsEffect(None)
             self.statusbar_card.setCursor(Qt.PointingHandCursor)
-            self.statusbar_card.setToolTip("")
+            self.statusbar_card.setToolTip(
+                QCoreApplication.translate("Nugget", "Customize the status bar"))
 
     def _make_card(self, title: str, subtitle: str, page_index: int,
                    route_id: str = None) -> IOSCard:

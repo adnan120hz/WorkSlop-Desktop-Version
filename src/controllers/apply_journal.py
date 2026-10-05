@@ -246,8 +246,11 @@ class ApplyJournal:
         self.data["ended_at"] = _utc_now()
         self.data["duration_ms"] = int(
             (time.monotonic() - self._started) * 1000)
-        self.finalized = True
+        # Flag only AFTER the write lands: if it raises, the journal
+        # stays unfinalized so the caller's finally-block can retry
+        # (audit round 25).
         path = self.write()
+        self.finalized = True
         self._prune()
         return path
 

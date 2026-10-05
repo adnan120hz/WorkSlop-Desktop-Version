@@ -7,7 +7,7 @@ from uuid import uuid4
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
 from pymobiledevice3.ca import create_keybag_file
-from pymobiledevice3.lockdown import create_using_usbmux, LockdownClient
+from pymobiledevice3.lockdown import LockdownClient
 from pymobiledevice3.services.mobile_config import MobileConfigService
 
 # Canonical list of setup panes to mark as skipped. This is the single source of

@@ -61,8 +61,9 @@ class DeviceBarMixin:
         features on this device. Kept central so the gating survives every
         re-apply point (device refresh / selection).
 
-        Only ever HIDES — it never re-shows a button that HotLoad hid. The
-        Status Bar page used to be force-hidden on iOS 27 because the Speakeasy
+        Re-shows whatever is not hidden on the current device (the set is
+        per-device), so switching devices restores entries. The Status Bar
+        page used to be force-hidden on iOS 27 because the Speakeasy
         feature flag could not be written; it now delivers the carrier name
         through StatusBarOverrides.archive, so the page stays reachable there
         (trimmed down to the carrier rows by the page itself).
@@ -90,7 +91,18 @@ class DeviceBarMixin:
         for feat, card in card_map.items():
             card.setVisible(feat not in hidden)
         self.ios_home.set_statusbar_visible(not statusbar_hidden)
-        self.ios_home.set_lgd_visible("Liquid Glass" not in hidden)
+        lg_visible = "Liquid Glass" not in hidden
+        self.ios_home.set_lgd_visible(lg_visible)
+        # Parity (audit rounds 21/23, AGENTS.md hide_feature contract):
+        # the old Liquid Glass home tile and the WorkSlop sidebar's LGD
+        # entry hide with the feature too, not just the G1/G2 tiles.
+        try:
+            self.ios_home.liquidglass_card.setVisible(lg_visible)
+        except Exception:
+            pass
+        sidebar = getattr(self, "workslop_sidebar", None)
+        if sidebar is not None:
+            sidebar.set_menu_visible("liquidglassdisable", lg_visible)
 
 
     @QtCore.Slot()
@@ -1228,6 +1240,18 @@ class ApplyMixin:
                 is_iphone=_model.startswith("iPhone"), tweak=tw)
             return ok
 
+        # HotLoad-hidden features never apply (device_manager skips them),
+        # so the summary must not promise them either (audit round 23).
+        # Hidden tweaks are counted separately and named once, so the
+        # dialog stays honest about what will actually change.
+        from src.controllers.hotload import HotLoad
+        try:
+            _hidden_tweaks = HotLoad(self.device_manager.pref_manager.settings).hidden_tweak_names(
+                device_version=_version, device_model=_model)
+        except Exception:
+            _hidden_tweaks = set()
+        _hidden_enabled_count = 0
+
         lines = []
         total = 0
 
@@ -1238,10 +1262,15 @@ class ApplyMixin:
                 lines.append(f"• {label}: {count}")
 
         for section in Section:
-            enabled = sum(
-                1 for spec in SPECS_BY_SECTION[section]
-                if getattr(tweaks.get(spec.id), "enabled", False)
-                and _deliverable(spec.id, tweaks.get(spec.id)))
+            enabled = 0
+            for spec in SPECS_BY_SECTION[section]:
+                if not (getattr(tweaks.get(spec.id), "enabled", False)
+                        and _deliverable(spec.id, tweaks.get(spec.id))):
+                    continue
+                if spec.id.name in _hidden_tweaks:
+                    _hidden_enabled_count += 1
+                else:
+                    enabled += 1
             if enabled:
                 add(QCoreApplication.translate("Nugget", section.value), enabled)
 
@@ -1275,7 +1304,7 @@ class ApplyMixin:
                 sum(1 for v in getattr(dm, "value", {}).values() if v))
 
         it = tweaks.get(TweakID.IconThemes)
-        if it is not None:
+        if it is not None and _deliverable(TweakID.IconThemes, it):
             add(QCoreApplication.translate("Nugget", "Icon Themes"), len(it.themes))
 
         # B7: tweak families the registry section loop misses. Registry SPECS
@@ -1346,6 +1375,12 @@ class ApplyMixin:
                         TweakID.ClearScreenTimeAgentPlist))
         add(QCoreApplication.translate("Nugget", "Risky"), risky_on)
 
+        if _hidden_enabled_count:
+            lines.append("• " + QCoreApplication.translate(
+                "Nugget",
+                "%1 tweak(s) skipped — hidden by safety rules on this device"
+            ).replace("%1", str(_hidden_enabled_count)))
+
         return lines, total
 
 
@@ -1374,13 +1409,26 @@ class ApplyMixin:
                 if cache_line:
                     lines.append(cache_line)
             from src.gui.ios.components import IOSSummaryDialog
+            # The backup wording must match the route this device will
+            # actually take: protective backups only run on iOS 27
+            # (audit round 23).
+            from packaging.version import Version as _V
+            try:
+                _ios27 = _V(self.device_manager.get_current_device_version() or "0") >= _V("27.0")
+            except Exception:
+                _ios27 = False
             dlg = IOSSummaryDialog(
                 title=QCoreApplication.translate("Nugget", "Apply Tweaks"),
                 lines=lines,
-                muted=QCoreApplication.translate(
+                muted=(QCoreApplication.translate(
                     "Nugget",
                     "Your device reboots when it's done — remember to turn Find My "
-                    "back on afterwards. A protective backup runs first."),
+                    "back on afterwards. A protective backup runs first.")
+                    if _ios27 else
+                    QCoreApplication.translate(
+                        "Nugget",
+                        "Your device reboots when it's done — remember to turn Find My "
+                        "back on afterwards.")),
                 confirm_text=QCoreApplication.translate("Nugget", "Apply"),
                 extra_button=(QCoreApplication.translate("Nugget", "Update Cache")
                               if cache_enabled else ""),

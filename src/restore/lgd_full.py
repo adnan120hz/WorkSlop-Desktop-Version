@@ -123,24 +123,34 @@ def plan_rollback_payloads(which: str, original_bytes: Optional[bytes],
                 parsed = lg_disable.load_plist_dict(g2_original_bytes)
             except Exception:
                 parsed = None
-            if isinstance(parsed, dict):
-                # Rollback means OUR key goes away; if the captured
-                # overlay already carried it (an overlay captured after
-                # a Beta 1 sparse apply), strip exactly that one key
-                # and keep every other byte of content.
-                if lg_disable.GP_KEY in parsed:
-                    parsed = {
-                        k: v for k, v in parsed.items()
-                        if k != lg_disable.GP_KEY}
-                    return [_inject_tuple(
-                        lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
-                        plistlib.dumps(parsed, fmt=plistlib.FMT_BINARY,
-                                       sort_keys=True))]
-                return [_inject_tuple(lg_disable.G2_DOMAIN,
-                                      lg_disable.G2_REL_PATH,
-                                      g2_original_bytes)]
+            if not isinstance(parsed, dict):
+                # A captured original exists but cannot be parsed: never
+                # fall through silently to an empty overlay (which would
+                # erase every other managed key the device already had).
+                # Refuse honestly, like the G1 path below (audit round 21).
+                raise NuggetException(QCoreApplication.translate(
+                    "Nugget",
+                    "Liquid Glass Disable (Beta 1): the saved managed "
+                    "overlay original is unreadable, so it was NOT written "
+                    "back. Nothing was written."))
+            # Rollback means OUR key goes away; if the captured
+            # overlay already carried it (an overlay captured after
+            # a Beta 1 sparse apply), strip exactly that one key
+            # and keep every other byte of content.
+            if lg_disable.GP_KEY in parsed:
+                parsed = {
+                    k: v for k, v in parsed.items()
+                    if k != lg_disable.GP_KEY}
+                return [_inject_tuple(
+                    lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
+                    plistlib.dumps(parsed, fmt=plistlib.FMT_BINARY,
+                                   sort_keys=True))]
+            return [_inject_tuple(lg_disable.G2_DOMAIN,
+                                  lg_disable.G2_REL_PATH,
+                                  g2_original_bytes)]
         return [_inject_tuple(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
-                              plistlib.dumps({}))]
+                              plistlib.dumps({}, fmt=plistlib.FMT_BINARY,
+                                             sort_keys=True))]
     if which == "g1":
         if not original_bytes:
             raise NuggetException(QCoreApplication.translate(
@@ -282,6 +292,12 @@ def verify_injected_payloads(backup_root, udid, payloads,
                         g2_base, parsed,
                         allowed_new=allowed, allowed_override=allowed))
         if (domain, rel_path) == (lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH):
+            if expect_candidate_key:
+                value = parsed.get(lg_disable.GP_KEY)
+                if type(value) is not bool or value is not lg_disable.GP_KEY_VALUE:
+                    problems.append(
+                        "G1: injected file does not carry "
+                        f"{lg_disable.GP_KEY!r} as a real bool true")
             if not isinstance(g1_base, dict):
                 problems.append(
                     "G1: no original device file was extracted from "
@@ -305,6 +321,11 @@ def verify_injected_payloads(backup_root, udid, payloads,
 # live in a sibling pool with their own retention.
 
 LGD_BACKUP_KEEP = 2  # newest completed runs kept per device
+# Incomplete runs (no Manifest.db: interrupted/failed backups) are never
+# counted against retention, but they can each hold tens of GB; once they
+# are clearly abandoned (older than a week, never written since) drop
+# them so failed attempts cannot fill the disk (audit round 21).
+LGD_INCOMPLETE_RUN_MAX_AGE_SEC = 7 * 24 * 3600
 
 
 def lgd_backup_base(udid: str) -> Path:
@@ -335,21 +356,33 @@ def _lgd_run_is_complete(run_dir: Path, udid: str) -> bool:
 def prune_lgd_backups(udid: str, keep: int = LGD_BACKUP_KEEP) -> int:
     """Drop all but the newest ``keep`` completed LGD runs for ``udid``.
 
-    Runs without a Manifest.db are an interrupted backup still in flight
-    (or an empty shell) and are never touched. Returns removals.
+    Fresh incomplete runs (no Manifest.db) are never touched — they may
+    be a backup still in flight. Stale ones (untouched for a week) are
+    removed. Returns removals.
     """
     import shutil
+    import time as _time
     base = lgd_backup_base(udid)
     if not base.is_dir():
         return 0
-    runs = [e for e in base.iterdir()
-            if e.is_dir() and _lgd_run_is_complete(e, udid)]
-    runs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    now = _time.time()
     removed = 0
+    entries = [e for e in base.iterdir() if e.is_dir()]
+    runs = [e for e in entries if _lgd_run_is_complete(e, udid)]
+    runs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     for old in runs[max(keep, 0):]:
         shutil.rmtree(old, ignore_errors=True)
         if not old.exists():
             removed += 1
+    for stale in (e for e in entries if e not in runs):
+        try:
+            age = now - stale.stat().st_mtime
+        except OSError:
+            continue
+        if age > LGD_INCOMPLETE_RUN_MAX_AGE_SEC:
+            shutil.rmtree(stale, ignore_errors=True)
+            if not stale.exists():
+                removed += 1
     return removed
 
 

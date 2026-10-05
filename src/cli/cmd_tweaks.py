@@ -158,7 +158,11 @@ def _run_enable(args):
         from src.tweaks.tweaks import tweaks
         tweak = tweaks[spec.id]
         if args.value is not None:
-            tweak.set_value(args.value, toggle_enabled=True)
+            value, error = _coerce_cli_value(spec, args.value)
+            if error is not None:
+                print(f"ERROR: {error}", file=sys.stderr)
+                return 1
+            tweak.set_value(value, toggle_enabled=True)
         elif spec.factory is not None:
             # factory tweaks (watchOS compatibility) are just toggles
             tweak.set_enabled(True)
@@ -180,30 +184,44 @@ def _run_disable(args):
     return 0
 
 
+def _coerce_cli_value(spec, raw):
+    """Parse a CLI ``--value``/``--set`` string into the spec's real type.
+
+    Returns ``(value, error)`` — exactly one of them is None. Passing the
+    raw string through (as the old code did) could put a string "false"
+    or an unparsed number into the plist (audit round 23).
+    """
+    if spec.kind == Kind.SWITCH:
+        lowered = str(raw).strip().lower()
+        if lowered in ("true", "1", "yes", "on"):
+            return True, None
+        if lowered in ("false", "0", "no", "off"):
+            return False, None
+        return None, f"{spec.id.name} is a switch — use true/false."
+    if spec.kind == Kind.NUMBER:
+        integral = float(spec.step or 1).is_integer()
+        try:
+            value = int(raw) if integral else float(raw)
+        except (TypeError, ValueError):
+            return None, f"{spec.id.name} needs a number, got '{raw}'."
+        if spec.min_value is not None and value < spec.min_value:
+            return None, f"value below minimum {spec.min_value}."
+        if spec.max_value is not None and value > spec.max_value:
+            return None, f"value above maximum {spec.max_value}."
+        return value, None
+    return raw, None
+
+
 def _run_set(args):
     from src.cli.common import seed_from_autosave
     seed_from_autosave()
     spec = _resolve_specs([args.id])[0]
     from src.tweaks.tweaks import tweaks
     tweak = tweaks[spec.id]
-    if spec.kind == Kind.NUMBER:
-        # Integral ranges keep strict int parsing; a fractional step
-        # (spec.step, e.g. the Liquid Glass tint's 0.5) accepts floats.
-        integral = float(spec.step or 1).is_integer()
-        try:
-            value = int(args.value) if integral else float(args.value)
-        except ValueError:
-            print(f"ERROR: {spec.id.name} needs a number, got '{args.value}'.",
-                  file=sys.stderr)
-            return 1
-        if spec.min_value is not None and value < spec.min_value:
-            print(f"ERROR: value below minimum {spec.min_value}.", file=sys.stderr)
-            return 1
-        if spec.max_value is not None and value > spec.max_value:
-            print(f"ERROR: value above maximum {spec.max_value}.", file=sys.stderr)
-            return 1
-    else:
-        value = args.value
+    value, error = _coerce_cli_value(spec, args.value)
+    if error is not None:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
     tweak.set_value(value, toggle_enabled=True)
     print(f"set {spec.id.name} = {value!r}")
     _save_if(args)

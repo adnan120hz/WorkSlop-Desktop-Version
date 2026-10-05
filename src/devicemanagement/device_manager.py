@@ -172,6 +172,12 @@ class DeviceManager:
         # staged whole-file payload against this dict.
         self._lgd_g1_base: Optional[dict] = None
 
+        # iOS 27 Phase 0 merge base: the device's own HomeDomain
+        # .GlobalPreferences.plist captured during protective-backup
+        # preparation (None = no merge base this pass). Initialised here
+        # so readers never depend on assignment order (audit round 23).
+        self._gp_base_plist: Optional[dict] = None
+
         # Set when the user chose to continue without data protection (e.g.
         # out of disk space) — Phase 1 must not re-run the protective backup.
         self._protective_backup_skipped = False
@@ -815,8 +821,15 @@ class DeviceManager:
             # early-return/abort paths). Never read by the restore path.
             self.last_apply_journal_path = None
             self._journal_error = None
-            self._current_journal = begin_journal(
-                "apply", device=self._journal_device_info())
+            # Journaling must never block an apply (same contract as the
+            # staging writes): a disk/permission failure here degrades to
+            # "no journal", not a cancelled apply (audit round 25).
+            try:
+                self._current_journal = begin_journal(
+                    "apply", device=self._journal_device_info())
+            except Exception as e:
+                log_warn(f"Apply Journal begin failed: {e}")
+                self._current_journal = None
             update_label(QCoreApplication.tr("Applying changes to files..."))
             self._protective_backup_skipped = False
             self._known_backup_encryption = None  # re-established by Phase 0
@@ -945,7 +958,12 @@ class DeviceManager:
             from src.restore.lastapply import sparse_signature, write_lastapply
             udid = self.get_current_device_udid()
             if udid:
-                write_lastapply(udid, sparse_signature(files_to_restore))
+                sig = sparse_signature(files_to_restore)
+                # An LGD-pure apply leaves only scaffolding records here;
+                # never overwrite a real record with an empty signature
+                # (audit round 25).
+                if sig:
+                    write_lastapply(udid, sig)
             update_label(QCoreApplication.tr("Success!"))
             # B23: surface the tendie truncation in the user-facing result
             # alert — a log line alone never reaches the user.
@@ -1731,10 +1749,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
     def lgd_rollback(self, which: str, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
         """Roll back one Liquid Glass Disable (Beta 1) route from the UI.
 
-        ``which`` is "g2" (restore an empty managed overlay — no candidate
-        key) or "g1" (write back the device original saved before the
-        first apply). Runs through the same start_restore machinery as
-        every other apply/reset.
+        ``which`` is "g2" (restore the captured managed overlay with only
+        our candidate key removed — an empty overlay only when no original
+        was ever captured) or "g1" (write back the device original saved
+        before the first apply). On 23G82/23G83 both run through the
+        full-backup route; elsewhere through plain sparse delivery.
+        Runs through the same start_restore machinery as every other
+        apply/reset.
         """
         install_windows_selector_policy()
         asyncio.run(self._lgd_rollback(which, update_label, show_alert, prompt_choice))
@@ -1878,6 +1899,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         # letting the UI/backend disagree.
         device_build = self.get_current_device_build()
         gestalt_decision = mobilegestalt_decision(device_build, hotload_version)
+        # Pre-initialise: the journal snapshot below reads `cleared` even
+        # when the gestalt decision is supported (the common path), where
+        # the clearing branch never assigns it (audit round 22).
+        cleared: list = []
         if not gestalt_decision.supported:
             cleared = clear_unsupported_mobilegestalt_state(gestalt_decision)
             if cleared:

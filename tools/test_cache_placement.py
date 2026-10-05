@@ -44,7 +44,7 @@ assert cache.base == cache._temp_base  # locate() re-points the home
 cache._set_home(cache._persist_base)
 cache.relocate_by_size()
 assert cache.base == cache._persist_base, f"master relocated away from persistent: {cache.base}"
-assert not (cache._temp_base / "master").exists() or True  # legacy tree untouched by relocate
+assert (cache._temp_base / "master" / UDID / "Manifest.db").exists(), "legacy tree touched by relocate"
 P("relocate_by_size is a no-op (master stays persistent)")
 
 # Small masters stay in persistent too — no size-based relocation.

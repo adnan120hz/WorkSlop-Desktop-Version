@@ -52,7 +52,7 @@ def main():
 
     try:
         ld = create_using_usbmux(identifier=args.udid if args.udid else None)
-    except TypeError:
+    except TypeError as e:
         # fallback for older pymobiledevice3 versions
         ld = create_using_usbmux(serial=args.udid if args.udid else None)
         print(f"FAILED to connect: {e}")

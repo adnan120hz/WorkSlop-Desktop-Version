@@ -26,8 +26,12 @@ _BACKUP_DOMAIN_MAPPINGS: Tuple[Tuple[str, str, bool], ...] = (
 def split_path_into_domain(path: str) -> Tuple[Optional[str], Optional[str]]:
     """Map an absolute device path to ``(domain, relative_path)``.
 
-    Returns ``(None, None)`` when no prefix matches.
+    Returns ``(None, None)`` when no prefix matches. ``..`` segments are
+    rejected outright (defense in depth — today every caller passes
+    internal constants, audit round 22).
     """
+    if ".." in path.split("/"):
+        raise ValueError(f"unsafe device path with '..' segment: {path!r}")
     for prefix, domain, is_container in _BACKUP_DOMAIN_MAPPINGS:
         if path.startswith(prefix):
             rest = path[len(prefix):]

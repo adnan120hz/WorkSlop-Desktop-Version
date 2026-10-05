@@ -49,12 +49,16 @@ DISABLE_DAEMON_ACTION = "disable_daemon"
 #
 # Registry-backed features are derived from SPECS_BY_SECTION (a tweak belongs
 # to its section's feature automatically). Only the non-registry features and
-# a handful of pre-registry members stay explicit here.
-FEATURE_TWEAKS = {
-    feature: [spec.id.name for spec in specs]
-    for section, feature in SECTION_FEATURES.items()
-    for specs in [SPECS_BY_SECTION[section]]
-}
+# a handful of pre-registry members stay explicit here. Sections sharing one
+# feature name (LIQUID_GLASS + LIQUID_GLASS_DISABLE both map to
+# "Liquid Glass") must MERGE their members: building this with a plain dict
+# comprehension silently dropped the whole Liquid Glass v4 set from
+# "Liquid Glass" membership (audit round 21/24).
+FEATURE_TWEAKS: dict[str, list[str]] = {}
+for _section, _feature in SECTION_FEATURES.items():
+    _members = [spec.id.name for spec in SPECS_BY_SECTION[_section]]
+    FEATURE_TWEAKS.setdefault(_feature, []).extend(
+        name for name in _members if name not in FEATURE_TWEAKS.get(_feature, []))
 FEATURE_TWEAKS.update({
     # NOTE: "DisableSolarium" and "MetalForceHudEnabled" were listed here as
     # pre-registry members, but no TweakSpec exists for either ID (audit B28)
@@ -123,7 +127,7 @@ class HotLoad:
             return False
         url = url or RULES_URL
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "GoldenNugget"})
+            req = urllib.request.Request(url, headers={"User-Agent": "WorkSlopDesktop"})
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = resp.read()
             parsed = json.loads(data.decode("utf-8"))
@@ -335,6 +339,7 @@ class HotLoad:
 def confirm_flagged(rule: dict, parent=None) -> bool:
     """Show the warning for a flagged tweak. Returns True (Continue Anyway)
     to allow, or False (Cancel) to block."""
+    from PySide6.QtCore import QCoreApplication
     from PySide6.QtWidgets import QMessageBox
 
     tweak = rule.get("tweak", "this tweak")
@@ -342,17 +347,29 @@ def confirm_flagged(rule: dict, parent=None) -> bool:
     if reason:
         reason_txt = str(reason)
     else:
-        reason_txt = "This feature is currently flagged as dangerous or broken."
+        reason_txt = QCoreApplication.translate(
+            "Nugget",
+            "This feature is currently flagged as dangerous or broken.")
     # REAUDIT FIX: warning text said "GoldenNugget" — user-visible dialog.
-    text = (f"WorkSlop Desktop safety rules have flagged \"{tweak}\" as currently "
-            f"dangerous or broken.\n\n{reason_txt}\n\n"
-            "It is recommended not to enable it. Do you still want to enable it?")
+    # (Audit round 25: the dialog now goes through tr() with static literals;
+    # the tweak name is inserted with %1, never an f-string.)
+    text = QCoreApplication.translate(
+        "Nugget",
+        "WorkSlop Desktop safety rules have flagged “%1” as currently "
+        "dangerous or broken.\n\n%2\n\n"
+        "It is recommended not to enable it. Do you still want to enable it?"
+    ).arg(str(tweak), reason_txt)
     box = QMessageBox(parent)
     box.setIcon(QMessageBox.Icon.Warning)
-    box.setWindowTitle("Disabled Feature Warning")
+    box.setWindowTitle(QCoreApplication.translate(
+        "Nugget", "Disabled Feature Warning"))
     box.setText(text)
-    continue_btn = box.addButton("Continue Anyway", QMessageBox.ButtonRole.AcceptRole)
-    cancel_btn = box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+    continue_btn = box.addButton(
+        QCoreApplication.translate("Nugget", "Continue Anyway"),
+        QMessageBox.ButtonRole.AcceptRole)
+    cancel_btn = box.addButton(
+        QCoreApplication.translate("Nugget", "Cancel"),
+        QMessageBox.ButtonRole.RejectRole)
     box.setDefaultButton(cancel_btn)
     box.exec()
     return box.clickedButton() is continue_btn

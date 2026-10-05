@@ -6,8 +6,10 @@ by the shared IOSSectionContent, so they enable, autosave, count in the
 pre-apply summary and stage through the normal apply pipeline exactly like
 every other tweak. This page adds what a generic switch row cannot: the
 honest Beta 1 explanation, the per-device "original saved" status, and the
-two rollback buttons (G2: empty managed overlay; G1: write back the device
-original saved before the first apply).
+two rollback buttons (G2: restore the captured managed overlay with only
+the candidate key removed — an empty overlay only when no original was
+captured; G1: write back the device original saved before the first
+apply).
 """
 
 from PySide6.QtCore import Qt, QCoreApplication, QThread, Signal
@@ -180,19 +182,28 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             return
         meta = lg_disable.load_original_meta(udid)
         device_line = name or udid
+        try:
+            g2_saved = lg_disable.load_g2_original(udid) is not None
+        except Exception:
+            g2_saved = False
+        g2_line = (_tr("A managed overlay original is also saved for G2 rollback.")
+                   if g2_saved else
+                   _tr("No managed overlay original saved yet for G2 rollback."))
         if meta:
             self._status_label.setText(_tr(
                 "Device: %1. A pristine original .GlobalPreferences.plist "
-                "is saved for rollback (captured %2, iOS %3, %4 keys).")
+                "is saved for rollback (captured %2, iOS %3, %4 keys). %5")
                 .replace("%1", device_line)
                 .replace("%2", str(meta.get("saved_at", "unknown")))
                 .replace("%3", str(meta.get("ios_version", "unknown")))
-                .replace("%4", str(meta.get("key_count", "?"))))
+                .replace("%4", str(meta.get("key_count", "?")))
+                .replace("%5", g2_line))
         else:
             self._status_label.setText(_tr(
                 "Device: %1. No saved original yet — it is captured "
-                "automatically before your first G1 apply.").replace(
-                    "%1", device_line))
+                "automatically before your first G1 apply. %2")
+                .replace("%1", device_line)
+                .replace("%2", g2_line))
 
     # -- Home tile route focus -------------------------------------------
     def focus_route(self, route: str):
@@ -298,8 +309,15 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         thread.finished.connect(thread.deleteLater)
         thread.start()
 
-    def _on_rollback_done(self, ok: bool, _err: str):
+    def _on_rollback_done(self, ok: bool, err: str):
         self._set_rollback_busy(False)
+        if not ok:
+            # A failed rollback must reach the user; swallowing the
+            # error made a failed restore look like success (round 21).
+            QMessageBox.warning(
+                self, _tr("Liquid Glass Disable (Beta 1)"),
+                _tr("The rollback did not complete: %1").replace(
+                    "%1", err or _tr("unknown error")))
         # The rollback turned the route's switch off in the model; rebuild
         # so the switch visuals match, and refresh the saved-original line.
         try:

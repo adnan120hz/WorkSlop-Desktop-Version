@@ -109,10 +109,18 @@ def load_lastapply(udid) -> dict:
         return {}
 
 
+def _atomic_write_json(path: str, payload: dict) -> None:
+    """Write JSON so a crash mid-write can never corrupt the record
+    (audit round 25): temp file in the same directory, then replace."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(payload, f, sort_keys=True, indent=2)
+    os.replace(tmp, path)
+
+
 def write_lastapply(udid, signature: dict) -> None:
     try:
-        with open(lastapply_path(udid), "w", encoding="utf-8") as f:
-            json.dump(signature, f, sort_keys=True, indent=2)
+        _atomic_write_json(lastapply_path(udid), signature)
     except OSError as e:
         log.warning("Could not write lastapply record: %s", e)
 
@@ -142,9 +150,12 @@ def _gp_base_path(udid) -> str:
 def write_gp_base(udid, base: dict) -> None:
     """Persist the pristine HomeDomain .GlobalPreferences.plist for *udid*."""
     import plistlib
+    path = _gp_base_path(udid)
     try:
-        with open(_gp_base_path(udid), "wb") as f:
+        tmp = path + ".tmp"
+        with open(tmp, "wb") as f:
             plistlib.dump(dict(base), f)
+        os.replace(tmp, path)
     except OSError as e:
         log.warning("Could not write GP base record: %s", e)
 

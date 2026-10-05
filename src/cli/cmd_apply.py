@@ -47,7 +47,7 @@ def add_parser(subp):
 
 
 def _apply_flag_tweaks(args):
-    from src.cli.cmd_tweaks import _resolve_specs
+    from src.cli.cmd_tweaks import _resolve_specs, _coerce_cli_value
     from src.tweaks.tweaks import tweaks
 
     for name in args.enable:
@@ -64,6 +64,10 @@ def _apply_flag_tweaks(args):
             raise SystemExit(2)
         name, _, value = item.partition("=")
         spec = _resolve_specs([name])[0]
+        value, error = _coerce_cli_value(spec, value)
+        if error is not None:
+            print(f"ERROR: {error}", file=sys.stderr)
+            raise SystemExit(2)
         tweaks[spec.id].set_value(value, toggle_enabled=True)
         print(f"[apply] set {spec.id.name} = {value!r}")
 
@@ -132,12 +136,27 @@ def run(args) -> int:
         prompt_choice = None
 
     print("Starting apply...")
+    # Honest exit code: the backend reports failure through the final
+    # alert instead of raising (show_apply_error), so track the last
+    # alert and fail the process when it is not the success one
+    # (audit round 23 — scripts check $?).
+    _last_alert = {}
+
+    def _show_alert(msg):
+        print_alert(msg)
+        _last_alert["msg"] = msg
+
     dm.apply_changes(update_label=print_status,
-                     show_alert=print_alert,
+                     show_alert=_show_alert,
                      prompt_password=prompt_password,
                      prompt_choice=prompt_choice)
     if getattr(dm, "last_apply_journal_path", None):
         print(f"Apply journal: {dm.last_apply_journal_path}")
+    final = _last_alert.get("msg")
+    failed = final is not None and getattr(final, "title", None) != "Success!"
+    if failed:
+        print("Apply FAILED (see the error above).", file=sys.stderr)
+        return 1
     print("Apply finished.")
     return 0
 

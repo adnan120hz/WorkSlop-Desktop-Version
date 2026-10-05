@@ -68,6 +68,7 @@ class ApplyThread(QThread):
         self.settings = settings
         self.reset_pages = reset_pages
         self.success = False
+        self._log = None
         self._error_msg: str = ""
 
     def prompt_password(self, title: str, label: str) -> Optional[str]:

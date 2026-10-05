@@ -396,6 +396,10 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
         import os as _os
         stall_seconds = float(
             _os.environ.get("WORKSLOP_PHASE3_STALL_SECONDS", "300") or 300)
+        if stall_seconds <= 0:
+            # "0"/negative would cancel every attempt on the first poll;
+            # fall back to the default (audit round 22).
+            stall_seconds = 300.0
     except Exception:
         stall_seconds = 300.0
     _watch = {"last_progress_at": None, "last_cb": None}
@@ -727,6 +731,19 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 level = log_error if failed else log_info
                 level(f"Tweak files delivered via protective restore: "
                       f"{injected} ok, {unchanged} unchanged, {failed} failed")
+                if failed:
+                    # Never report success for files that did not land:
+                    # e.g. PosterBoard files diverted here on an encrypted
+                    # prepared backup (injection is skipped there) used to
+                    # drop silently while the apply succeeded (round 22).
+                    # This runs before any restore touches the device, so
+                    # failing loudly is safe and honest.
+                    raise NuggetException(QCoreApplication.translate(
+                        "Nugget",
+                        "{0} tweak file(s) could not be written into the "
+                        "protective backup (the backup may be encrypted), "
+                        "so the apply was cancelled before anything was "
+                        "restored.").format(failed))
 
             # Last line of defence against MBErrorDomain/205: the device requests
             # every regular-file row's payload — a single missing one aborts the
@@ -785,13 +802,16 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                     break
                 except (ConnectionTerminatedError, ssl.SSLEOFError,
                         ConnectionAbortedError, ConnectionResetError):
-                    if sparse_progress["last"] is None and sparse_attempt + 1 < max_sparse_attempts:
+                    # Only a callback above 0% counts as progress: a
+                    # single 0.0% ping right before the drop is exactly
+                    # the wedge the cooldown retry exists for (round 22).
+                    if not sparse_progress["last"] and sparse_attempt + 1 < max_sparse_attempts:
                         log_warn("Phase 2: connection dropped at 0% right after the cache "
                                  "session — cooling down 25s and retrying once on a "
                                  "fresh connection")
                         await asyncio.sleep(25)
                         continue
-                    if sparse_progress["last"] is None:
+                    if not sparse_progress["last"]:
                         log_error("Phase 2: connection dropped with ZERO restore progress "
                                   "on every attempt — the sparse restore was likely "
                                   "REJECTED. Security state recovery will not trigger; "
@@ -1042,9 +1062,15 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
     if regenerate_cache:
         # The master carried the injected tweaks for this apply; regenerate the
         # cache from the snapshot, returning the master to its pristine
-        # full-manifest state for the next incremental refresh.
-        await asyncio.to_thread(
-            regenerate_cache_from_snapshot, snapshot_dir, prepared_backup_root.root, udid)
+        # full-manifest state for the next incremental refresh. The device
+        # restore itself is already complete at this point, so a failure
+        # here must not fail the whole apply — the next apply's refresh
+        # re-heals the master (audit round 22).
+        try:
+            await asyncio.to_thread(
+                regenerate_cache_from_snapshot, snapshot_dir, prepared_backup_root.root, udid)
+        except Exception as e:
+            log_warn(f"Cache regeneration failed after a successful restore: {e}")
     elif skip_protective_backup:
         # user opted out of data protection — nothing was kept
         shutil.rmtree(protective_dir, ignore_errors=True)

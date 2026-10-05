@@ -104,7 +104,9 @@ MIN_FREE_DISK_GB = 5.0
 def _min_free_disk_bytes() -> int:
     try:
         return int(float(os.environ.get("GOLDENNUGGET_MIN_FREE_GB", str(MIN_FREE_DISK_GB))) * (1024 ** 3))
-    except ValueError:
+    except (ValueError, OverflowError):
+        # "inf" parses as a float but int(inf) raises OverflowError; fall
+        # back to the default threshold either way (audit round 22).
         return int(MIN_FREE_DISK_GB * (1024 ** 3))
 
 
@@ -391,8 +393,11 @@ def _device_tree_name(device_name: str) -> str:
     for prefix in (".b", "b"):
         if name.startswith(f"{prefix}/"):
             name = name[len(prefix) + 1:]
-            if name.split("/", 1)[0].isdigit():
-                return name.split("/", 1)[1]
+            head, sep, rest = name.partition("/")
+            if sep and head.isdigit():
+                return rest
+            # An upload named exactly at the session root (".b/1") has
+            # no rest; falling through used to IndexError (round 22).
             break
     return name
 
@@ -524,16 +529,23 @@ def _install_device_link_contents_shim():
         path = self.root_path / cast(str, message[1])
         if path.is_dir():
             for file in path.iterdir():
+                try:
+                    st = file.stat()
+                except OSError:
+                    # Vanished mid-enumeration (a concurrent prune or the
+                    # device created and removed it): skip the entry
+                    # instead of aborting the probe (audit round 22).
+                    continue
                 ftype = "DLFileTypeUnknown"
                 if file.is_dir():
                     ftype = "DLFileTypeDirectory"
                 if file.is_file():
                     ftype = "DLFileTypeRegular"
-                modifications_data = _datetime.datetime.fromtimestamp(file.stat().st_mtime - APPLE_EPOCH)
+                modifications_data = _datetime.datetime.fromtimestamp(st.st_mtime - APPLE_EPOCH)
                 modifications_data = modifications_data.replace(tzinfo=None)
                 data[file.name] = {
                     "DLFileType": ftype,
-                    "DLFileSize": file.stat().st_size,
+                    "DLFileSize": st.st_size,
                     "DLFileModificationDate": modifications_data,
                 }
         else:
@@ -929,6 +941,14 @@ def find_latest_protective_backup(udid: str) -> Optional[str]:
     return str(runs[0] / "device_backup") if runs else None
 
 
+# Stale incomplete runs (a run dir that never made it into
+# list_protective_backups because its Manifest.db never landed) older than
+# a week are abandoned shells, possibly holding gigabytes of partial
+# upload; drop them so failed attempts cannot fill the disk. Fresh ones
+# may be a backup still in flight and are never touched (round 22/25).
+PROTECTIVE_INCOMPLETE_RUN_MAX_AGE_SEC = 7 * 24 * 3600
+
+
 def prune_protective_backups(udid: str, keep: int = PROTECTIVE_KEEP_RUNS) -> int:
     """Drop older live backups for ``udid``, keeping the newest ``keep``.
 
@@ -942,6 +962,23 @@ def prune_protective_backups(udid: str, keep: int = PROTECTIVE_KEEP_RUNS) -> int
         if not old.exists():
             removed += 1
             log_info(f"Pruned old protective backup: {old}")
+    import time as _time
+    root = protective_persistent_base() / (udid or "unknown")
+    if root.is_dir():
+        now = _time.time()
+        kept = {Path(p) for p in runs}
+        for entry in root.iterdir():
+            if not entry.is_dir() or entry in kept:
+                continue
+            try:
+                age = now - entry.stat().st_mtime
+            except OSError:
+                continue
+            if age > PROTECTIVE_INCOMPLETE_RUN_MAX_AGE_SEC:
+                shutil.rmtree(entry, ignore_errors=True)
+                if not entry.exists():
+                    removed += 1
+                    log_info(f"Pruned stale incomplete protective backup: {entry}")
     return removed
 
 
