@@ -44,7 +44,7 @@ def main():
         check("posterboard dir derives from root",
               storage.posterboard_dir() == storage.Path(custom) / "PosterBoard")
         check("LGD pool lives under protective base",
-              lgd_full._lgd_pool_root("UDID14")
+              lgd_full.lgd_backup_base("UDID14")
               == storage.protective_base() / "UDID14-lgd-full")
     finally:
         del os.environ["GOLDENNUGGET_BACKUP_DIR"]
