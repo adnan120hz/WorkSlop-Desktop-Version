@@ -90,6 +90,7 @@ class DeviceBarMixin:
         for feat, card in card_map.items():
             card.setVisible(feat not in hidden)
         self.ios_home.set_statusbar_visible(not statusbar_hidden)
+        self.ios_home.set_lgd_visible("Liquid Glass" not in hidden)
 
 
     @QtCore.Slot()

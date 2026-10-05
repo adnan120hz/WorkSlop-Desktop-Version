@@ -4,6 +4,29 @@ Release history of WorkSlop Desktop. Versions marked *pre-release* were
 development builds published for testing; **v11.5** is the current public
 release.
 
+## v12 — 2026-10-05 (pre-release, Windows)
+
+- Liquid Glass Disable (Beta 1) now has a dedicated full-backup delivery
+  route on iOS 26.6.1 (builds 23G82 and 23G83): when G1 and/or G2 is
+  applied, WorkSlop takes a complete device backup, writes the verified
+  payload into it, re-verifies the injected backup with hard gates
+  (complete backup, every payload accounted for, payload bytes intact,
+  G1 keeps 100% of the device's original keys), and only then restores.
+  An encrypted backup is refused honestly; any failure cancels the
+  apply before the device is changed. Rollback uses the same route.
+  Other iOS versions keep the previous delivery exactly as before.
+- Home now has two separate Liquid Glass Disable tiles (G2 Managed
+  Overlay and G1 Device File Merge). A tile opens the Liquid Glass
+  Disable page focused on that route; it never enables a tweak by
+  itself.
+- Fixes: the Liquid Glass Disable page no longer crashes when showing
+  the saved-original status or a rollback confirmation; the
+  saved-original store is written atomically and its status survives a
+  missing metadata file; an empty duplicate restore record no longer
+  fails the verification gate when a valid record exists.
+- No changes to any existing tweak payload (the Liquid Glass v4 set
+  and the Nugget set are untouched).
+
 ## v11.5 — 2026-10-03
 
 - Fixed the developer-beta warning naming the wrong iOS version: it now

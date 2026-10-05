@@ -28,11 +28,19 @@ The payload/verify logic here is adapted from the offline payload-lab
 (``~/workspace/riset/lg-global-plist/payload-lab/``: g1_payload.py,
 g2_payload.py, restore_map.py, rollback.py, verify_gate.py — 14/14 tests
 + 11/11 gate checks green) to this repo's registry / apply-pass
-architecture. The delivery itself (sparse restore records, MBDB manifest)
-is the repo's existing restore machinery — the same machinery every other
-ManagedPreferencesDomain / HomeDomain tweak already rides. Whether
-restored (23G83) accepts these records is NOT device-proven yet; the
-uncertainty is inherent to the Beta 1 label, not hidden.
+architecture. Delivery has two channels: the default sparse-restore
+records (the repo's existing restore machinery — the same machinery every
+other ManagedPreferencesDomain / HomeDomain tweak already rides), and,
+on iOS 26.6.x builds 23G82/23G83 only, a full-backup route
+(``src/restore/lgd_full.py``) that injects these exact payloads into a
+complete device backup and restores it. The ``build_*_payload`` helpers
+below are the canonical payload constructors: the sparse path stages the
+equivalent plist dicts through the generic BasicPlistTweak merge (and the
+verification gate re-checks the final records), while the full-backup
+route and the offline tests consume the builders directly. Whether
+restored (23G83) accepts these records — by either channel — is NOT
+device-proven yet; the uncertainty is inherent to the Beta 1 label, not
+hidden.
 
 This module stays free of the device stack (no pymobiledevice3): the
 targeted backup that reads the live device file lives in
@@ -238,10 +246,14 @@ def _effective_plist(files, domain: str, rel_path: str):
         return False, None, []
     problems = []
     effective = None
+    empty_records = 0
     for f in matched:
         raw = _record_bytes(f)
         if not raw:
-            problems.append(f"{domain}/{rel_path}: restore record is empty")
+            # An empty duplicate record folds into nothing; it only becomes
+            # a problem when NO record carries a real payload (the device
+            # would receive an empty file).
+            empty_records += 1
             continue
         try:
             parsed = plistlib.loads(raw)
@@ -257,6 +269,8 @@ def _effective_plist(files, domain: str, rel_path: str):
             effective = dict(parsed)
         else:
             effective.update(parsed)
+    if effective is None and empty_records:
+        problems.append(f"{domain}/{rel_path}: restore record is empty")
     return True, effective, problems
 
 
@@ -371,8 +385,11 @@ def save_original_if_absent(udid, base_bytes: bytes, meta: dict) -> bool:
     from datetime import datetime, timezone
     record.setdefault("saved_at", datetime.now(timezone.utc).isoformat(
         timespec="seconds"))
-    with open(original_meta_path(udid), "w", encoding="utf-8") as fh:
+    meta_path = original_meta_path(udid)
+    meta_tmp = meta_path + ".tmp"
+    with open(meta_tmp, "w", encoding="utf-8") as fh:
         json.dump(record, fh, sort_keys=True, indent=2)
+    os.replace(meta_tmp, meta_path)
     return True
 
 
@@ -387,13 +404,38 @@ def load_original(udid) -> Optional[bytes]:
 
 
 def load_original_meta(udid) -> Optional[dict]:
-    """Metadata recorded with the saved original (capture time/source)."""
+    """Metadata recorded with the saved original (capture time/source).
+
+    Falls back to facts derived from the saved plist itself when the JSON
+    sidecar is missing (e.g. a crash between the two writes): the saved
+    original must never look absent while its bytes are on disk, or the
+    UI would refuse a rollback the backend can still perform.
+    """
     try:
         with open(original_meta_path(udid), "r", encoding="utf-8") as fh:
             data = json.load(fh)
-        return data if isinstance(data, dict) else None
+        if isinstance(data, dict):
+            return data
     except (OSError, ValueError):
+        pass
+    plist_path = original_plist_path(udid)
+    if not os.path.exists(plist_path):
         return None
+    from datetime import datetime, timezone
+    derived = {"source": "saved original (metadata sidecar missing)"}
+    try:
+        mtime = os.path.getmtime(plist_path)
+        derived["saved_at"] = datetime.fromtimestamp(
+            mtime, timezone.utc).isoformat(timespec="seconds")
+    except OSError:
+        pass
+    try:
+        with open(plist_path, "rb") as fh:
+            parsed = load_plist_dict(fh.read())
+        derived["key_count"] = len(parsed)
+    except Exception:
+        pass
+    return derived
 
 
 def original_saved(udid) -> bool:

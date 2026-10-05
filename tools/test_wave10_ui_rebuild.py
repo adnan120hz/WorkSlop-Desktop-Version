@@ -164,7 +164,7 @@ check("background floaters use the soft v4 tints",
       str(FLOAT_TINTS))
 for key in ("global", "modern_card", "sidebar_nav_button", "nav_bar"):
     check(f"style resolves: {key}", bool(t(key).strip()))
-check("app version is exactly 11.0.1", App_Version == "11.0.1", App_Version)
+check("app version is exactly 12", App_Version == "12", App_Version)
 check("app build adds no release label", App_Build == 0, str(App_Build))
 
 print("\nWorkSlop v4 sidebar (main UI)")
@@ -176,10 +176,11 @@ check("sidebar is the v4 WorkSlop menu set",
           ("home", "Home"), ("tweaks", "Tweaks"),
           ("gestalt", "MobileGestalt"), ("wallpaper", "Wallpaper"),
           ("backup", "Backup"), ("appdata", "App Data"),
-          ("themes", "Themes"), ("settings", "Settings")],
+          ("themes", "Themes"), ("settings", "Settings"),
+          ("liquidglassdisable", "Liquid Glass Disable (Beta 1)")],
       str(MENUS))
-check("sidebar version label is clean 11.0.1",
-      sidebar._version_lbl.text() == "WorkSlop Desktop v11.0.1",
+check("sidebar version label is clean v12",
+      sidebar._version_lbl.text() == "WorkSlop Desktop v12",
       sidebar._version_lbl.text())
 sidebar.select("tweaks")
 check("sidebar select checks Tweaks", sidebar._buttons["tweaks"][0].isChecked())
@@ -355,11 +356,12 @@ check("device subtitle shows version and build",
       home.subtitle.text())
 check("status reads Supported with a supported device",
       "Supported!" in home.status_lbl.text(), home.status_lbl.text())
-check("all nine v4 feature tiles exist",
+check("all eleven v4 feature tiles exist",
       [title.text() for _icon, _res, title, _sub in home._tiles] == [
           "Tweaks", "Liquid Glass", "App Data", "MobileGestalt",
           "PosterBoard", "Daemons", "Status Bar", "Custom Icon",
-          "Passcode Theme"],
+          "Passcode Theme", "Liquid Glass Disable (G2)",
+          "Liquid Glass Disable (G1)"],
       str([title.text() for _icon, _res, title, _sub in home._tiles]))
 check("no UNPROVEN / device-test text on any tile",
       all("UNPROVEN" not in title.text() and "device test" not in title.text()
@@ -368,6 +370,15 @@ check("no UNPROVEN / device-test text on any tile",
 home._on_tile_clicked(home.tweaks_card, 1)
 check("tile click navigates the iOS page stack",
       window.ios_pages.index == 1, str(window.ios_pages.index))
+home._on_tile_clicked(home.lgd_g2_card, 16, "g2")
+check("LGD G2 tile navigates to the Liquid Glass Disable page",
+      window.ios_pages.index == 16, str(window.ios_pages.index))
+home.set_lgd_visible(False)
+check("LGD Home tiles hide together (HotLoad gating)",
+      home.lgd_g2_card.isHidden() and home.lgd_g1_card.isHidden())
+home.set_lgd_visible(True)
+check("LGD Home tiles re-show together",
+      not home.lgd_g2_card.isHidden() and not home.lgd_g1_card.isHidden())
 home.set_mobilegestalt_locked(True, "26.6.1")
 check("MobileGestalt tile locks with an explanation",
       home.mobilegestalt_card in home._tile_locks
@@ -496,7 +507,7 @@ check("modern shell is not instantiated",
       and not hasattr(win, "device_panel"))
 check("window version label is branded and clean",
       "WorkSlop" in win.ui.appVersionLbl.text()
-      and "11.0.1" in win.ui.appVersionLbl.text()
+      and "12" in win.ui.appVersionLbl.text()
       and "GoldenNugget" not in win.ui.appVersionLbl.text()
       and "pre-release" not in win.ui.appVersionLbl.text().lower()
       and "beta" not in win.ui.appVersionLbl.text().lower()

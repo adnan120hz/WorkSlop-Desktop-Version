@@ -23,6 +23,7 @@ from src.gui.ios.tweaks import IOSSectionPage
 from src.gui.theme import ColorThemeManager
 from src.tweaks import lg_disable
 from src.tweaks.registry import Section
+from src.tweaks.tweak_names import TweakID
 
 _NUGGET = "Nugget"
 
@@ -72,6 +73,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
     def __init__(self, window, parent=None):
         super().__init__(window, Section.LIQUID_GLASS_DISABLE, parent)
         self._rollback_thread = None
+        self._focused_route = None
 
         layout = self.layout()
 
@@ -90,7 +92,13 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             "Low Power Mode off, reboot after applying, then judge the "
             "result. Every apply is checked by an automatic verification "
             "gate (payload parses, value is a real bool, G1 keeps 100% of "
-            "your original keys) and is cancelled if the check fails."))
+            "your original keys) and is cancelled if the check fails. "
+            "On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers "
+            "these routes through a full device backup and restore "
+            "instead of a partial restore, because the partial route "
+            "showed no effect in beta testing; the same checks run "
+            "first, an encrypted backup is refused, and any failure "
+            "cancels the apply before your device is changed."))
         intro.setWordWrap(True)
         c = ColorThemeManager.instance().colors
         intro.setStyleSheet(
@@ -174,14 +182,59 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             self._status_label.setText(_tr(
                 "Device: %1. A pristine original .GlobalPreferences.plist "
                 "is saved for rollback (captured %2, iOS %3, %4 keys).")
-                .arg(device_line, str(meta.get("saved_at", "unknown")),
-                     str(meta.get("ios_version", "unknown")),
-                     str(meta.get("key_count", "?"))))
+                .replace("%1", device_line)
+                .replace("%2", str(meta.get("saved_at", "unknown")))
+                .replace("%3", str(meta.get("ios_version", "unknown")))
+                .replace("%4", str(meta.get("key_count", "?"))))
         else:
             self._status_label.setText(_tr(
                 "Device: %1. No saved original yet — it is captured "
-                "automatically before your first G1 apply.").arg(
-                    device_line))
+                "automatically before your first G1 apply.").replace(
+                    "%1", device_line))
+
+    # -- Home tile route focus -------------------------------------------
+    def focus_route(self, route: str):
+        """Mark which route the user came for, without enabling anything.
+
+        Expands the route section, scrolls its card into view and gives
+        the switch keyboard focus. This NEVER toggles a tweak: the user
+        still makes the explicit switch decision on this page.
+        """
+        route = str(route or "").strip().lower()
+        routes = {
+            "g2": TweakID.LGDisableG2,
+            "g1": TweakID.LGDisableG1,
+        }
+        tweak_id = routes.get(route)
+        if tweak_id is None:
+            self._focused_route = None
+            return
+        self._focused_route = route
+        content = getattr(self, "content", None)
+        if content is None:
+            return
+        collapsibles = getattr(content, "_section_collapsibles", {})
+        collapsible = collapsibles.get(Section.LIQUID_GLASS_DISABLE)
+        if collapsible is not None:
+            try:
+                collapsible.set_expanded(True)
+            except Exception:
+                pass
+        cards = getattr(content, "_switch_cards", {})
+        card = cards.get(tweak_id)
+        if card is not None:
+            try:
+                self._scroll.ensureWidgetVisible(card)
+            except Exception:
+                pass
+        switches = getattr(content, "_switches", {})
+        switch = switches.get(tweak_id)
+        if switch is not None:
+            try:
+                if switch.isEnabled():
+                    switch.setFocus(Qt.FocusReason.OtherFocusReason)
+            except Exception:
+                pass
 
     # -- rollback ----------------------------------------------------------
     def _confirm_rollback(self, which: str):
@@ -224,9 +277,9 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
                 "Write back the saved original .GlobalPreferences.plist "
                 "(captured %1, iOS %2)? This replaces the device's "
                 "current file with that exact copy. The device reboots "
-                "if auto-reboot is on.").arg(
-                    str(meta.get("saved_at", "unknown")),
-                    str(meta.get("ios_version", "unknown")))
+                "if auto-reboot is on.").replace(
+                    "%1", str(meta.get("saved_at", "unknown"))).replace(
+                    "%2", str(meta.get("ios_version", "unknown")))
         reply = QMessageBox.question(
             self, _tr("Liquid Glass Disable (Beta 1)"), text,
             QMessageBox.Yes | QMessageBox.Cancel,

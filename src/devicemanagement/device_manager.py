@@ -1598,8 +1598,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 raise NuggetException(QCoreApplication.tr(
                     "Liquid Glass Disable (Beta 1): the .GlobalPreferences.plist "
                     "read from the device could not be parsed (%1). Nothing "
-                    "was written.").arg(str(exc)))
+                    "was written.").replace("%1", str(exc)))
         if base_bytes is None:
+            # iOS 27 Phase 0 path: only the parsed dict is available, so
+            # the saved "original" is a re-serialisation of the same
+            # content (identical keys/values, not the device's raw
+            # bytes). On iOS 26 base_bytes IS the device's raw file.
             base_bytes = plistlib.dumps(base)
         # Save the pristine original BEFORE anything is written: first
         # capture wins, so a later apply (whose base may already carry our
@@ -1617,7 +1621,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             raise NuggetException(QCoreApplication.tr(
                 "Liquid Glass Disable (Beta 1): the device's original "
                 ".GlobalPreferences.plist could not be saved for rollback "
-                "(%1). Nothing was written.").arg(str(save_err)))
+                "(%1). Nothing was written.").replace("%1", str(save_err)))
         if saved:
             log_info("Liquid Glass Disable (Beta 1): saved the device's "
                      "original .GlobalPreferences.plist for rollback.")
@@ -1626,26 +1630,19 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         log_info(f"Liquid Glass Disable (Beta 1): G1 base ready "
                  f"({len(base)} live keys, source: {source}).")
 
-    def _lgd_verify_gate(self, files_to_restore):
-        """Liquid Glass Disable (Beta 1): verification gate for this pass.
-
-        Runs on the final restore list before start_restore. When either
-        route actually staged, its restore records must parse, carry the
-        candidate key as a real bool true, and (G1) pass the fail-hard
-        diff against the live device base captured by _lgd_prepare_g1 —
-        100% of the original keys intact, with only keys other enabled
-        tweaks deliberately staged into the same files allowed to differ.
-        Any problem cancels the apply; nothing has been written yet.
-        """
-        from src.tweaks.lg_disable import GP_KEY, verify_apply_gate
+    def _lgd_active_routes(self):
+        """(g1_active, g2_active) for tweaks staged in the current pass."""
         g2 = tweaks.get(TweakID.LGDisableG2)
         g1 = tweaks.get(TweakID.LGDisableG1)
         g2_active = bool(g2 is not None and getattr(g2, "enabled", False)
                          and getattr(g2, "staged", False))
         g1_active = bool(g1 is not None and getattr(g1, "enabled", False)
                          and getattr(g1, "staged", False))
-        if not g2_active and not g1_active:
-            return
+        return g1_active, g2_active
+
+    def _lgd_gp_allowed_keys(self):
+        """Keys other enabled tweaks may add to the two GP files."""
+        from src.tweaks.lg_disable import GP_KEY
         allowed_new = {GP_KEY}
         for tid, tw in tweaks.items():
             if tid in (TweakID.LGDisableG1, TweakID.LGDisableG2):
@@ -1664,6 +1661,62 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 # AdvancedPlistTweak-style multi-key staging.
                 allowed_new.update(
                     k for k in value.keys() if isinstance(k, str))
+        return allowed_new
+
+    def _lgd_full_route_active(self) -> bool:
+        """Whether G1/G2 must use full-backup delivery on this device."""
+        try:
+            from src.restore.lgd_full import lgd_full_route_applicable
+            return lgd_full_route_applicable(
+                self.get_current_device_version(),
+                self.get_current_device_build())
+        except Exception:
+            return False
+
+    async def _lgd_run_full_route(self, payloads, update_label=lambda x: None, *, reboot: bool = False, expect_candidate_key: bool = True, g1_base=None, g1_allowed_new=()):
+        """Run the gated iOS 26.6.x full-backup delivery for LGD payloads."""
+        from src.restore.lgd_full import run_full_backup_route
+        udid = self.get_current_device_udid()
+        if not udid:
+            raise NuggetException(QCoreApplication.tr("No device connected."))
+
+        def _restore_progress(progress):
+            if isinstance(progress, str):
+                update_label(progress)
+                return
+            if isinstance(progress, bool) or not isinstance(progress, (int, float)):
+                return
+            update_label(QCoreApplication.tr(
+                "Restoring full backup... ({0:.1f}%)").format(progress))
+
+        return await run_full_backup_route(
+            udid, payloads,
+            update_label=update_label,
+            backup_progress=self._backup_progress(update_label),
+            restore_progress=_restore_progress,
+            reboot=reboot,
+            g1_base=g1_base,
+            g1_allowed_new=g1_allowed_new,
+            expect_candidate_key=expect_candidate_key,
+            version=self.get_current_device_version(),
+            build=self.get_current_device_build())
+
+    def _lgd_verify_gate(self, files_to_restore):
+        """Liquid Glass Disable (Beta 1): verification gate for this pass.
+
+        Runs on the final restore list before start_restore. When either
+        route actually staged, its restore records must parse, carry the
+        candidate key as a real bool true, and (G1) pass the fail-hard
+        diff against the live device base captured by _lgd_prepare_g1 —
+        100% of the original keys intact, with only keys other enabled
+        tweaks deliberately staged into the same files allowed to differ.
+        Any problem cancels the apply; nothing has been written yet.
+        """
+        from src.tweaks.lg_disable import verify_apply_gate
+        g1_active, g2_active = self._lgd_active_routes()
+        if not g2_active and not g1_active:
+            return
+        allowed_new = self._lgd_gp_allowed_keys()
         problems = verify_apply_gate(
             files_to_restore, g2_active=g2_active, g1_active=g1_active,
             g1_base=self._lgd_g1_base, g1_allowed_new=allowed_new)
@@ -1695,6 +1748,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             if not udid:
                 raise NuggetException(QCoreApplication.tr("No device connected."))
             done_id = None
+            original = None
+            parsed = None
             if which == "g2":
                 # G2 rollback (payload-lab semantics): an overlay with none
                 # of our keys — an empty managed .GlobalPreferences.plist
@@ -1723,7 +1778,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         "Liquid Glass Disable (Beta 1): the saved original "
                         ".GlobalPreferences.plist is unreadable, so it was "
                         "NOT written back."))
-                # The device's own file goes back byte-for-byte.
+                # The saved original goes back exactly as captured
+                # (raw device bytes on iOS 26; a content-identical
+                # re-serialisation when the base came from iOS 27's
+                # Phase 0 backup).
                 self.concat_file(
                     contents=original,
                     path=FileLocation.globalPreferencesHomeDomain.value,
@@ -1732,9 +1790,33 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             else:
                 raise NuggetException(QCoreApplication.tr(
                     "Liquid Glass Disable (Beta 1): unknown rollback route."))
-            await self.add_skip_setup(files_to_restore, True)
-            final_alert = await self.start_restore(
-                files_to_restore, update_label, prompt_choice=prompt_choice)
+            if self._lgd_full_route_active():
+                # iOS 26.6.x (23G82/23G83): the rollback rides the same
+                # gated full-backup route as the apply, so a state the
+                # full route created is never "undone" through a channel
+                # the device may not read the same way.
+                from src.restore.lgd_full import plan_rollback_payloads
+                rollback_payloads = plan_rollback_payloads(which, original)
+                await self._lgd_run_full_route(
+                    rollback_payloads, update_label,
+                    reboot=bool(self.pref_manager.auto_reboot),
+                    expect_candidate_key=False,
+                    g1_base=parsed if which == "g1" else None)
+                if self.pref_manager.auto_reboot:
+                    _done_msg = QCoreApplication.tr(
+                        "Your device will now restart.\n\nRemember to "
+                        "turn Find My back on!")
+                else:
+                    _done_msg = QCoreApplication.tr(
+                        "Please restart your device to see changes.")
+                final_alert = ApplyAlertMessage(
+                    txt=QCoreApplication.tr("All done! ") + _done_msg,
+                    title=QCoreApplication.tr("Success!"),
+                    icon=QMessageBox.Information)
+            else:
+                await self.add_skip_setup(files_to_restore, True)
+                final_alert = await self.start_restore(
+                    files_to_restore, update_label, prompt_choice=prompt_choice)
             tweak = tweaks.get(done_id) if done_id is not None else None
             if tweak is not None:
                 try:
@@ -2339,12 +2421,52 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # written yet at this point.
             self._lgd_verify_gate(files_to_restore)
 
+            # Liquid Glass Disable (Beta 1) on iOS 26.6.x (23G82/23G83):
+            # divert the staged G1/G2 records out of the sparse pass and
+            # deliver them FIRST through the gated full-backup route.
+            # Order matters: the full backup captures the device before
+            # any sparse tweak lands, so its restore cannot revert the
+            # other tweaks staged in this same pass; those still ride
+            # the sparse restore below with the usual final reboot.
+            lgd_full_payloads = None
+            if self._lgd_full_route_active():
+                _g1_active, _g2_active = self._lgd_active_routes()
+                if _g1_active or _g2_active:
+                    from src.restore.lgd_full import payloads_from_staged_files
+                    files_to_restore, lgd_full_payloads = \
+                        payloads_from_staged_files(
+                            files_to_restore,
+                            g1_active=_g1_active, g2_active=_g2_active)
+                    await self._lgd_run_full_route(
+                        lgd_full_payloads, update_label,
+                        reboot=bool(self.pref_manager.auto_reboot
+                                    and not files_to_restore),
+                        g1_base=self._lgd_g1_base,
+                        g1_allowed_new=self._lgd_gp_allowed_keys())
+                    log_info("Liquid Glass Disable (Beta 1): G1/G2 "
+                             "delivered via the iOS 26.6 full-backup route.")
+
             # restore to the device
             # include_keychain only when backup encryption is active — iOS rejects
             # keychain entries in an unencrypted backup, and the keychain is what
             # preserves Apple Watch pairing / iMessage identity across the wipe.
             try:
-                final_alert = await self.start_restore(
+                if lgd_full_payloads is not None and not files_to_restore:
+                    # The full-backup route already delivered everything
+                    # staged in this pass; no sparse restore is needed.
+                    if self.pref_manager.auto_reboot:
+                        _done_msg = QCoreApplication.tr(
+                            "Your device will now restart.\n\nRemember to "
+                            "turn Find My back on!")
+                    else:
+                        _done_msg = QCoreApplication.tr(
+                            "Please restart your device to see changes.")
+                    final_alert = ApplyAlertMessage(
+                        txt=QCoreApplication.tr("All done! ") + _done_msg,
+                        title=QCoreApplication.tr("Success!"),
+                        icon=QMessageBox.Information)
+                else:
+                    final_alert = await self.start_restore(
                     files_to_restore, update_label, backup_password=backup_password,
                     prepared_backup_root=prepared_backup_root,
                     skip_protective_backup=skip_protective_backup,

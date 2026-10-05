@@ -18,6 +18,8 @@ _FEATURE_ICONS = {
     "Passcode Theme": ":/icon/lock.svg",
     "MobileGestalt": ":/icon/flag.svg",
     "Liquid Glass": ":/icon/liquid-glass.svg",
+    "Liquid Glass Disable (G2)": ":/icon/ws-glass.svg",
+    "Liquid Glass Disable (G1)": ":/icon/ws-glass.svg",
     "App Data": ":/icon/folder.svg",
 }
 
@@ -231,11 +233,18 @@ class IOSHomePage(QWidget):
             self._make_card(
             "Custom Icon", "Themed app icons & labels", 10),
             self._make_card(
-            "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
+            "Passcode Theme", "Custom keypad theme (.passthm)", 11),
+            self._make_card(
+            "Liquid Glass Disable (G2)", "Managed Overlay (Beta 1)", 16,
+            route_id="g2"),
+            self._make_card(
+            "Liquid Glass Disable (G1)", "Device File Merge (Beta 1)", 16,
+            route_id="g1")]
         (self.tweaks_card, self.liquidglass_card, self.appdata_card,
          self.mobilegestalt_card, self.posterboard_card, self.daemons_card,
          self.statusbar_card, self.icon_themes_card,
-         self.passcode_theme_card) = cards_row
+         self.passcode_theme_card, self.lgd_g2_card,
+         self.lgd_g1_card) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
@@ -449,6 +458,12 @@ class IOSHomePage(QWidget):
         self.mobilegestalt_card.setVisible(visible)
         self.cards_grid.reflow()
 
+    def set_lgd_visible(self, visible: bool):
+        """Show/hide both Liquid Glass Disable route tiles together."""
+        self.lgd_g2_card.setVisible(visible)
+        self.lgd_g1_card.setVisible(visible)
+        self.cards_grid.reflow()
+
     def set_mobilegestalt_locked(self, locked: bool, device_version: str = ""):
         """Lock the MobileGestalt tile on unsupported iOS versions.
 
@@ -502,7 +517,8 @@ class IOSHomePage(QWidget):
             self.statusbar_card.setCursor(Qt.PointingHandCursor)
             self.statusbar_card.setToolTip("")
 
-    def _make_card(self, title: str, subtitle: str, page_index: int) -> IOSCard:
+    def _make_card(self, title: str, subtitle: str, page_index: int,
+                   route_id: str = None) -> IOSCard:
         """One home feature tile: a big themed icon with the name below it."""
         card = _TileCard()
         card.setSizePolicy(QSizePolicy.Policy.Expanding,
@@ -539,12 +555,14 @@ class IOSHomePage(QWidget):
         # kept for _retheme(): icons are recolored, labels restyled
         self._tiles.append((icon_lbl, icon_res, title_lbl, sub_lbl))
 
-        card.mousePressEvent = lambda e, c=card: self._on_tile_clicked(c, page_index)
+        card.mousePressEvent = lambda e, c=card, r=route_id: \
+            self._on_tile_clicked(c, page_index, r)
         card.setCursor(Qt.PointingHandCursor)
         card.setToolTip(QCoreApplication.translate("Nugget", subtitle))
         return card
 
-    def _on_tile_clicked(self, card: IOSCard, page_index: int):
+    def _on_tile_clicked(self, card: IOSCard, page_index: int,
+                         route_id: str = None):
         lock_msg = self._tile_locks.get(card)
         if lock_msg:
             from PySide6.QtWidgets import QMessageBox
@@ -554,6 +572,11 @@ class IOSHomePage(QWidget):
                 lock_msg)
             return
         self.switch_to_ios_page(page_index)
+        if route_id:
+            page = getattr(self.window, "ios_lgd", None)
+            focus_route = getattr(page, "focus_route", None)
+            if callable(focus_route):
+                focus_route(route_id)
 
     def _paint_tile_icon(self, label: QLabel, icon_res: str):
         """Draw a feature icon at tile size (and screen density) in the

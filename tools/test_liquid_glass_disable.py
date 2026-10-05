@@ -432,6 +432,17 @@ def test_gui_smoke():
     page._apply_btn.click()
     check("Open Apply navigates to the Apply page (index 6)",
           window.shown_pages == [6], str(window.shown_pages))
+    page.focus_route("g2")
+    check("Home tile focus marks the G2 route without enabling it",
+          page._focused_route == "g2"
+          and not tweaks[TweakID.LGDisableG2].enabled)
+    page.focus_route("g1")
+    check("Home tile focus marks the G1 route without enabling it",
+          page._focused_route == "g1"
+          and not tweaks[TweakID.LGDisableG1].enabled)
+    page.focus_route("bogus")
+    check("unknown focus route clears the marker",
+          page._focused_route is None)
     tweaks[TweakID.LGDisableG2].set_enabled(False)
     tweaks[TweakID.LGDisableG1].set_enabled(False)
 

@@ -3,7 +3,7 @@
 
 Covers ONLY the v11.0.1 scope, against a real offscreen MainWindow:
 
-* Version is ``11.5`` everywhere it is shown (app constant, classic
+* Version is ``12`` everywhere it is shown (app constant, classic
   label, iOS sidebar label). (This file began as the v11.0.1 package
   checks; the version markers are re-asserted per release.)
 * Backup page: no "Backup Location" section / dead "Open Folder"
@@ -78,11 +78,13 @@ from src.gui.theme.colors import NUGGET_DARK  # noqa: E402
 from src.version import App_Version  # noqa: E402
 
 # ---------------------------------------------------------------- version
-print("\nversion is 11.5 everywhere")
-check("App_Version is 11.5", App_Version == "11.5", App_Version)
-check("11.0.1 users get offered 11.5",
+print("\nversion is 12 everywhere")
+check("App_Version is 12", App_Version == "12", App_Version)
+check("11.0.1 users get offered 12",
       Version("11.0.1") < Version(App_Version))
-check("11.5 users get offered nothing newer by this build",
+check("11.5 users get offered 12",
+      Version("11.5") < Version(App_Version))
+check("12 users get offered nothing newer by this build",
       not (Version(App_Version) < Version(App_Version)))
 
 qs = QSettings("WorkSlop", "WorkSlop")
@@ -92,13 +94,13 @@ win = MainWindow(device_manager=DeviceManager(),
                  translator=Translator(app, Settings()))
 app.processEvents()
 
-check("classic version label shows 11.5",
-      "11.5" in win.ui.appVersionLbl.text(), win.ui.appVersionLbl.text())
+check("classic version label shows 12",
+      "12" in win.ui.appVersionLbl.text(), win.ui.appVersionLbl.text())
 check("classic version label has no beta/stable wording",
       "beta" not in win.ui.appVersionLbl.text().lower()
       and "stable" not in win.ui.appVersionLbl.text().lower())
-check("iOS sidebar version label is clean 11.5",
-      win.workslop_sidebar._version_lbl.text() == "WorkSlop Desktop v11.5",
+check("iOS sidebar version label is clean 12",
+      win.workslop_sidebar._version_lbl.text() == "WorkSlop Desktop v12",
       win.workslop_sidebar._version_lbl.text())
 
 # ------------------------------------------------------- backup page UI

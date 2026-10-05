@@ -200,6 +200,8 @@ class IOSSectionContent(QWidget):
 
         self._switch_labels = []
         self._switches = {}
+        self._switch_cards = {}
+        self._section_collapsibles = {}
         self.force_solarium_fallback_card = None
         self._nugget_lg_box = None
 
@@ -282,6 +284,7 @@ class IOSSectionContent(QWidget):
 
             switch = IOSSwitch(tweak.enabled)
             self._switches[tweak_id] = switch
+            self._switch_cards[tweak_id] = card
             switch.toggled.connect(
                 lambda checked, tid=tweak_id: self._on_registry_switch(tid, checked))
             row_layout.addWidget(make_switch_column(card, switch))
@@ -403,6 +406,7 @@ class IOSSectionContent(QWidget):
             collapsible = IOSCollapsibleSection(
                 QCoreApplication.translate("Nugget", section.value),
                 expanded=section.value not in collapsed_sections)
+            self._section_collapsibles[section] = collapsible
             collapsible.body_layout.setSpacing(_ROW_GAP)
             collapsible.toggled.connect(
                 lambda expanded, name=section.value: _save_collapsed_section(
