@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>credits/LeminLimez.png</file>
+        <file alias="credits/big_nugget.png">credits/workslop.png</file>
         <file>icon/apple.svg</file>
         <file>icon/app-indicator.svg</file>
         <file>icon/arrow-clockwise.svg</file>
