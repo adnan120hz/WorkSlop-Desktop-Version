@@ -42,7 +42,7 @@ from src.tweaks import lg_disable
 from src.tweaks.basic_plist_locations import FileLocation
 from src.tweaks.tweak_classes import BasicPlistTweak
 
-FEATURE_NAME = "Squair Protocol (Test)"
+FEATURE_NAME = "Lock Screen Keys (Test)"
 
 # File A keys (exactly two; real bool true, enforced by the builders).
 GP_KEYS = ("SBDisallowGlassTime", "SBDisallowGlassButtons")
@@ -72,7 +72,7 @@ FILE_GROUP = 501
 # (or, if landed, removed) through this channel. Written to the apply
 # journal entry when this payload is delivered.
 DOMAIN_FILE_NOTE = (
-    "Squair Protocol (Test): the FeatureFlags/Domain/SpringBoard.plist "
+    "Lock Screen Keys (Test): the FeatureFlags/Domain/SpringBoard.plist "
     "payload was injected into the backup, but its landing on the "
     "device is NOT confirmed — it is predicted to be skipped silently "
     "by the restore channel (only the empty FeatureFlags/Domain "
@@ -82,7 +82,7 @@ DOMAIN_FILE_NOTE = (
 )
 
 DOMAIN_ROLLBACK_NOTE = (
-    "Squair Protocol (Test) rollback: only the two "
+    "Lock Screen Keys (Test) rollback: only the two "
     ".GlobalPreferences.plist keys (SBDisallowGlassTime, "
     "SBDisallowGlassButtons) were removed. The "
     "FeatureFlags/Domain/SpringBoard.plist file, if it landed on the "
@@ -123,7 +123,7 @@ def plan_squair_apply_payloads(gp_base, extra_inserts=None) -> list:
     """
     if not isinstance(gp_base, dict):
         raise NuggetException(
-            "Squair Protocol (Test): the full-backup route needs the "
+            "Lock Screen Keys (Test): the full-backup route needs the "
             "device's own .GlobalPreferences.plist as the File A merge "
             "base, and it could not be read. Nothing was written.")
     inserts = dict(GP_KEY_VALUES)
@@ -147,7 +147,7 @@ def plan_squair_rollback_payloads(fresh_base):
     """
     if not isinstance(fresh_base, dict):
         raise NuggetException(
-            "Squair Protocol (Test): rollback needs a fresh read of the "
+            "Lock Screen Keys (Test): rollback needs a fresh read of the "
             "device's .GlobalPreferences.plist, and it could not be "
             "read or parsed. Nothing was written.")
     merged = {k: v for k, v in fresh_base.items() if k not in GP_KEYS}
@@ -155,7 +155,7 @@ def plan_squair_rollback_payloads(fresh_base):
     parsed = lg_disable.load_plist_dict(payload)
     if parsed != merged:
         raise ValueError(
-            "Squair rollback payload failed its own round-trip check.")
+            "Lock Screen Keys rollback payload failed its own round-trip check.")
     return [_inject_tuple(G1_DOMAIN, G1_REL_PATH, payload)], \
         DOMAIN_ROLLBACK_NOTE
 

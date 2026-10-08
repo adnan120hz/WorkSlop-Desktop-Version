@@ -1,6 +1,6 @@
 from PySide6.QtCore import (
     Qt, QCoreApplication, Signal as pyqtSignal, QSize, QRectF,
-    QPropertyAnimation, QEasingCurve, Property,
+    QPropertyAnimation, QEasingCurve, Property, QObject, QEvent,
 )
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import (
@@ -12,9 +12,50 @@ from PySide6.QtWidgets import (
 from src.gui.theme import t, ColorThemeManager
 
 
+class _DeferredRetheme(QObject):
+    """theme_changed handler that never restyles an off-screen widget.
+
+    Applying a fresh stylesheet re-polishes the widget's subtree; doing
+    that for every component in every hidden page is what made color
+    changes freeze the UI. A hidden component is only flagged here and
+    rethemes when it next becomes visible (Show propagates to children,
+    so a whole page catches up on navigation). What is on screen —
+    or anything whose window is not shown yet, e.g. during tests —
+    rethemes immediately, exactly as a direct connection would.
+    """
+
+    def __init__(self, widget):
+        super().__init__(widget)
+        self._widget = widget
+        self._pending = False
+        widget.installEventFilter(self)
+
+    def on_theme_changed(self):
+        window = self._widget.window()
+        if self._widget.isVisible() or not window.isVisible():
+            self._pending = False
+            self._widget._retheme()
+        else:
+            self._pending = True
+
+    def eventFilter(self, obj, event):
+        if obj is self._widget and self._pending \
+                and event.type() == QEvent.Type.Show:
+            self._pending = False
+            self._widget._retheme()
+        return False
+
+
 def _auto_retheme(widget):
-    """Connect a widget's ``_retheme`` to the global theme_changed signal."""
-    ColorThemeManager.instance().theme_changed.connect(widget._retheme)
+    """Connect a widget's ``_retheme`` to the global theme_changed signal.
+
+    Hidden widgets defer to their next Show (see _DeferredRetheme) so a
+    theme change only restyles what is actually on screen.
+    """
+    guard = _DeferredRetheme(widget)
+    widget._retheme_guard = guard
+    ColorThemeManager.instance().theme_changed.connect(
+        guard.on_theme_changed)
 
 
 class TextInputDialog(QDialog):

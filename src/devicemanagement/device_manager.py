@@ -94,8 +94,12 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
     print(traceback.format_exc())
     update_label("Failed to restore")
     if "Find My" in str(e):
+        # The match is on the raw device error; quote it verbatim in
+        # the details so the user can verify the refusal really came
+        # from the device instead of having to trust this label.
         return ApplyAlertMessage(QCoreApplication.tr("Find My must be disabled in order to use this tool."),
-                       detailed_txt=QCoreApplication.tr("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again."))
+                       detailed_txt=QCoreApplication.tr("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again.")
+                       + "\n\nDEVICE ERROR:\n" + str(e))
     elif "Encrypted Backup MDM" in str(e):
         return ApplyAlertMessage(QCoreApplication.tr("Nugget cannot be used on this device. Click Show Details for more info."),
                        detailed_txt=QCoreApplication.tr("Your device is managed and MDM backup encryption is on. This must be turned off in order for Nugget to work. Please do not use Nugget on your school/work device!"))
@@ -1559,7 +1563,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         udid = self.get_current_device_udid()
         if not udid:
             raise NuggetException(QCoreApplication.tr(
-                "Squair Protocol (Test): no device is connected, so the "
+                "Lock Screen Keys (Test): no device is connected, so the "
                 "device's own .GlobalPreferences.plist cannot be read. "
                 "Connect the device and try again. Nothing was written."))
         version = self.get_current_device_version()
@@ -1570,7 +1574,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             TweakID.LGDisableSquairTest, device_version=version,
             device_build=build, is_iphone=is_iphone, tweak=sq)
         if not deliverable:
-            log_warn(f"Squair Protocol (Test) not armed: "
+            log_warn(f"Lock Screen Keys (Test) not armed: "
                      f"{reason_code} — {reason}")
             return
         if hotload is not None and (
@@ -1578,11 +1582,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 or hotload.rule_for(TweakID.LGDisableSquairTest,
                                     device_version=version,
                                     device_model=model) is not None):
-            log_warn("Squair Protocol (Test) not armed: flagged by "
+            log_warn("Lock Screen Keys (Test) not armed: flagged by "
                      "HotLoad safety rules.")
             return
         if not self._lgd_full_route_active():
-            log_warn("Squair Protocol (Test) not armed: the full-backup "
+            log_warn("Lock Screen Keys (Test) not armed: the full-backup "
                      "route applies only on iOS 26.6.x builds "
                      "23G82/23G83; the Domain payload cannot ride the "
                      "partial-restore channel.")
@@ -1598,7 +1602,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             base = lg_disable.load_plist_dict(base_bytes)
         except Exception as exc:
             raise NuggetException(QCoreApplication.tr(
-                "Squair Protocol (Test): the .GlobalPreferences.plist "
+                "Lock Screen Keys (Test): the .GlobalPreferences.plist "
                 "read from the device could not be parsed (%1). "
                 "Nothing was written.").replace("%1", str(exc)))
         # Rollback-original hygiene: first capture wins, and a real
@@ -1614,16 +1618,16 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             })
         except OSError as save_err:
             raise NuggetException(QCoreApplication.tr(
-                "Squair Protocol (Test): the device's original "
+                "Lock Screen Keys (Test): the device's original "
                 ".GlobalPreferences.plist could not be saved for "
                 "rollback (%1). Nothing was written.").replace(
                     "%1", str(save_err)))
         if saved:
-            log_info("Squair Protocol (Test): saved the device's "
+            log_info("Lock Screen Keys (Test): saved the device's "
                      "original .GlobalPreferences.plist for rollback.")
         sq._lgd_base = base
         self._lgd_squair_base = base
-        log_info(f"Squair Protocol (Test): File A base ready "
+        log_info(f"Lock Screen Keys (Test): File A base ready "
                  f"({len(base)} live keys, source: {source}).")
 
     def _lgd_squair_active(self) -> bool:
@@ -1862,7 +1866,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             original = None
             parsed = None
             if which == "squair":
-                # Squair Protocol (Test) rollback: File A only — read the
+                # Lock Screen Keys (Test) rollback: File A only — read the
                 # device's CURRENT .GlobalPreferences.plist (fresh
                 # capture, never the stored pre-apply original) and
                 # remove exactly the two Squair keys. The Domain file,
@@ -1879,7 +1883,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     fresh = None
                 if not isinstance(fresh, dict):
                     raise NuggetException(QCoreApplication.tr(
-                        "Squair Protocol (Test): the .GlobalPreferences.plist "
+                        "Lock Screen Keys (Test): the .GlobalPreferences.plist "
                         "read from the device could not be parsed, so it "
                         "was NOT written back. Nothing was written."))
                 rollback_payloads, squair_note = \
@@ -2146,7 +2150,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 j_skip(_cname, "AUDIT_RESEARCH_ONLY")
 
         try:
-            # Squair Protocol (Test): same live-file base contract as G1
+            # Lock Screen Keys (Test): same live-file base contract as G1
             # for File A; arms only inside the full-backup route window.
             await self._lgd_prepare_squair(
                 update_label, hotload=hotload,
@@ -2598,7 +2602,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                             "Tip: Option 1 is simpler if you don't know your backup password."
                         ))
 
-            # Squair Protocol (Test): the tweak never stages through the
+            # Lock Screen Keys (Test): the tweak never stages through the
             # sparse pass (the File Domain payload cannot ride it), so an
             # armed+staged marker here means: run a gated full-backup
             # pass with payload A+B. The journal entry is marked
@@ -2625,7 +2629,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                 and _entry.get("status") == TW_STAGED):
                             _entry["status"] = TW_DELIVERED
                             _entry["note"] = lg_squair.DOMAIN_FILE_NOTE
-                log_info("Squair Protocol (Test): payload delivered via "
+                log_info("Lock Screen Keys (Test): payload delivered via "
                          "the iOS 26.6 full-backup route. "
                          + lg_squair.DOMAIN_FILE_NOTE)
 

@@ -7,6 +7,8 @@ backend (``device_manager`` reset pass) no longer imports the GUI package.
 
 from enum import Enum
 
+from packaging.version import InvalidVersion
+
 from src.devicemanagement.constants import Version
 
 
@@ -48,7 +50,21 @@ class Page(Enum):
         return name_map[self.value]
 
 def get_resettable_pages(device_manager) -> list[Page]:
-    device_ver = Version(device_manager.get_current_device_version())
+    # The device version can be unknown at this point: get_current_device_version()
+    # returns "" until a device is selected and its info has loaded, and
+    # Version("") raises InvalidVersion — the Reset dialog used to die in its
+    # constructor and the button looked completely dead. Parse defensively
+    # instead, and treat an unknown version conservatively below.
+    raw_version = ""
+    try:
+        raw_version = str(
+            device_manager.get_current_device_version() or "").strip()
+    except Exception:
+        raw_version = ""
+    try:
+        device_ver = Version(raw_version) if raw_version else None
+    except InvalidVersion:
+        device_ver = None
     # B10 FIX: every tweak family now has a reset — previously Liquid Glass,
     # Feature Flags (on the Tweaks page), Risky, Eligibility and MobileGestalt
     # could never be reset from Settings.
@@ -62,8 +78,10 @@ def get_resettable_pages(device_manager) -> list[Page]:
     ]
 
     # Status Bar is broken on iOS 27 (no write permissions for Speakeasy flags)
-    # so the feature is hidden on iOS 27+
-    if device_ver < Version("27.0"):
+    # so the feature is hidden on iOS 27+. The entry is version-gated, so it
+    # is only offered when the device is KNOWN to be below iOS 27 — an
+    # unknown/unparseable version hides it rather than guessing.
+    if device_ver is not None and device_ver < Version("27.0"):
         page_list.insert(0, Page.StatusBar)
 
     return page_list

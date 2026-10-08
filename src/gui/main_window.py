@@ -50,7 +50,6 @@ from src.gui.ios.settings import IOSSettingsPage
 from src.gui.ios.statusbar import IOSStatusBarPage
 from src.gui.ios.liquid_glass_disable import IOSLiquidGlassDisablePage
 from src.gui.ios.icon_themes import IOSIconThemesPage
-from src.gui.ios.ios18_icons import IOS18IconsPage
 from src.gui.ios.passcode_theme import IOSPasscodeThemePage
 from src.tweaks.registry import Section
 
@@ -129,12 +128,71 @@ _HIDDEN_BORDERED_BTNS = [
     "duyBtn", "jjtechBtn", "qtBtn",
 ]
 
+def _ios_page_property(attr):
+    """Lazy iOS page attribute: the page builds on first access.
+
+    Pages are constructed by ``MainWindow._ensure_ios_page``; until then
+    only a plain placeholder sits in the stack at that index (indices
+    never shift). Every existing ``self.ios_*`` reference keeps working —
+    it just pays the page's build cost on first use instead of eagerly
+    building all 17 pages (and their ~3.4k widgets) at startup.
+    """
+    def getter(self):
+        return self._ensure_ios_page(self._ios_page_index[attr])
+
+    def setter(self, value):
+        self._ios_page_objs[attr] = value
+
+    return property(getter, setter)
+
+
 class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                  NavigationMixin, ApplyMixin):
+    # Lazy iOS pages (built on first access/navigation; see above).
+    ios_home = _ios_page_property("ios_home")
+    ios_tweaks = _ios_page_property("ios_tweaks")
+    ios_posterboard = _ios_page_property("ios_posterboard")
+    ios_daemons = _ios_page_property("ios_daemons")
+    ios_settings = _ios_page_property("ios_settings")
+    ios_statusbar = _ios_page_property("ios_statusbar")
+    ios_apply = _ios_page_property("ios_apply")
+    ios_springboard = _ios_page_property("ios_springboard")
+    ios_internal = _ios_page_property("ios_internal")
+    ios_liquidglass = _ios_page_property("ios_liquidglass")
+    ios_iconthemes = _ios_page_property("ios_iconthemes")
+    ios_passthemes = _ios_page_property("ios_passthemes")
+    ios_gestalt = _ios_page_property("ios_gestalt")
+    ios_backup = _ios_page_property("ios_backup")
+    ios_themes_hub = _ios_page_property("ios_themes_hub")
+    ios_appdata = _ios_page_property("ios_appdata")
+    ios_lgd = _ios_page_property("ios_lgd")
+
     def __init__(self, device_manager: "DeviceManager", translator: Translator):
         super(MainWindow, self).__init__()
         self.device_manager = device_manager
         self.translator = translator
+        # Lazy-page bookkeeping (see _ios_page_property): attr name ->
+        # stack index, built pages, and the color-theme generation each
+        # built page was last rethemed at. _in_initial_build defers the
+        # classic-chrome retheme until the end of __init__.
+        self._ios_page_index = {
+            "ios_home": 0, "ios_tweaks": 1, "ios_posterboard": 2,
+            "ios_daemons": 3, "ios_settings": 4, "ios_statusbar": 5,
+            "ios_apply": 6, "ios_springboard": 7, "ios_internal": 8,
+            "ios_liquidglass": 9, "ios_iconthemes": 10,
+            "ios_passthemes": 11, "ios_gestalt": 12, "ios_backup": 13,
+            "ios_themes_hub": 14, "ios_appdata": 15, "ios_lgd": 16,
+        }
+        self._ios_page_attrs = {idx: attr for attr, idx
+                                in self._ios_page_index.items()}
+        self._ios_page_objs = {}
+        self._ios_page_theme_gen = {}
+        self._theme_gen = 0
+        self._page_global_qss = {}
+        self._in_initial_build = True
+        # Device-driven page state collected while a page is still
+        # unbuilt; replayed by _ensure_ios_page at construction.
+        self._ios_pages_need_rebuild = set()
         # WorkSlop app icon (flask). Falls back silently when running from a
         # source tree without the generated icon next to the repo root.
         try:
@@ -245,54 +303,24 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # build the iOS-style pages stack
         # 0 = home, 1 = tweaks, 2 = posterboard, 3 = daemons, 4 = settings,
         # 5 = statusbar, 6 = apply, 7 = springboard, 8 = internal, 9 = liquidglass,
-        # 10 = icon themes, 11 = passcode themes
+        # 10 = icon themes, 11 = passcode themes, 12 = mobilegestalt,
+        # 13 = backup, 14 = themes hub, 15 = app data,
+        # 16 = Liquid Glass Disable (Beta 1). (The iOS 18 Icons table is a
+        # section inside Icon Themes, page 10.)
         self.ios_pages = QtWidgets.QStackedWidget(self)
         self.ios_pages.setStyleSheet(t("page_bg"))
-        self.ios_home = IOSHomePage(self)
-        self.ios_tweaks = IOSTweaksPage(self)
-        self.ios_posterboard = IOSPosterboardPage(self)
-        self.ios_daemons = IOSDaemonsPage(self)
-        self.ios_settings = IOSSettingsPage(self)
-        self.ios_statusbar = IOSStatusBarPage(self)
-        self.ios_apply = IOSApplyPage(self)
-        self.ios_springboard = IOSSectionPage(self, Section.SPRINGBOARD)
-        self.ios_internal = IOSSectionPage(self, Section.INTERNAL)
-        self.ios_liquidglass = IOSSectionPage(self, Section.LIQUID_GLASS)
-        self.ios_iconthemes = IOSIconThemesPage(self)
-        self.ios_passthemes = IOSPasscodeThemePage(self)
-        self.ios_gestalt = IOSMobileGestaltPage(self)
-        from src.gui.ios.backup import IOSBackupPage
-        from src.gui.ios.themes_hub import IOSThemesHubPage
-        from src.gui.ios.appdata import IOSAppDataPage
-        self.ios_backup = IOSBackupPage(self)
-        self.ios_themes_hub = IOSThemesHubPage(self)
-        self.ios_appdata = IOSAppDataPage(self)
-        self.ios_lgd = IOSLiquidGlassDisablePage(self)
-        self.ios_ios18icons = IOS18IconsPage(self)
-        self.ios_pages.addWidget(self.ios_home)
-        self.ios_pages.addWidget(self.ios_tweaks)
-        self.ios_pages.addWidget(self.ios_posterboard)
-        self.ios_pages.addWidget(self.ios_daemons)
-        self.ios_pages.addWidget(self.ios_settings)
-        self.ios_pages.addWidget(self.ios_statusbar)
-        self.ios_pages.addWidget(self.ios_apply)
-        self.ios_pages.addWidget(self.ios_springboard)
-        self.ios_pages.addWidget(self.ios_internal)
-        self.ios_pages.addWidget(self.ios_liquidglass)
-        self.ios_pages.addWidget(self.ios_iconthemes)
-        self.ios_pages.addWidget(self.ios_passthemes)
-        self.ios_pages.addWidget(self.ios_gestalt)
-        # WorkSlop menus: appended at the end so no existing page index shifts.
-        # 13 = backup, 14 = themes hub, 15 = app data.
-        self.ios_pages.addWidget(self.ios_backup)
-        self.ios_pages.addWidget(self.ios_themes_hub)
-        self.ios_pages.addWidget(self.ios_appdata)
-        # 16 = Liquid Glass Disable (Beta 1) — appended after app data for
-        # the same reason: no existing page index ever shifts.
-        self.ios_pages.addWidget(self.ios_lgd)
-        # 17 = iOS 18 Icons gallery — appended last for the same reason:
-        # no existing page index ever shifts.
-        self.ios_pages.addWidget(self.ios_ios18icons)
+        # LAZY PAGES: building all 17 pages up front cost ~1.3s and
+        # inflated the widget tree to ~3.4k widgets (which made every
+        # global stylesheet polish crawl). Only Home — the landing page —
+        # is built now; every other index starts as a plain placeholder
+        # and is swapped for the real page by _ensure_ios_page on first
+        # navigation/access. Indices never shift.
+        self._ios_placeholders = {}
+        for _idx in range(17):
+            _placeholder = QtWidgets.QWidget(self.ios_pages)
+            self._ios_placeholders[_idx] = _placeholder
+            self.ios_pages.addWidget(_placeholder)
+        self._ensure_ios_page(0)
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
@@ -316,18 +344,20 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             14: QCoreApplication.translate("Nugget", "Themes"),
             15: QCoreApplication.translate("Nugget", "App Data"),
             16: QCoreApplication.translate("Nugget", "Liquid Glass Disable (Beta 1)"),
-            17: QCoreApplication.translate("Nugget", "iOS 18 Icons"),
         }
+        # Right-action callables resolve the page lazily (attribute access
+        # builds it) so wiring the nav never constructs a page early.
         self._nav_right_actions = {
-            2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
+            2: ("+ Add Tendies",
+                lambda: self.ios_posterboard.show_add_tendies_dialog()),
             10: (QtCore.QCoreApplication.translate("Nugget", "+ Add Icon"),
-                 self.ios_iconthemes.show_add_icon_dialog),
+                 lambda: self.ios_iconthemes.show_add_icon_dialog()),
             11: (QCoreApplication.translate("Nugget", "+ Theme"),
-                 self.ios_passthemes.choose_theme_dialog),
+                 lambda: self.ios_passthemes.choose_theme_dialog()),
         }
         self.ios_pages.currentChanged.connect(self._update_shared_nav)
 
-        ios_root = QtWidgets.QWidget(self)
+        self.ios_root = ios_root = QtWidgets.QWidget(self)
         ios_root_layout = QtWidgets.QVBoxLayout(ios_root)
         ios_root_layout.setContentsMargins(0, 0, 0, 0)
         ios_root_layout.setSpacing(0)
@@ -444,8 +474,136 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.backupPageBtn.clicked.connect(self.on_backupPageBtn_clicked)
         self.ui.settingsPageBtn.clicked.connect(self.on_settingsPageBtn_clicked)
 
-        # Apply the initial themed global stylesheet
+        # Apply the initial themed global stylesheet (once, now that the
+        # whole tree exists — see _apply_global_stylesheet). Construction
+        # is over: deferred chrome theming is allowed from here on.
+        self._in_initial_build = False
         self._apply_global_stylesheet()
+
+    # ---- Lazy iOS pages ---------------------------------------------------
+
+    def _build_ios_page(self, index: int):
+        """Construct the real page for a stack index (factories)."""
+        if index == 0:
+            return IOSHomePage(self)
+        if index == 1:
+            return IOSTweaksPage(self)
+        if index == 2:
+            return IOSPosterboardPage(self)
+        if index == 3:
+            return IOSDaemonsPage(self)
+        if index == 4:
+            return IOSSettingsPage(self)
+        if index == 5:
+            return IOSStatusBarPage(self)
+        if index == 6:
+            return IOSApplyPage(self)
+        if index == 7:
+            return IOSSectionPage(self, Section.SPRINGBOARD)
+        if index == 8:
+            return IOSSectionPage(self, Section.INTERNAL)
+        if index == 9:
+            return IOSSectionPage(self, Section.LIQUID_GLASS)
+        if index == 10:
+            return IOSIconThemesPage(self)
+        if index == 11:
+            return IOSPasscodeThemePage(self)
+        if index == 12:
+            return IOSMobileGestaltPage(self)
+        if index == 13:
+            from src.gui.ios.backup import IOSBackupPage
+            return IOSBackupPage(self)
+        if index == 14:
+            from src.gui.ios.themes_hub import IOSThemesHubPage
+            return IOSThemesHubPage(self)
+        if index == 15:
+            from src.gui.ios.appdata import IOSAppDataPage
+            return IOSAppDataPage(self)
+        if index == 16:
+            return IOSLiquidGlassDisablePage(self)
+        raise IndexError(f"unknown iOS page index {index}")
+
+    def _ensure_ios_page(self, index: int):
+        """Return the real page for *index*, building it on first use.
+
+        The placeholder in the stack is swapped for the built page at the
+        same index. Shell-flavour state that apply_theme pushes onto
+        already-built pages (Full Nugget flag, Nugget Liquid Glass
+        visibility) is applied here so a lazily-built page lands in the
+        same state an eagerly-built one would have had.
+        """
+        attr = self._ios_page_attrs[index]
+        page = self._ios_page_objs.get(attr)
+        if page is not None:
+            # The color theme may have changed while this page was
+            # hidden; refresh its own styles once (the visible page is
+            # rethemed eagerly by _on_color_theme_changed).
+            if self._ios_page_theme_gen.get(attr) != self._theme_gen:
+                retheme = getattr(page, "_retheme", None)
+                if callable(retheme):
+                    try:
+                        retheme()
+                    except Exception:
+                        pass
+                self._ios_page_theme_gen[attr] = self._theme_gen
+                self._prepend_global_qss(page, attr)
+            return page
+        page = self._build_ios_page(index)
+        self._ios_page_objs[attr] = page
+        self._ios_page_theme_gen[attr] = self._theme_gen
+        placeholder = self._ios_placeholders.pop(index, None)
+        if placeholder is not None:
+            self.ios_pages.removeWidget(placeholder)
+            placeholder.deleteLater()
+        self.ios_pages.insertWidget(index, page)
+        # Replay device-driven state collected while this page did not
+        # exist yet (device selected before first navigation).
+        if attr in self._ios_pages_need_rebuild:
+            self._ios_pages_need_rebuild.discard(attr)
+            rebuild = getattr(page, "rebuild", None)
+            if callable(rebuild):
+                try:
+                    rebuild()
+                except Exception:
+                    pass
+        if attr == "ios_tweaks":
+            pending_sf = getattr(
+                self, "_pending_force_solarium_visible", None)
+            if pending_sf is not None:
+                self._pending_force_solarium_visible = None
+                try:
+                    page.set_force_solarium_fallback_visible(pending_sf)
+                except Exception:
+                    pass
+        if attr == "ios_apply":
+            pending_busy = getattr(self, "_pending_apply_busy", None)
+            if pending_busy is not None:
+                self._pending_apply_busy = None
+                try:
+                    page.set_busy(pending_busy)
+                except Exception:
+                    pass
+        try:
+            if getattr(self, "theme_manager", None) is not None and \
+                    self.theme_manager.current_theme == \
+                    ThemeManager.FULL_NUGGET and \
+                    hasattr(page, "set_full_nugget"):
+                page.set_full_nugget(True)
+        except Exception:
+            pass
+        try:
+            refresh_lg = getattr(page, "refresh_nugget_lg_visibility", None)
+            if callable(refresh_lg):
+                refresh_lg()
+        except Exception:
+            pass
+        # Fresh global rules at page level (the window sheet may predate
+        # a color change; see _prepend_global_qss).
+        try:
+            self._prepend_global_qss(page, attr)
+        except Exception:
+            pass
+        return page
 
     def run_first_launch_prompts(self):
         """Present the first-launch dialogs AFTER the window is on screen.
@@ -514,7 +672,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
     # ---- Color theme reactivity ------------------------------------------
 
     def _apply_global_stylesheet(self):
-        """Re-apply the global stylesheet using the current color theme."""
+        """Apply the global stylesheet once, with the current color theme.
+
+        Called at the end of __init__ (tree fully built) and nowhere
+        else: re-setting a window-level stylesheet re-polishes every
+        widget in the tree (~3.4k), so runtime color changes go through
+        the narrow path in _on_color_theme_changed instead.
+        """
         self.setStyleSheet(t("global"))
         # Also update the QPalette so native widgets pick up the colors
         QtWidgets.QApplication.instance().setPalette(self._color_theme.build_palette())
@@ -524,8 +688,16 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         if hasattr(self, "_shell"):
             self._shell.setStyleSheet(
                 "background: transparent; border: none;")
-        # Re-style the classic chrome (sidebar icons, device bar, home toolbar)
-        self._retheme_classic()
+        # Re-style the classic chrome (sidebar icons, device bar, home
+        # toolbar) — but only when a classic shell is (or will be) the
+        # showing one. In iOS mode that chrome is hidden; theming it here
+        # would style a shell nobody can see. apply_theme re-themes it
+        # the first time the user switches to a classic flavour.
+        if getattr(self, "theme_manager", None) is not None and \
+                self.theme_manager.current_theme == ThemeManager.IOS:
+            pass
+        else:
+            self._retheme_classic()
 
     def _style_device_pill(self):
         """Restyle the top device bar as a clean status pill (v4 shell).
@@ -645,6 +817,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         below; the third UI (Full Nugget) keeps the original Nugget
         icons and chrome, restored by _apply_full_nugget_chrome().
         """
+        if getattr(self, "_in_initial_build", False):
+            # Deferred during construction: apply_theme runs mid-__init__
+            # and would style the classic chrome here, then again from
+            # _apply_global_stylesheet at the end of __init__. The end-of
+            # -init call (or the first shell switch) does it once.
+            return
         if getattr(self, "theme_manager", None) is not None and \
                 self.theme_manager.current_theme == ThemeManager.FULL_NUGGET:
             self._apply_full_nugget_chrome()
@@ -743,9 +921,65 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             if widget is not None and obj_name in orig:
                 widget.setStyleSheet(orig[obj_name])
 
+    def _prepend_global_qss(self, widget, key):
+        """Layer the fresh global stylesheet under a page's own sheet.
+
+        The window-level stylesheet is applied once at startup and never
+        re-set (re-setting it re-polishes the whole widget tree). A page
+        that becomes visible after a color change instead gets the
+        current global rules prepended to its own stylesheet — same
+        selectors, same order as inheritance would give — so bare
+        widgets styled only by the global sheet (checkbox indicators,
+        checked tool buttons, selections) pick up the new palette while
+        the page's own rules keep winning for the page root.
+        """
+        store = self._page_global_qss
+        current = widget.styleSheet()
+        prev = store.get(key)
+        if prev is not None and current == prev[1]:
+            base = prev[0]  # sheet is still (old global + base): reuse base
+        else:
+            base = current
+        css = t("global")
+        sheet = css + ("\n" + base if base.strip() else "")
+        store[key] = (base, sheet)
+        widget.setStyleSheet(sheet)
+
+    def _retheme_visible_page(self):
+        """Retheme + re-layer the global rules on the visible iOS page.
+
+        Runs deferred from _on_color_theme_changed (see there). Hidden
+        pages are untouched: their stale theme generation makes
+        _ensure_ios_page retheme them when next shown.
+        """
+        try:
+            index = self.ios_pages.currentIndex()
+            attr = self._ios_page_attrs[index]
+            page = self._ios_page_objs.get(attr)
+            if page is None:
+                return
+            retheme = getattr(page, "_retheme", None)
+            if callable(retheme):
+                retheme()
+            self._ios_page_theme_gen[attr] = self._theme_gen
+            self._prepend_global_qss(page, attr)
+        except Exception:
+            pass
+
     def _on_color_theme_changed(self):
-        """Called when the color theme (dark/light or accent) changes."""
-        self._apply_global_stylesheet()
+        """Called when the color theme (dark/light or accent) changes.
+
+        Narrow by design: re-setting the window stylesheet here used to
+        re-polish all ~3.4k widgets and freeze the UI for seconds. Now
+        only the palette, the visible chrome and the visible page are
+        refreshed; hidden pages/components retheme when next shown
+        (theme generation check in _ensure_ios_page, deferred
+        _auto_retheme in components).
+        """
+        self._theme_gen += 1
+        # Palette only: native widgets follow it without a re-polish.
+        QtWidgets.QApplication.instance().setPalette(
+            self._color_theme.build_palette())
         # Repaint the sky backdrop against the current palette (v4
         # SkyBackground paints from the sky tints; a repaint is all it
         # needs — the Wave 10 set_colors API is gone with its backdrop).
@@ -758,11 +992,28 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             self._style_device_pill()
         except Exception:
             pass
-        # Force re-render of all iOS page stylesheets by re-applying them
-        for i in range(self.ios_pages.count()):
-            page = self.ios_pages.widget(i)
-            if page and hasattr(page, '_retheme'):
-                page._retheme()
+        # The visible iOS page refreshes its own styles now; every other
+        # built page keeps a stale theme generation and rethemes when it
+        # is next shown (see _ensure_ios_page). Deferred past the end of
+        # this emission: several pages connect theme_changed straight to
+        # their own _retheme, and those slots would otherwise land after
+        # this handler and wipe the prepended global rules again.
+        QtCore.QTimer.singleShot(0, self._retheme_visible_page)
+        # Classic chrome is rethemed only while a classic shell is the
+        # showing one; apply_theme re-themes it on the first switch to a
+        # classic flavour otherwise.
+        try:
+            if getattr(self, "theme_manager", None) is not None and \
+                    self.theme_manager.current_theme != ThemeManager.IOS:
+                self._retheme_classic()
+                for _classic_page in (self.ui.homePage, self.ui.daemonsPage):
+                    self._prepend_global_qss(
+                        _classic_page, _classic_page.objectName())
+                if getattr(self, "_nugget_pages", None):
+                    self.nugget_stack.setStyleSheet(
+                        t("global") + "\nbackground: transparent;")
+        except Exception:
+            pass
 
     def closeEvent(self, event):
         """Guard window close so device threads never get destroyed mid-run.
@@ -778,11 +1029,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             terminating.append("apply/reset")
         if getattr(self, "_cache_restore_in_progress", False):
             terminating.append("data restore")
-        pt_worker = getattr(getattr(self, "ios_passthemes", None), "_worker", None)
+        pt_worker = getattr(self._ios_page_objs.get("ios_passthemes"),
+                            "_worker", None)
         if _still_running(pt_worker):
             terminating.append("passcode theme write")
         pairing_worker = getattr(
-            getattr(self, "ios_settings", None), "_reset_pairing_thread", None)
+            self._ios_page_objs.get("ios_settings"),
+            "_reset_pairing_thread", None)
         if _still_running(pairing_worker):
             terminating.append("pairing reset")
         if terminating:

@@ -39,6 +39,18 @@ from src.tweaks.tweaks import tweaks, TweakID
 class DeviceBarMixin:
     """Device refresh, selection and per-device interface updates."""
 
+    def _set_force_solarium_fallback_visible(self, visible: bool):
+        """Force-Solarium-Fallback row visibility on the Tweaks page.
+
+        The page is lazy: when it has not been built yet, remember the
+        state and let _ensure_ios_page replay it at construction.
+        """
+        page = self._ios_page_objs.get("ios_tweaks")
+        if page is not None:
+            page.set_force_solarium_fallback_visible(visible)
+        else:
+            self._pending_force_solarium_visible = visible
+
     def updateInterfaceForNewDevice(self):
         # update the home page
         self.pages[Page.Home].updatePhoneInfo()
@@ -47,13 +59,17 @@ class DeviceBarMixin:
         # are constructed at startup before any device is known, so per-device
         # compatibility filtering (min_version / iphone_only / ipad_only) is
         # only correct when re-evaluated against the real connected device.
+        # Pages are lazy now: an unbuilt page is flagged instead of built,
+        # and _ensure_ios_page replays the rebuild when it is constructed.
         for page in ("ios_tweaks", "ios_springboard", "ios_internal", "ios_liquidglass", "ios_lgd"):
-            section_page = getattr(self, page, None)
+            section_page = self._ios_page_objs.get(page)
             if section_page is not None:
                 try:
                     section_page.rebuild()
                 except Exception:
                     pass
+            else:
+                self._ios_pages_need_rebuild.add(page)
 
 
     def _apply_hidden_feature_gating(self):
@@ -141,7 +157,15 @@ class DeviceBarMixin:
             except Exception:
                 pass
         self.refresh_worker_thread = RefreshDevicesThread(manager=self.device_manager, settings=self.settings)
-        self.refresh_worker_thread.alert.connect(self.alert_message)
+        if getattr(self, "_startup_refresh_done", False):
+            self.refresh_worker_thread.alert.connect(self.alert_message)
+        else:
+            # Startup enumeration: a failure here (no usbmuxd, driver not
+            # installed yet) must not greet the user with a blocking modal
+            # before the window is usable — surface it inline instead.
+            # Manual Refresh keeps the dialog, as before.
+            self.refresh_worker_thread.alert.connect(
+                self._startup_device_alert)
         self.refresh_worker_thread.device_found.connect(self._on_device_found_partial)
         self.refresh_worker_thread.finished.connect(self.refresh_devices_finished)
         self.refresh_worker_thread.finished.connect(self.refresh_worker_thread.deleteLater)
@@ -172,6 +196,36 @@ class DeviceBarMixin:
                     self.device_panel.set_searching(False)
                 except Exception:
                     pass
+
+    @QtCore.Slot(object)
+    def _startup_device_alert(self, alert):
+        """Inline sink for device-enumeration failures during startup.
+
+        Same console behaviour as alert_message, but no modal dialog:
+        the failure lands in the footer status and, when the alert
+        carries a user-actionable hint (driver/usbmux guidance), in the
+        Home detection guidance — the inline surfaces the finished
+        handler already maintains.
+        """
+        if alert is None:
+            return
+        try:
+            print(alert.txt)
+        except Exception:
+            pass
+        if hasattr(self, "footer_status_lbl"):
+            try:
+                self.footer_status_lbl.setText(
+                    self.tr("No device connected"))
+            except Exception:
+                pass
+        txt = getattr(alert, "txt", "") or ""
+        hint = txt.split("\n\n", 1)[-1].strip()
+        if hint and hint != txt.strip() and hasattr(self, "ios_home"):
+            try:
+                self.ios_home.show_detection_guidance(hint)
+            except Exception:
+                pass
 
     @QtCore.Slot()
     def _on_device_found_partial(self):
@@ -256,6 +310,10 @@ class DeviceBarMixin:
 
     def refresh_devices_finished(self):
         self.refresh_in_progress = False
+        # The first enumeration has completed (successfully or not):
+        # from here on Refresh is user-initiated and its failures may
+        # use the dialog again.
+        self._startup_refresh_done = True
         # The thread's own ``finished -> deleteLater`` already freed the C++
         # object; drop our reference so closeEvent never probes a dead wrapper.
         try:
@@ -431,11 +489,9 @@ class DeviceBarMixin:
             # aware), so just re-apply it here. The Solarium fallback tweak is
             # a different, iOS 26-only tweak and keeps its own gating.
             if device_ver >= Version("27.0"):
-                if hasattr(self, "ios_tweaks"):
-                    self.ios_tweaks.set_force_solarium_fallback_visible(False)
+                self._set_force_solarium_fallback_visible(False)
             else:
-                if hasattr(self, "ios_tweaks"):
-                    self.ios_tweaks.set_force_solarium_fallback_visible(True)
+                self._set_force_solarium_fallback_visible(True)
             self._apply_hidden_feature_gating()
 
             # force video looping on iPads (loop gated off the classic widgets)
@@ -655,6 +711,20 @@ class SettingsMixin:
         # Classic-shell flavor (WorkSlop icons vs Full Nugget originals)
         # and the Nugget-only Liquid Glass subsection follow the mode.
         self._retheme_classic()
+        if theme != ThemeManager.IOS:
+            # First display of a classic shell after (possibly) color
+            # changes elsewhere: layer the current global rules under the
+            # classic pages, whose bare widgets otherwise inherit the
+            # startup stylesheet from the window (see
+            # MainWindow._prepend_global_qss). _retheme_classic above has
+            # just reset their own sheets, so this lands exactly like
+            # inheritance would.
+            try:
+                for _classic_page in (self.ui.homePage, self.ui.daemonsPage):
+                    self._prepend_global_qss(
+                        _classic_page, _classic_page.objectName())
+            except Exception:
+                pass
         # The shared device bar repaints with its shell (dark in Full
         # Nugget, the themed light pill otherwise).
         try:
@@ -674,11 +744,13 @@ class SettingsMixin:
         # (user report 2026-10-03: they were still WorkSlop-light). The
         # classic Daemons page (stack 2) and the iOS-stack Daemons page
         # both follow; UI-1 and UI-2 keep their themed look untouched.
-        for _page in (getattr(self, "ios_daemons", None),
-                      getattr(self, "ios_posterboard", None),
-                      getattr(self, "ios_settings", None),
-                      getattr(self, "ios_themes_hub", None),
-                      getattr(self, "ios_apply", None)):
+        # Only already-built pages are touched (pages are lazy now);
+        # _ensure_ios_page applies this same state when a page is built.
+        for _page in (self._ios_page_objs.get("ios_daemons"),
+                      self._ios_page_objs.get("ios_posterboard"),
+                      self._ios_page_objs.get("ios_settings"),
+                      self._ios_page_objs.get("ios_themes_hub"),
+                      self._ios_page_objs.get("ios_apply")):
             try:
                 if _page is not None:
                     _page.set_full_nugget(
@@ -690,11 +762,28 @@ class SettingsMixin:
                 theme == ThemeManager.FULL_NUGGET)
         except Exception:
             pass
-        for _page in (getattr(self, "ios_liquidglass", None),
-                      getattr(self, "ios_tweaks", None)):
+        for _page in (self._ios_page_objs.get("ios_liquidglass"),
+                      self._ios_page_objs.get("ios_tweaks")):
             try:
                 if _page is not None:
                     _page.refresh_nugget_lg_visibility()
+            except Exception:
+                pass
+        # Keep the Settings interface picker in step with the shell
+        # just applied. Pages are lazy now, so a Settings page built
+        # after a shell switch is born reading the then-active theme;
+        # its picker is normally re-synced by refresh() on navigation,
+        # and this keeps programmatic apply_theme calls consistent.
+        settings_page = self._ios_page_objs.get("ios_settings")
+        btns = getattr(settings_page, "interface_buttons", None)
+        if btns:
+            for btn_theme, btn in btns.items():
+                if btn.isChecked() != (btn_theme == theme):
+                    btn.blockSignals(True)
+                    btn.setChecked(btn_theme == theme)
+                    btn.blockSignals(False)
+            try:
+                settings_page._style_interface_buttons()
             except Exception:
                 pass
         self._sync_sidebar_selection()
@@ -732,6 +821,13 @@ class NavigationMixin:
     _classic_nav_pages = (10,)
 
     def _update_shared_nav(self, index: int):
+        # Lazy pages: whatever path navigated here (sidebar, home tiles,
+        # raw setCurrentIndex), the real page must exist before the
+        # header/refresh logic below touches it.
+        try:
+            self._ensure_ios_page(index)
+        except Exception:
+            pass
         classic = ThemeManager.is_classic(getattr(self.theme_manager,
                           "current_theme", ThemeManager.IOS))
         if classic and index not in self._classic_nav_pages:
@@ -895,6 +991,7 @@ class NavigationMixin:
 
 
     def show_ios_page(self, index: int):
+        self._ensure_ios_page(index)
         self.content_stack.setCurrentIndex(1)
         self.ios_pages.setCurrentIndex(index)
 
@@ -1507,21 +1604,34 @@ class ApplyMixin:
 
 
     def apply_changes(self, reset_pages: list=None):
-        if not self.apply_in_progress:
-            # Applies (not resets) get a what-will-change summary first.
-            if reset_pages is None and not self._confirm_apply_summary():
-                return
-            self.apply_in_progress = True
-            self.toggle_thread_btns(disabled=True)
-            self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages)
-            self.worker_thread.progress.connect(self.update_label)
-            self.worker_thread.alert.connect(self.alert_message)
-            self.worker_thread.request_text.connect(self.on_password_request)
-            self.worker_thread.choice_prompt.connect(self.on_choice_prompt)
-            self.worker_thread.backup_finished.connect(self._on_backup_finished)
-            self.worker_thread.finished_with_result.connect(self.finish_apply_thread)
-            self.worker_thread.finished.connect(self.worker_thread.deleteLater)
-            self.worker_thread.start()
+        if self.apply_in_progress:
+            # A second apply/reset used to vanish here with no feedback at
+            # all: the Reset dialog closed, no restore ran, the device never
+            # restarted, and the user was told nothing. Say why instead —
+            # and never queue work behind the running apply.
+            QtWidgets.QMessageBox.information(
+                self,
+                QCoreApplication.translate("Nugget", "Apply in Progress"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "WorkSlop Desktop is already applying changes. Wait for "
+                    "the current apply to finish, then try again — nothing "
+                    "was started."))
+            return
+        # Applies (not resets) get a what-will-change summary first.
+        if reset_pages is None and not self._confirm_apply_summary():
+            return
+        self.apply_in_progress = True
+        self.toggle_thread_btns(disabled=True)
+        self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages)
+        self.worker_thread.progress.connect(self.update_label)
+        self.worker_thread.alert.connect(self.alert_message)
+        self.worker_thread.request_text.connect(self.on_password_request)
+        self.worker_thread.choice_prompt.connect(self.on_choice_prompt)
+        self.worker_thread.backup_finished.connect(self._on_backup_finished)
+        self.worker_thread.finished_with_result.connect(self.finish_apply_thread)
+        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+        self.worker_thread.start()
 
     def _on_backup_finished(self, backup_root: str):
         """WorkSlop: the protective device backup just hit 100%.
@@ -2045,7 +2155,12 @@ class ApplyMixin:
 
     def toggle_thread_btns(self, disabled: bool):
         if disabled or not self.apply_in_progress:
-            self.ios_apply.set_busy(disabled)
+            apply_page = self._ios_page_objs.get("ios_apply")
+            if apply_page is not None:
+                apply_page.set_busy(disabled)
+            else:
+                # Apply page not built yet; replayed at construction.
+                self._pending_apply_busy = disabled
         if disabled or not self.refresh_in_progress:
             self.ui.refreshBtn.setDisabled(disabled)
 

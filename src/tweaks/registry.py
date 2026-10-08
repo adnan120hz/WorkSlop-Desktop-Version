@@ -387,7 +387,7 @@ SPECS: tuple[TweakSpec, ...] = (
     # restore channel, so its landing is never claimed. Payload core and
     # planner live in src/tweaks/lg_squair.py. The Beta 1 entries above
     # are untouched.
-    _t(TweakID.LGDisableSquairTest, Section.LIQUID_GLASS_DISABLE, "Squair Protocol (Test)",
+    _t(TweakID.LGDisableSquairTest, Section.LIQUID_GLASS_DISABLE, "Lock Screen Keys (Test)",
        FileLocation.globalPreferencesHomeDomain, "SBDisallowGlassTime",
        factory=_lgd_squair_factory,
        min_version="26.0",

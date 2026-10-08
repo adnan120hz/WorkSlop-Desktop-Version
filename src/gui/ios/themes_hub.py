@@ -76,13 +76,6 @@ class IOSThemesHubPage(QWidget):
             tr("Open Passcode Themes"),
             lambda: window.show_ios_page(11)))
 
-        content_layout.addWidget(self._make_card(
-            tr("iOS 18 Icons"),
-            tr("Stock iOS 18 app icons (Light and Dark) ready to add "
-               "to Icon Themes."),
-            tr("Open iOS 18 Icons"),
-            lambda: window.show_ios_page(17)))
-
         content_layout.addStretch(1)
         scroll.setWidget(content)
         layout.addWidget(scroll)

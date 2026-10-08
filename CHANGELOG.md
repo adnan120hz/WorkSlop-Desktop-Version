@@ -25,6 +25,24 @@ release.
   device is still unproven and no payload changed because of it.
 - App version is now 14.0. Liquid Glass v4 set and Animation Speed
   Coefficient untouched (frozen by the owner).
+- Startup/performance rework: window construction 7.05s → 0.45s in the
+  offscreen harness — stylesheet is polished once at the end of
+  construction instead of over the whole 3.4k-widget tree repeatedly,
+  pages build lazily on first open, theme/accent changes no longer
+  freeze the UI (3.61s → 0.06s), and a device error at startup now
+  lands as an inline status note instead of a blocking modal.
+- The iOS 18 Icons table now lives inside the Custom Icons (Icon
+  Themes) page with per-row Add and an Add All button. New "Import
+  Icon Pack (.zip)…" imports the catwithabaloon pack by content hash
+  (51 apps matched exactly; unmatched files are listed, never silently
+  dropped). WebClip folders are now named `WorkSlop_<bundleID>,<name>`.
+- "Squair Protocol (Test)" renamed to "Lock Screen Keys (Test)"
+  everywhere user-visible (payload byte-identical).
+- Reset Tweaks: the reset dialog no longer dies silently when device
+  info has not loaded yet, and clicking OK while an apply is running
+  now says so instead of swallowing the click.
+- The "Find My must be disabled" alert now quotes the raw device
+  error (Show Details) so the diagnosis can be checked.
 
 ## v12 — 2026-10-05 (pre-release, Windows)
 

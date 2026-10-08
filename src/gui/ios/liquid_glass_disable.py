@@ -89,8 +89,8 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             "com.apple.SwiftUI.plist (its reader is verified alive in "
             "the iOS 26.6.1 firmware), plus the two lock-screen keys "
             "into .GlobalPreferences.plist and the specular key into "
-            "com.apple.springboard.plist; the Squair Protocol entry is "
-            "a test-only experiment. Nothing on this page claims the "
+            "com.apple.springboard.plist; the Lock Screen Keys (Test) "
+            "entry is a test-only experiment. Nothing on this page claims the "
             "glass look is disabled — judge it with an isolated device "
             "test: full backup first, Low Power Mode off, reboot after "
             "applying. Every apply is checked by an automatic "
@@ -136,7 +136,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
         self._squair_btn = IOSDangerButton(
-            _tr("Roll Back Squair (Remove 2 Lock-Screen Keys)"), footer)
+            _tr("Roll Back Lock-Screen Keys (Remove Its 2 Keys)"), footer)
         self._squair_btn.clicked.connect(
             lambda: self._confirm_rollback("squair"))
         btn_row.addWidget(self._squair_btn)
@@ -264,7 +264,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
                 "on.")
         elif which == "squair":
             text = _tr(
-                "Remove the two Squair Protocol (Test) keys? The "
+                "Remove the two Lock Screen Keys (Test) keys? The "
                 "device's .GlobalPreferences.plist is read fresh and "
                 "only SBDisallowGlassTime and SBDisallowGlassButtons "
                 "are removed — your other settings stay. The "

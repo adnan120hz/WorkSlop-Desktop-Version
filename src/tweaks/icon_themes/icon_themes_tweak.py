@@ -2,7 +2,10 @@
 
 Port of Cowabunga (Lite)'s "icon theming" feature to GoldenNugget. The real
 app icons are never touched: for every themed app a WebClip folder is created
-at ``HomeDomain/Library/WebClips/Cowabunga_<bundleID>,<displayName>.webclip/``
+at ``HomeDomain/Library/WebClips/WorkSlop_<bundleID>,<displayName>.webclip/``
+(WebClip folders written by older builds used the ``Cowabunga_`` prefix;
+nothing in the app matches folders by prefix — see apply_tweak — so those
+shortcuts simply stay on the device until the user deletes them.)
 containing an ``Info.plist`` whose ``ApplicationBundleIdentifier`` points at
 the REAL app bundle id — so tapping the replaced icon launches the actual app
 directly (no "open in Safari" banner) — and an ``icon.png``. The folders are
@@ -11,6 +14,7 @@ same restore path as the well-tested HomeDomain tweak files on every
 supported version.
 """
 
+import hashlib
 import os
 import plistlib
 import shutil
@@ -33,6 +37,26 @@ def persistent_themes_dir() -> str:
     folder = os.path.join(base, "GoldenNugget", "IconThemes")
     os.makedirs(folder, exist_ok=True)
     return folder
+
+
+def build_pack_hash_index(catalog) -> dict:
+    """Map the sha256 of bundled icon files to their catalog entry.
+
+    *catalog* is an iterable of ``(bundle_id, display_name, light_path,
+    dark_path)``; a path may be empty or missing (e.g. the iOS 18 pack
+    ships no Dark Shortcuts). Light is inserted first so artwork whose
+    Light and Dark renders are byte-identical resolves to Light.
+    Returns ``{sha256: (bundle_id, display_name, dark)}``.
+    """
+    index: dict = {}
+    for bundle_id, display_name, light_path, dark_path in catalog:
+        for dark, path in ((False, light_path), (True, dark_path)):
+            if not path or not os.path.isfile(path):
+                continue
+            with open(path, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()
+            index.setdefault(digest, (bundle_id, display_name, dark))
+    return index
 
 
 def make_webclip_plist(bundle_id: str, display_name: str) -> bytes:
@@ -175,6 +199,89 @@ class IconThemesTweak(Tweak):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def import_pack_zip_matched(self, archive_path: str,
+                                hash_index: dict) -> dict:
+        """Import a pack zip by CONTENT, never by file name.
+
+        Some packs (e.g. "iOS 18 App Icons by catwithabaloon") ship
+        generic file names (``App Icon-37.png``) that carry no bundle id
+        at all, so the name-based :meth:`import_pack_zip` can only
+        invent bogus themes pointing at apps that do not exist. Here
+        every extracted image is sha256-matched against *hash_index*
+        (built from the bundled catalog files via
+        :func:`build_pack_hash_index`): a byte-identical file IS the
+        catalog icon, so no bundle id is ever guessed from a name.
+
+        One theme per app — Light wins when both variants match (the
+        same rule as the iOS 18 table's Add All) — and apps already in
+        Icon Themes are skipped so a hand-picked variant is never
+        clobbered by a bulk import. Files matching nothing come back in
+        ``unmatched`` (paths relative to the zip root) so the caller can
+        report them by name; they are never silently dropped and never
+        turned into invented bundle ids.
+
+        Returns a dict: ``archive_ok``, ``imported`` (list of
+        ``(bundle_id, display_name, dark)``), ``already_present``
+        (bundle ids skipped), ``store_failed`` (bundle ids whose icon
+        could not be copied into the persistent store) and ``unmatched``
+        (relative file names).
+        """
+        result = {
+            "archive_ok": False,
+            "imported": [],
+            "already_present": [],
+            "store_failed": [],
+            "unmatched": [],
+        }
+        image_exts = (".png", ".heic", ".jpg", ".jpeg", ".webp")
+        tmp = tempfile.mkdtemp(prefix="icontheme_match_")
+        try:
+            try:
+                with zipfile.ZipFile(archive_path) as zf:
+                    self._safe_extractall(zf, tmp)
+            except (zipfile.BadZipFile, OSError):
+                return result
+            result["archive_ok"] = True
+
+            # bundle_id -> (dark, display_name, extracted path)
+            chosen: dict = {}
+            for root, dirs, files in os.walk(tmp):
+                dirs.sort()
+                for name in sorted(files):
+                    if not name.lower().endswith(image_exts):
+                        continue
+                    path = os.path.join(root, name)
+                    with open(path, "rb") as f:
+                        digest = hashlib.sha256(f.read()).hexdigest()
+                    match = hash_index.get(digest)
+                    if match is None:
+                        result["unmatched"].append(
+                            os.path.relpath(path, tmp))
+                        continue
+                    bundle_id, display_name, dark = match
+                    prev = chosen.get(bundle_id)
+                    # Light wins over Dark; first match wins otherwise.
+                    if prev is None or (prev[0] and not dark):
+                        chosen[bundle_id] = (dark, display_name, path)
+
+            existing = {t.bundle_id for t in self.themes}
+            for bundle_id in sorted(chosen):
+                dark, display_name, path = chosen[bundle_id]
+                if bundle_id in existing:
+                    result["already_present"].append(bundle_id)
+                    continue
+                theme = IconTheme(bundle_id=bundle_id,
+                                  display_name=display_name,
+                                  icon_path=path)
+                if not self.store_icon(theme):
+                    result["store_failed"].append(bundle_id)
+                self.add_theme(theme)
+                existing.add(bundle_id)
+                result["imported"].append((bundle_id, display_name, dark))
+            return result
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     @staticmethod
     def _safe_extractall(zf: zipfile.ZipFile, dest: str) -> None:
         """extractall() with a zip-slip guard (CWE-22).
@@ -252,7 +359,7 @@ class IconThemesTweak(Tweak):
         skipped = []
         for theme in self.themes:
             display_name = self.sanitize_display_name(theme.display_name)
-            folder = f"Library/WebClips/Cowabunga_{theme.bundle_id},{display_name}.webclip"
+            folder = f"Library/WebClips/WorkSlop_{theme.bundle_id},{display_name}.webclip"
 
             # Info.plist
             files_to_restore.append(FileToRestore(

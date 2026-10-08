@@ -1,19 +1,128 @@
 import os
 
 from PySide6.QtCore import Qt, QCoreApplication, QSize
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QPixmapCache
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QPushButton, QToolButton, QFileDialog, QDialog, QDialogButtonBox,
-    QLineEdit, QMessageBox,
+    QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
 )
 
+from src.controllers.files_handler import get_bundle_files
 from src.gui.ios.components import IOSCard
 from src.gui.theme import ColorThemeManager, theme_icon
 from src.gui.dialogs.icon_pack_downloader import IconPackDownloaderDialog
 from src.gui.dialogs.app_list_dialog import AppListExportDialog
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.icon_themes.icon_theme import IconTheme
+from src.tweaks.icon_themes.icon_themes_tweak import build_pack_hash_index
+
+
+def _tr(text: str) -> str:
+    return QCoreApplication.translate("Nugget", text)
+
+
+# iOS 18 stock icon gallery (catwithabaloon pack), shown as a table
+# inside this page. The same curated set the mobile app ships: 51
+# apps, Light artwork for all of them, Dark artwork for 50 (the pack
+# ships no Dark Shortcuts). Picking a row's Light/Dark button — or
+# Add All — adds that artwork to Icon Themes as a normal IconTheme,
+# so it rides the existing WebClip payload builder
+# (src/tweaks/icon_themes/icon_themes_tweak.py) unchanged: the target
+# column shows the exact HomeDomain restore path the builder writes,
+# ``Library/WebClips/WorkSlop_<bundleID>,<displayName>.webclip/icon.png``.
+#
+# Icon artwork: "iOS 18 App Icons by catwithabaloon"
+# (https://github.com/catwithabaloon/iOS-18-icon-pack) — see Credits.
+# PNGs live in files/ios18_icons/{Light,Dark}/ and ship with the app
+# via compile.py's ``--add-data=files/:files``. The pack's Tinted
+# variant and artwork that could not be identified with certainty are
+# not shipped, exactly as on mobile.
+
+# (display name, bundle id, asset slug) — identical to IOS18IconCatalog
+# in the mobile app (WorkSlop/IOS18Icons.swift), bundle IDs verified
+# against the iTunes lookup / system constants there.
+IOS18_ICONS = [
+    ("Shortcuts", "com.apple.shortcuts", "shortcuts"),
+    ("App Store", "com.apple.AppStore", "app-store"),
+    ("Settings", "com.apple.Preferences", "settings"),
+    ("Numbers", "com.apple.Numbers", "numbers"),
+    ("Pages", "com.apple.Pages", "pages"),
+    ("Keynote", "com.apple.Keynote", "keynote"),
+    ("Books", "com.apple.iBooks", "books"),
+    ("Calculator", "com.apple.calculator", "calculator"),
+    ("Calendar", "com.apple.mobilecal", "calendar"),
+    ("Camera", "com.apple.camera", "camera"),
+    ("Music Classical", "com.apple.music.classical", "music-classical"),
+    ("Clock", "com.apple.mobiletimer", "clock"),
+    ("Compass", "com.apple.compass", "compass"),
+    ("Contacts", "com.apple.AddressBook", "contacts"),
+    ("FaceTime", "com.apple.facetime", "facetime"),
+    ("Files", "com.apple.DocumentsApp", "files"),
+    ("Clips", "com.apple.clips", "clips"),
+    ("Find My", "com.apple.findmy", "find-my"),
+    ("Fitness", "com.apple.Fitness", "fitness"),
+    ("GarageBand", "com.apple.mobilegarageband", "garageband"),
+    ("Health", "com.apple.Health", "health"),
+    ("Home", "com.apple.Home", "home"),
+    ("Magnifier", "com.apple.Magnifier", "magnifier"),
+    ("Mail", "com.apple.mobilemail", "mail"),
+    ("Maps", "com.apple.Maps", "maps"),
+    ("Measure", "com.apple.measure", "measure"),
+    ("Music", "com.apple.Music", "music"),
+    ("News", "com.apple.news", "news"),
+    ("Notes", "com.apple.mobilenotes", "notes"),
+    ("Passwords", "com.apple.Passwords", "passwords"),
+    ("Phone", "com.apple.mobilephone", "phone"),
+    ("Photos", "com.apple.mobileslideshow", "photos"),
+    ("Podcasts", "com.apple.podcasts", "podcasts"),
+    ("Reminders", "com.apple.reminders", "reminders"),
+    ("Apple TV Remote", "com.apple.TVRemote", "apple-tv-remote"),
+    ("Safari", "com.apple.mobilesafari", "safari"),
+    ("Stocks", "com.apple.stocks", "stocks"),
+    ("Apple Store", "com.apple.store.Jolly", "apple-store"),
+    ("Swift Playgrounds", "com.apple.Playgrounds", "swift-playgrounds"),
+    ("TestFlight", "com.apple.TestFlight", "testflight"),
+    ("Tips", "com.apple.tips", "tips"),
+    ("Translate", "com.apple.Translate", "translate"),
+    ("Voice Memos", "com.apple.VoiceMemos", "voice-memos"),
+    ("Wallet", "com.apple.Passbook", "wallet"),
+    ("Watch", "com.apple.Bridge", "watch"),
+    ("Weather", "com.apple.weather", "weather"),
+    ("Messages", "com.apple.MobileSMS", "messages"),
+    ("iMovie", "com.apple.iMovie", "imovie"),
+    ("Apple Sports", "com.apple.sports", "apple-sports"),
+    ("TV", "com.apple.tv", "tv"),
+    ("Shazam", "com.shazam.Shazam", "shazam"),
+]
+
+
+def icon_asset_path(slug: str, dark: bool) -> str:
+    variant = "Dark" if dark else "Light"
+    return get_bundle_files(f"files/ios18_icons/{variant}/{slug}.png")
+
+
+def ios18_pack_hash_index() -> dict:
+    """sha256 -> catalog entry for every bundled iOS 18 icon file.
+
+    Lets a user-supplied pack zip (whose files have generic names like
+    ``App Icon-37.png``) be matched to the catalog by content instead
+    of by name — see IconThemesTweak.import_pack_zip_matched.
+    """
+    catalog = [
+        (bundle_id, name, icon_asset_path(slug, False),
+         icon_asset_path(slug, True))
+        for name, bundle_id, slug in IOS18_ICONS
+    ]
+    return build_pack_hash_index(catalog)
+
+
+def webclip_target(bundle_id: str, display_name: str, tweak) -> str:
+    """The exact on-device spot the icon lands in, as written by
+    IconThemesTweak.apply_tweak (HomeDomain restore path)."""
+    safe_name = tweak.sanitize_display_name(display_name)
+    return (f"Library/WebClips/WorkSlop_{bundle_id},{safe_name}"
+            f".webclip/icon.png (HomeDomain)")
 
 
 class IOSIconThemesPage(QWidget):
@@ -67,6 +176,14 @@ class IOSIconThemesPage(QWidget):
         self._download_btn = download_btn
         self.content_layout.addWidget(download_btn)
 
+        import_zip_btn = QPushButton(QCoreApplication.translate(
+            "Nugget", "Import Icon Pack (.zip)…"))
+        import_zip_btn.setObjectName("importIconPackZip")
+        import_zip_btn.setCursor(Qt.PointingHandCursor)
+        import_zip_btn.clicked.connect(self.show_import_pack_zip)
+        self._import_zip_btn = import_zip_btn
+        self.content_layout.addWidget(import_zip_btn)
+
         apps_btn = QPushButton(QCoreApplication.translate(
             "Nugget", "Apps on iPhone"))
         apps_btn.setObjectName("appsOnIphone")
@@ -84,10 +201,198 @@ class IOSIconThemesPage(QWidget):
         self._themes_box.setSpacing(8)
         self.content_layout.addLayout(self._themes_box)
 
+        # --- iOS 18 stock icons (catwithabaloon pack) ---
+        self._ios18_add_buttons: list[QPushButton] = []
+
+        self.content_layout.addSpacing(16)
+        ios18_header = QLabel(_tr("iOS 18 Icons"))
+        ios18_header.setObjectName("ios18Header")
+        self._ios18_header = ios18_header
+        self.content_layout.addWidget(ios18_header)
+
+        ios18_hint = QLabel(_tr(
+            "Stock iOS 18 app icons from the catwithabaloon icon pack. "
+            "Use Light or Dark on a row to add that artwork to Icon "
+            "Themes, or Add All to add every app that is not in Icon "
+            "Themes yet (Light artwork); it is delivered as a WebClip "
+            "to the target shown, exactly like any other icon theme."))
+        ios18_hint.setWordWrap(True)
+        self._ios18_hint = ios18_hint
+        self.content_layout.addWidget(ios18_hint)
+
+        add_all_btn = QPushButton(_tr("Add All"))
+        add_all_btn.setObjectName("ios18AddAll")
+        add_all_btn.setCursor(Qt.PointingHandCursor)
+        add_all_btn.clicked.connect(self._use_all_icons)
+        self._ios18_add_all_btn = add_all_btn
+        self.content_layout.addWidget(add_all_btn)
+
+        self._ios18_status = QLabel("")
+        self._ios18_status.setWordWrap(True)
+        self.content_layout.addWidget(self._ios18_status)
+
+        self._ios18_table = self._build_ios18_table()
+        self.content_layout.addWidget(self._ios18_table)
+
+        ios18_credit = QLabel(_tr(
+            "Icon artwork: iOS 18 App Icons by catwithabaloon "
+            "(github.com/catwithabaloon/iOS-18-icon-pack)."))
+        ios18_credit.setWordWrap(True)
+        self._ios18_credit = ios18_credit
+        self.content_layout.addWidget(ios18_credit)
+
         self.content_layout.addStretch()
 
         self._retheme()
         self.refresh_themes()
+
+    # -- iOS 18 stock icon table ----------------------------------------
+    def _build_ios18_table(self) -> QTableWidget:
+        tweak = tweaks[TweakID.IconThemes]
+        table = QTableWidget(len(IOS18_ICONS), 6)
+        table.setObjectName("ios18IconTable")
+        table.setHorizontalHeaderLabels([
+            _tr("Light"), _tr("Dark"), _tr("App"), _tr("Bundle ID"),
+            _tr("Target on device"), _tr("Add"),
+        ])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows)
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        table.setColumnWidth(0, 64)
+        table.setColumnWidth(1, 64)
+        table.setColumnWidth(5, 132)
+
+        for row, (name, bundle_id, slug) in enumerate(IOS18_ICONS):
+            table.setRowHeight(row, 56)
+            table.setCellWidget(row, 0, self._icon_cell(slug, dark=False))
+            table.setCellWidget(row, 1, self._icon_cell(slug, dark=True))
+            table.setItem(row, 2, QTableWidgetItem(name))
+            table.setItem(row, 3, QTableWidgetItem(bundle_id))
+            table.setItem(row, 4, QTableWidgetItem(
+                webclip_target(bundle_id, name, tweak)))
+            table.setCellWidget(
+                row, 5, self._add_cell(name, bundle_id, slug))
+
+        # The page itself scrolls, so the table shows every row and
+        # never grows its own vertical scrollbar.
+        rows_h = sum(table.rowHeight(r) for r in range(table.rowCount()))
+        table.setFixedHeight(max(header.height(), 30) + rows_h + 2)
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        return table
+
+    def _pixmap(self, slug: str, dark: bool) -> QPixmap:
+        """44px thumbnail for the iOS 18 icons table, via QPixmapCache.
+
+        The page is built lazily on first navigation, so decoding happens
+        on first open — and only the display-size thumbnail is cached,
+        never the full-res pixmap (the old dict pinned all 102 of them).
+        """
+        path = icon_asset_path(slug, dark)
+        key = f"ios18icon:{path}"
+        pix = QPixmapCache.find(key)
+        if pix is None:
+            full = QPixmap(path)
+            if full.isNull():
+                return full
+            pix = full.scaled(
+                44, 44, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            QPixmapCache.insert(key, pix)
+        return pix
+
+    def _icon_cell(self, slug: str, dark: bool) -> QWidget:
+        lbl = QLabel()
+        lbl.setAlignment(Qt.AlignCenter)
+        pix = self._pixmap(slug, dark)
+        if pix.isNull():
+            lbl.setText("—")
+        else:
+            lbl.setPixmap(pix)
+        return lbl
+
+    def _add_cell(self, name: str, bundle_id: str, slug: str) -> QWidget:
+        box = QWidget()
+        row = QHBoxLayout(box)
+        row.setContentsMargins(4, 4, 4, 4)
+        row.setSpacing(6)
+        for label, dark in ((_tr("Light"), False), (_tr("Dark"), True)):
+            btn = QPushButton(label)
+            btn.setObjectName("ios18AddBtn")
+            btn.setCursor(Qt.PointingHandCursor)
+            available = os.path.isfile(icon_asset_path(slug, dark))
+            btn.setEnabled(available)
+            if available:
+                btn.clicked.connect(
+                    lambda _=False, n=name, b=bundle_id, s=slug, d=dark:
+                    self._use_icon(n, b, s, d))
+            row.addWidget(btn)
+            self._ios18_add_buttons.append(btn)
+        return box
+
+    def _use_icon(self, name: str, bundle_id: str, slug: str, dark: bool):
+        path = icon_asset_path(slug, dark)
+        if not os.path.isfile(path):
+            return
+        tweak = tweaks[TweakID.IconThemes]
+        theme = IconTheme(bundle_id=bundle_id, display_name=name,
+                          icon_path=path)
+        if not tweak.store_icon(theme):
+            QMessageBox.warning(
+                self.window,
+                _tr("Warning"),
+                _tr("Could not store the icon file in the persistent "
+                    "folder. The theme may not apply reliably."))
+        tweak.add_theme(theme)
+        tweak.set_enabled(True)
+        self.refresh_themes()
+        self._ios18_status.setText(_tr(
+            "Added {0} ({1}) to Icon Themes.").format(
+                name, _tr("Dark") if dark else _tr("Light")))
+
+    def _use_all_icons(self):
+        tweak = tweaks[TweakID.IconThemes]
+        existing = {t.bundle_id for t in tweak.themes}
+        added = 0
+        store_failed = 0
+        for name, bundle_id, slug in IOS18_ICONS:
+            if bundle_id in existing:
+                continue
+            path = icon_asset_path(slug, dark=False)
+            if not os.path.isfile(path):
+                continue
+            theme = IconTheme(bundle_id=bundle_id, display_name=name,
+                              icon_path=path)
+            if not tweak.store_icon(theme):
+                store_failed += 1
+            tweak.add_theme(theme)
+            added += 1
+        if added:
+            tweak.set_enabled(not tweak.is_empty())
+            self.refresh_themes()
+        if added and store_failed:
+            self._ios18_status.setText(_tr(
+                "Added {0} iOS 18 icons (Light) to Icon Themes; {1} "
+                "could not be stored (those themes may not apply "
+                "reliably).").format(added, store_failed))
+        elif added:
+            self._ios18_status.setText(_tr(
+                "Added {0} iOS 18 icons (Light) to Icon Themes.").format(
+                    added))
+        elif store_failed:
+            self._ios18_status.setText(_tr(
+                "Nothing new was added, and {0} icons could not be "
+                "stored (those themes may not apply reliably).").format(
+                    store_failed))
+        else:
+            self._ios18_status.setText(_tr(
+                "Every iOS 18 icon is already in Icon Themes."))
 
     def _reset_themes(self):
         reply = QMessageBox.question(
@@ -124,6 +429,18 @@ class IOSIconThemesPage(QWidget):
             }}
             QPushButton#downloadIconPacks:hover {{ background-color: {c.surface_hover}; }}
         """)
+        self._import_zip_btn.setStyleSheet(f"""
+            QPushButton#importIconPackZip {{
+                background-color: {c.bg_secondary};
+                border: 1px solid {c.border};
+                border-radius: 12px;
+                color: {c.accent};
+                font-size: 14px;
+                font-weight: 600;
+                padding: 12px;
+            }}
+            QPushButton#importIconPackZip:hover {{ background-color: {c.surface_hover}; }}
+        """)
         self._apps_btn.setStyleSheet(f"""
             QPushButton#appsOnIphone {{
                 background-color: {c.bg_secondary};
@@ -150,6 +467,71 @@ class IOSIconThemesPage(QWidget):
             }}
             QPushButton#resetIconThemes:hover {{ background-color: {c.surface_hover}; }}
         """)
+        if getattr(self, "_ios18_table", None) is not None:
+            self._ios18_header.setStyleSheet(
+                f"color: {c.text_primary}; font-size: 15px;"
+                " font-weight: 700; background-color: transparent;")
+            self._ios18_hint.setStyleSheet(
+                f"color: {c.text_secondary}; font-size: 13px;"
+                " background-color: transparent;")
+            self._ios18_add_all_btn.setStyleSheet(f"""
+                QPushButton#ios18AddAll {{
+                    background-color: {c.bg_secondary};
+                    border: 1px solid {c.border};
+                    border-radius: 12px;
+                    color: {c.accent};
+                    font-size: 14px;
+                    font-weight: 600;
+                    padding: 12px;
+                }}
+                QPushButton#ios18AddAll:hover {{ background-color: {c.surface_hover}; }}
+            """)
+            self._ios18_status.setStyleSheet(
+                f"color: {c.accent}; font-size: 13px;"
+                " background-color: transparent;")
+            self._ios18_credit.setStyleSheet(
+                f"color: {c.text_secondary}; font-size: 12px;"
+                " background-color: transparent;")
+            self._ios18_table.setStyleSheet(f"""
+                QTableWidget#ios18IconTable {{
+                    background-color: {c.bg_secondary};
+                    border: 1px solid {c.border};
+                    border-radius: 12px;
+                    gridline-color: {c.divider};
+                    color: {c.text_primary};
+                    font-size: 13px;
+                }}
+                QTableWidget#ios18IconTable::item {{
+                    padding: 4px 8px;
+                    border: none;
+                }}
+                QTableWidget#ios18IconTable::item:selected {{
+                    background-color: {c.surface_hover};
+                    color: {c.text_primary};
+                }}
+                QHeaderView::section {{
+                    background-color: {c.bg_tertiary};
+                    color: {c.text_secondary};
+                    border: none;
+                    padding: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                }}
+            """)
+            for btn in self._ios18_add_buttons:
+                btn.setStyleSheet(f"""
+                    QPushButton#ios18AddBtn {{
+                        background-color: {c.bg_input};
+                        border: 1px solid {c.border};
+                        border-radius: 8px;
+                        color: {c.accent};
+                        font-size: 12px;
+                        font-weight: 600;
+                        padding: 6px 8px;
+                    }}
+                    QPushButton#ios18AddBtn:hover {{ background-color: {c.surface_hover}; }}
+                    QPushButton#ios18AddBtn:disabled {{ color: {c.text_disabled}; }}
+                """)
         # Rebuild the theme cards so their hardcoded label colors follow the
         # current palette too.
         if hasattr(self, "_themes_box"):
@@ -275,6 +657,55 @@ class IOSIconThemesPage(QWidget):
         dialog = IconPackDownloaderDialog(self.window)
         if dialog.exec() == QDialog.Accepted and dialog.added_bundle_ids:
             self.refresh_themes()
+
+    def show_import_pack_zip(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self.window,
+            _tr("Import Icon Pack (.zip)"),
+            "",
+            "Icon Pack Archives (*.zip)")
+        if not path:
+            return
+        tweak = tweaks[TweakID.IconThemes]
+        result = tweak.import_pack_zip_matched(
+            path, ios18_pack_hash_index())
+        if not result["archive_ok"]:
+            QMessageBox.warning(
+                self.window,
+                _tr("Warning"),
+                _tr("That file could not be read as an icon pack (.zip)."))
+            return
+        imported = result["imported"]
+        if imported:
+            tweak.set_enabled(True)
+            self.refresh_themes()
+        summary = _tr("Imported {0} icons from the pack.").format(len(imported))
+        self._ios18_status.setText(summary)
+        notes = []
+        if result["already_present"]:
+            notes.append(_tr(
+                "{0} icons were already in Icon Themes and were left as "
+                "they are.").format(len(result["already_present"])))
+        if result["store_failed"]:
+            notes.append(_tr(
+                "{0} icons could not be stored in the persistent folder; "
+                "those themes may not apply reliably.").format(
+                    len(result["store_failed"])))
+        unmatched = result["unmatched"]
+        if unmatched:
+            notes.append(_tr(
+                "{0} files in the pack did not match any icon in the "
+                "built-in 51-app catalog, so they could not be identified "
+                "per app and were skipped — no theme was created for "
+                "them. They are listed in the details below.").format(
+                    len(unmatched)))
+        box = QMessageBox(self.window)
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setWindowTitle(_tr("Icon Pack Import"))
+        box.setText(" ".join([summary] + notes))
+        if unmatched:
+            box.setDetailedText("\n".join(unmatched))
+        box.exec()
 
 
 class IconThemeDialog(QDialog):
