@@ -49,37 +49,25 @@ from src.tweaks.registry import SPECS_BY_SECTION, Section
 lg = FEATURE_TWEAKS["Liquid Glass"]
 v4 = [s.id.name for s in SPECS_BY_SECTION[Section.LIQUID_GLASS]]
 check("all 32 Liquid Glass v4 specs are members", all(n in lg for n in v4))
-check("LGD G1/G2 also members", "LGDisableG1" in lg and "LGDisableG2" in lg)
+check("Squair/Latest are members; removed G1/G2 are not",
+      "LGDisableSquairTest" in lg and "LGDisableLatest" in lg
+      and "LGDisableG1" not in lg and "LGDisableG2" not in lg)
 check("no duplicate members", len(lg) == len(set(lg)))
 
-print("[2] G2 rollback honesty + fallback format (round 21 LOW)")
-from src.restore import lgd_full
-from src.exceptions.nugget_exception import NuggetException
+print("[2] LGD rollback planning (v14.0: fresh-capture planners)")
+# The G1/G2 rollback planners left the product with the Beta 1 tweaks
+# in v14.0; rollback planning for the surviving payloads is covered by
+# tools/test_lg_squair_protocol.py and tools/test_lg_latest_protocol.py.
+from src.tweaks import lg_latest
 
-# corrupt captured original -> refuse, never silently empty-overlay
-try:
-    lgd_full.plan_rollback_payloads("g2", None, b"not-a-plist")
-    check("corrupt G2 original refuses", False)
-except NuggetException:
-    check("corrupt G2 original refuses", True)
+payloads, _note = lg_latest.plan_latest_rollback_payloads(
+    {"SBDisallowGlassTime": True, "KeepMe": 1})
+check("Latest rollback keeps non-payload keys",
+      plistlib.loads(payloads[0][2]).get("KeepMe") == 1)
+check("Latest rollback strips exactly its own keys",
+      "SBDisallowGlassTime" not in plistlib.loads(payloads[0][2]))
 
-# no captured original -> empty overlay fallback, BINARY format
-payloads = lgd_full.plan_rollback_payloads("g2", None, None)
-check("one fallback payload", len(payloads) == 1)
-_, _, data, *_ = payloads[0]
-check("fallback overlay is binary plist", data[:6] == b"bplist")
-check("fallback overlay parses to empty dict", plistlib.loads(data) == {})
-
-# captured original with our key -> key stripped, other keys kept
-orig = plistlib.dumps({"SolariumForceFallback": True, "KeepMe": 1},
-                      fmt=plistlib.FMT_BINARY)
-payloads = lgd_full.plan_rollback_payloads("g2", None, orig)
-parsed = plistlib.loads(payloads[0][2])
-check("candidate key stripped from original",
-      "SolariumForceFallback" not in parsed)
-check("other managed keys preserved", parsed.get("KeepMe") == 1)
-
-print("[3] disk gate enforces G1 candidate key (round 21 LOW)")
+print("[3] disk gate enforces the candidate key when asked (round 21 LOW)")
 import sqlite3
 
 from src.restore import lgd_full as lf
@@ -143,7 +131,7 @@ from src.cli.cmd_tweaks import _coerce_cli_value
 from src.tweaks.registry import SPECS_BY_ID
 from src.tweaks.tweak_names import TweakID
 
-spec = SPECS_BY_ID[TweakID.LGDisableG2]
+spec = SPECS_BY_ID[TweakID.LGDisableLatest]
 v, err = _coerce_cli_value(spec, "false")
 check('switch "false" -> real False', v is False and err is None)
 v, err = _coerce_cli_value(spec, "banana")

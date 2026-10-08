@@ -212,10 +212,27 @@ class TweakID(Enum):
     NuggetSolariumFFSharing = auto()
     NuggetSolariumFFMail = auto()
 
-    # Liquid Glass Disable (Beta 1) — new feature (2026-10-04): two
-    # delivery routes for the Beta 1 SolariumForceFallback key. Own IDs so
-    # the frozen v4 set above (incl. TweakID.SolariumForceFallback, which
-    # stages the same key into the managed overlay) is never touched.
-    # See src/tweaks/lg_disable.py.
-    LGDisableG2 = auto()  # managed overlay (.GlobalPreferences.plist, ManagedPreferencesDomain)
-    LGDisableG1 = auto()  # device file merge (HomeDomain .GlobalPreferences.plist, diff-gated)
+    # Liquid Glass Disable (Beta 1) — added 2026-10-04 as two delivery
+    # routes for the Beta 1 SolariumForceFallback key; REMOVED from the
+    # product in v14.0 by explicit user order (2026-10-07: "G1 G2 ga
+    # work, hapus") after beta testing showed no effect. The enum
+    # members stay as tombstones so old presets/journals naming them
+    # still parse; they are recorded in REMOVED_TWEAK_IDS
+    # (src/tweaks/capabilities.py) and must never resolve to an active
+    # spec or payload again. The shared payload helpers live on in
+    # src/tweaks/lg_disable.py (consumed by Squair + Latest).
+    LGDisableG2 = auto()  # tombstone: managed overlay route (removed v14.0)
+    LGDisableG1 = auto()  # tombstone: device file merge route (removed v14.0)
+
+    # Squair Protocol (test) — test-only payload (2026-10-07): two
+    # GlobalPreferences keys + a FeatureFlags/Domain file riding the
+    # full-backup route. Own ID. See src/tweaks/lg_squair.py.
+    LGDisableSquairTest = auto()
+
+    # Liquid Glass (Latest) — product payload (2026-10-07): the newest
+    # audited key set (SolariumForceFallback in its S8-proven
+    # com.apple.SwiftUI.plist home, the two lock-screen keys in
+    # .GlobalPreferences.plist, the specular key in
+    # com.apple.springboard.plist) riding the full-backup route. Own
+    # ID. See src/tweaks/lg_latest.py.
+    LGDisableLatest = auto()

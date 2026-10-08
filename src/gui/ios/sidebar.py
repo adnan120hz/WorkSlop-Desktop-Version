@@ -66,7 +66,15 @@ class WorkSlopSidebar(QWidget):
         self._group.setExclusive(True)
         self._buttons = {}
         for menu_id, label, icon_res in MENUS:
-            btn = QPushButton(QCoreApplication.translate('Nugget', label), self)
+            btn_text = QCoreApplication.translate('Nugget', label)
+            # Display-only wrap: the rail is fixed at 216 px, so a long
+            # label ("Liquid Glass Disable (Beta 1)") wraps before its
+            # parenthetical instead of clipping. MENUS keeps the
+            # canonical one-line label — translations and tests look it
+            # up verbatim.
+            if " (" in btn_text:
+                btn_text = btn_text.replace(" (", "\n(", 1)
+            btn = QPushButton(btn_text, self)
             btn.setObjectName(f"menu_{menu_id}")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)

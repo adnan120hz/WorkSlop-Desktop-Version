@@ -1,15 +1,14 @@
-"""Liquid Glass Disable (Beta 1) — dedicated iOS-style page.
+"""Liquid Glass Disable — dedicated iOS-style page.
 
-The two route switches are ordinary registry specs (Section
-"Liquid Glass Disable (Beta 1)", TweakID.LGDisableG1/LGDisableG2) rendered
-by the shared IOSSectionContent, so they enable, autosave, count in the
-pre-apply summary and stage through the normal apply pipeline exactly like
-every other tweak. This page adds what a generic switch row cannot: the
-honest Beta 1 explanation, the per-device "original saved" status, and the
-two rollback buttons (G2: restore the captured managed overlay with only
-the candidate key removed — an empty overlay only when no original was
-captured; G1: write back the device original saved before the first
-apply).
+The switches are ordinary registry specs (Section
+"Liquid Glass Disable (Beta 1)": the Squair Protocol test payload and
+Liquid Glass (Latest)) rendered by the shared IOSSectionContent, so they
+enable, autosave, count in the pre-apply summary and stage through the
+normal apply pipeline exactly like every other tweak. This page adds
+what a generic switch row cannot: the honest explanation, the device
+status line, and the rollback buttons (each removes exactly its own
+payload's keys from a fresh device capture). The Beta 1 G1/G2 routes
+left the product in v14.0 (user order 2026-10-07).
 """
 
 from PySide6.QtCore import Qt, QCoreApplication, QThread, Signal
@@ -23,7 +22,6 @@ from src.gui.ios.components import (
 )
 from src.gui.ios.tweaks import IOSSectionPage
 from src.gui.theme import ColorThemeManager
-from src.tweaks import lg_disable
 from src.tweaks.registry import Section
 from src.tweaks.tweak_names import TweakID
 
@@ -85,15 +83,20 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         intro_layout.setContentsMargins(16, 12, 16, 12)
         intro_layout.setSpacing(6)
         intro = QLabel(_tr(
-            "BETA 1 — unproven. This page writes one research candidate "
-            "key, SolariumForceFallback = true, through two delivery "
-            "routes. The key string exists in the iOS 26.6.1 system "
-            "binaries, but it is NOT proven that iOS 26.6.1 reads it from "
-            "either file — enabling a route does not claim to disable "
-            "Liquid Glass. Test one route at a time: full backup first, "
-            "Low Power Mode off, reboot after applying, then judge the "
-            "result. Every apply is checked by an automatic verification "
-            "gate (payload parses, value is a real bool, G1 keeps 100% of "
+            "UNPROVEN on screen. This page writes Apple's real firmware "
+            "keys through the full-backup route: Liquid Glass (Latest) "
+            "puts SolariumForceFallback = true into your device's "
+            "com.apple.SwiftUI.plist (its reader is verified alive in "
+            "the iOS 26.6.1 firmware), plus the two lock-screen keys "
+            "into .GlobalPreferences.plist and the specular key into "
+            "com.apple.springboard.plist; the Squair Protocol entry is "
+            "a test-only experiment. Nothing on this page claims the "
+            "glass look is disabled — judge it with an isolated device "
+            "test: full backup first, Low Power Mode off, reboot after "
+            "applying. Every apply is checked by an automatic "
+            "verification gate (payload parses, value is a real bool, "
+            "and 100% of your existing keys must survive) and is "
+            "cancelled if the check fails. "
             "your original keys) and is cancelled if the check fails. "
             "On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers "
             "these routes through a full device backup and restore "
@@ -132,24 +135,24 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
-        self._g2_btn = IOSDangerButton(
-            _tr("Roll Back G2 (Restore Saved Overlay)"), footer)
-        self._g2_btn.clicked.connect(lambda: self._confirm_rollback("g2"))
-        btn_row.addWidget(self._g2_btn)
-        self._g1_btn = IOSDangerButton(
-            _tr("Roll Back G1 (Restore Saved Original)"), footer)
-        self._g1_btn.clicked.connect(lambda: self._confirm_rollback("g1"))
-        btn_row.addWidget(self._g1_btn)
+        self._squair_btn = IOSDangerButton(
+            _tr("Roll Back Squair (Remove 2 Lock-Screen Keys)"), footer)
+        self._squair_btn.clicked.connect(
+            lambda: self._confirm_rollback("squair"))
+        btn_row.addWidget(self._squair_btn)
+        self._latest_btn = IOSDangerButton(
+            _tr("Roll Back Latest (Remove Its 4 Keys)"), footer)
+        self._latest_btn.clicked.connect(
+            lambda: self._confirm_rollback("latest"))
+        btn_row.addWidget(self._latest_btn)
         footer_layout.addLayout(btn_row)
 
         hint = QLabel(_tr(
-            "Enable a route above, then press Apply Tweaks on the Apply "
-            "page. The rollback buttons write to the device immediately "
-            "(G2 restores the device's managed overlay saved before "
-            "your first apply — or an empty overlay when none was "
-            "saved; G1 writes back the original "
-            ".GlobalPreferences.plist saved before your first "
-            "G1 apply)."))
+            "Enable a payload above, then press Apply Tweaks on the "
+            "Apply page. The rollback buttons write to the device "
+            "immediately: each reads your device's current files and "
+            "removes only that payload's own keys — your other settings "
+            "stay."))
         hint.setWordWrap(True)
         hint.setStyleSheet(
             f"color: {c.text_secondary}; font-size: 13px;"
@@ -180,30 +183,10 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
                 "No device connected. Connect your iPhone to apply or "
                 "roll back."))
             return
-        meta = lg_disable.load_original_meta(udid)
-        device_line = name or udid
-        try:
-            g2_saved = lg_disable.load_g2_original(udid) is not None
-        except Exception:
-            g2_saved = False
-        g2_line = (_tr("A managed overlay original is also saved for G2 rollback.")
-                   if g2_saved else
-                   _tr("No managed overlay original saved yet for G2 rollback."))
-        if meta:
-            self._status_label.setText(_tr(
-                "Device: %1. A pristine original .GlobalPreferences.plist "
-                "is saved for rollback (captured %2, iOS %3, %4 keys). %5")
-                .replace("%1", device_line)
-                .replace("%2", str(meta.get("saved_at", "unknown")))
-                .replace("%3", str(meta.get("ios_version", "unknown")))
-                .replace("%4", str(meta.get("key_count", "?")))
-                .replace("%5", g2_line))
-        else:
-            self._status_label.setText(_tr(
-                "Device: %1. No saved original yet — it is captured "
-                "automatically before your first G1 apply. %2")
-                .replace("%1", device_line)
-                .replace("%2", g2_line))
+        self._status_label.setText(_tr(
+            "Device: %1. Rollback reads your device's current files and "
+            "removes only each payload's own keys.").replace(
+                "%1", name or udid))
 
     # -- Home tile route focus -------------------------------------------
     def focus_route(self, route: str):
@@ -215,8 +198,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         """
         route = str(route or "").strip().lower()
         routes = {
-            "g2": TweakID.LGDisableG2,
-            "g1": TweakID.LGDisableG1,
+            "latest": TweakID.LGDisableLatest,
         }
         tweak_id = routes.get(route)
         if tweak_id is None:
@@ -269,31 +251,29 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
                 self, _tr("Liquid Glass Disable (Beta 1)"),
                 _tr("No device connected. Connect your iPhone first."))
             return
-        if which == "g2":
+        if which == "latest":
             text = _tr(
-                "Restore the managed .GlobalPreferences.plist overlay "
-                "saved before your first G1/G2 apply (or an empty "
-                "overlay when none was saved)? This removes the "
-                "SolariumForceFallback key (other WorkSlop "
-                "GlobalPreferences tweaks re-apply on your next Apply). "
-                "The device reboots if auto-reboot is on.")
+                "Remove the four Liquid Glass (Latest) keys? Your "
+                "device's three preference files are read fresh and only "
+                "SolariumForceFallback (com.apple.SwiftUI.plist), "
+                "SBDisallowGlassTime and SBDisallowGlassButtons "
+                "(.GlobalPreferences.plist) and "
+                "SBDisableSpecularEverywhereUsingLSSAssertion "
+                "(com.apple.springboard.plist) are removed — your other "
+                "settings stay. The device reboots if auto-reboot is "
+                "on.")
+        elif which == "squair":
+            text = _tr(
+                "Remove the two Squair Protocol (Test) keys? The "
+                "device's .GlobalPreferences.plist is read fresh and "
+                "only SBDisallowGlassTime and SBDisallowGlassButtons "
+                "are removed — your other settings stay. The "
+                "FeatureFlags/Domain/SpringBoard.plist file, if it "
+                "landed on the device, cannot be removed by a restore "
+                "and is left in place. The device reboots if "
+                "auto-reboot is on.")
         else:
-            meta = lg_disable.load_original_meta(udid)
-            if not meta:
-                QMessageBox.warning(
-                    self, _tr("Liquid Glass Disable (Beta 1)"),
-                    _tr("No saved original .GlobalPreferences.plist for "
-                        "this device yet, so there is nothing safe to "
-                        "roll back to. The original is saved automatically "
-                        "before your first G1 apply."))
-                return
-            text = _tr(
-                "Write back the saved original .GlobalPreferences.plist "
-                "(captured %1, iOS %2)? This replaces the device's "
-                "current file with that exact copy. The device reboots "
-                "if auto-reboot is on.").replace(
-                    "%1", str(meta.get("saved_at", "unknown"))).replace(
-                    "%2", str(meta.get("ios_version", "unknown")))
+            return
         reply = QMessageBox.question(
             self, _tr("Liquid Glass Disable (Beta 1)"), text,
             QMessageBox.Yes | QMessageBox.Cancel,
@@ -327,8 +307,8 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         self.refresh()
 
     def _set_rollback_busy(self, busy: bool):
-        self._g2_btn.setEnabled(not busy)
-        self._g1_btn.setEnabled(not busy)
+        self._squair_btn.setEnabled(not busy)
+        self._latest_btn.setEnabled(not busy)
         self._apply_btn.setEnabled(not busy)
 
     def _retheme(self):

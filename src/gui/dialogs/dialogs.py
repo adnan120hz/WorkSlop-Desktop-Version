@@ -162,6 +162,7 @@ class AboutProgramDialog(QDialog):
             ("AAR Handling", "Snoolie", "https://github.com/0xilis/python-aar-stuff"),
             ("AI Eligibility", "f1shy-dev", "https://github.com/f1shy-dev"),
             ("PosterBoard Icons", "JJTech", "https://github.com/JJTech0130"),
+            ("iOS 18 Icon Pack", "catwithabaloon", "https://github.com/catwithabaloon/iOS-18-icon-pack"),
         ]
         
         for title, name, url in credits:

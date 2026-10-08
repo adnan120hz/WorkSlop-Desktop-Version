@@ -159,6 +159,14 @@ REMOVED_TWEAK_IDS = frozenset({
     # removed/skipped like every other dropped tweak.
     TweakID.GranularSpringBoard,          # invented key SBGranularGlass
     TweakID.StatusBarOverrides,           # plist-key model replaced by StatusBar archive
+    # v14.0 (user order 2026-10-07: "G1 G2 ga work, hapus"): the two
+    # Liquid Glass Disable (Beta 1) routes left the product after beta
+    # testing showed no device effect. The enum members stay parseable
+    # for old presets/journals, but neither ID may resolve to an active
+    # spec or payload again. The surviving Liquid Glass Disable entries
+    # are the Squair test payload and Liquid Glass (Latest).
+    TweakID.LGDisableG2,                  # removed v14.0 (Beta 1 G2 route)
+    TweakID.LGDisableG1,                  # removed v14.0 (Beta 1 G1 route)
 })
 
 # Backwards-compatible aliases for the five redundant duplicate rows in

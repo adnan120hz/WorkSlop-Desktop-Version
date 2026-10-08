@@ -499,7 +499,7 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
             detailed_text=QCoreApplication.tr(
                 "The device dropped the connection during the data restore.\n\n"
                 "Your data is not lost — the protective backup taken before "
-                "the wipe is kept on this computer.\n\n"
+                "the restore is kept on this computer.\n\n"
                 "A common cause is Find My still being on: iOS refuses to "
                 "restore a backup while Find My (iCloud ▸ Find My iPhone) is "
                 "enabled. Turn Find My off (Settings ▸ [your name] ▸ Find My), "

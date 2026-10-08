@@ -8,7 +8,9 @@ v7.4.1 (tag v7.4.1, commit 26e0c50ec114ca3a4ff6ab2fb4ae309abfd39fa1):
 * the eight plist tweaks from ``load_liquidglass()``
   (upstream ``src/tweaks/tweak_loader.py`` lines 381-419), and
 * the eight Solarium FeatureFlag tweaks from ``load_featureflags()``
-  (same file, lines 203-213),
+  (same file, lines 203-213) — eight tweak objects writing nine
+  flags into FeatureFlags/Global.plist (IconServices carries two:
+  EnhancedGlass + SolariumCornerRadius), each ``{'Enabled': False}``,
 
 shown only in the Nugget interfaces (second and third UI), at the
 bottom of the Liquid Glass section, under "Liquid Glass Tweaks

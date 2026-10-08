@@ -5,7 +5,7 @@ Builds the real MainWindow (same harness as test_v1101_package), then:
 * visits every iOS page index and asserts a real widget shows;
 * clicks every Home tile and asserts the target page is reached;
 * walks the WorkSlop sidebar menus;
-* asserts the window title/version surfaces show v12.
+* asserts the window title/version surfaces show v14.0.
 
 Run: python tools/test_audit_gui_pages.py
 """
@@ -68,7 +68,7 @@ def main():
 
     home = win.ios_home
     cards = list(home.cards_grid._cards)
-    check("Home renders all tiles", len(cards) == 11, str(len(cards)))
+    check("Home renders all tiles", len(cards) == 10, str(len(cards)))
     for card in cards:
         card.mousePressEvent(None)
         app.processEvents()
@@ -79,8 +79,8 @@ def main():
         sidebar.select(menu_id)
         app.processEvents()
     check("every sidebar menu selects", True)
-    check("version label is v12",
-          sidebar._version_lbl.text() == "WorkSlop Desktop v12",
+    check("version label is v14.0",
+          sidebar._version_lbl.text() == "WorkSlop Desktop v14.0",
           sidebar._version_lbl.text())
 
     print(f"\nALL {PASS} CHECKS PASSED")

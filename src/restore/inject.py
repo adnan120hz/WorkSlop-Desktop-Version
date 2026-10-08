@@ -208,6 +208,28 @@ def _build_mbdir_blob(relative_path: str, mode: int = 16877) -> bytes:
     )
 
 
+def _directory_donor_blob(conn, domain: str):
+    """Best real directory blob to clone new directory rows from.
+
+    Prefers a flags=2 row from the SAME domain — a directory row created
+    for SystemPreferencesDomain (e.g. FeatureFlags/Domain) should inherit
+    that domain's metadata, not an arbitrary row from another domain
+    (audit round 9, r09-A). Falls back to any directory row in the
+    backup, then to None (the caller builds a template blob).
+    """
+    donor = conn.execute(
+        "SELECT file FROM Files WHERE domain = ? AND flags = 2 "
+        "AND file IS NOT NULL LIMIT 1",
+        (domain,),
+    ).fetchone()
+    if donor is None:
+        donor = conn.execute(
+            "SELECT file FROM Files WHERE flags = 2 AND file IS NOT NULL "
+            "LIMIT 1"
+        ).fetchone()
+    return donor[0] if donor else None
+
+
 def _ensure_directory_rows(conn, domain: str, relative_dir: str,
                            next_inode: int = None, known_dirs: set = None,
                            donor_blob: bytes = None) -> int:
@@ -227,10 +249,7 @@ def _ensure_directory_rows(conn, domain: str, relative_dir: str,
     file. Returns the current inode counter (one call passes it forward).
     """
     if donor_blob is None:
-        donor = conn.execute(
-            "SELECT file FROM Files WHERE flags = 2 AND file IS NOT NULL LIMIT 1"
-        ).fetchone()
-        donor_blob = donor[0] if donor else None
+        donor_blob = _directory_donor_blob(conn, domain)
     if next_inode is None:
         next_inode = _max_inode_in_manifest(conn)
     rel = ""
@@ -356,22 +375,23 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
         #   next_inode   - in-memory inode counter (one manifest scan total)
         #   donor_cache  - per-domain donor blob (the device's own row format)
         #   known_dirs   - directory rows already present / inserted
-        #   dir_donor    - one real directory blob reused for dir rows
+        #   dir_donor_cache - per-domain real directory blob for dir rows
+        #     (same-domain donor first, see _directory_donor_blob)
         next_inode = _max_inode_in_manifest(conn)
         donor_cache: dict = {}
+        dir_donor_cache: dict = {}
         known_dirs: set = set()
-        dir_donor = conn.execute(
-            "SELECT file FROM Files WHERE flags = 2 AND file IS NOT NULL LIMIT 1"
-        ).fetchone()
-        dir_donor = dir_donor[0] if dir_donor else None
         for domain, relative_path, contents, mode, owner, group in files:
             file_id = hashlib.sha1(f"{domain}-{relative_path}".encode("utf-8")).hexdigest()
 
             # The restore agent skips a file whose parent directory rows are
             # missing, so ensure the whole directory chain first.
             dir_path, _ = os.path.split(relative_path)
+            if domain not in dir_donor_cache:
+                dir_donor_cache[domain] = _directory_donor_blob(conn, domain)
             next_inode = _ensure_directory_rows(
-                conn, domain, dir_path, next_inode, known_dirs, dir_donor)
+                conn, domain, dir_path, next_inode, known_dirs,
+                dir_donor_cache[domain])
 
             # The restore agent validates the blob and deduplicates by inode:
             # pick a donor the agent accepts, then stamp a unique inode so the

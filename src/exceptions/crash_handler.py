@@ -89,20 +89,20 @@ def _classify(exc_type, exc_value) -> dict:
     # checked before the generic connection/OSError branch below). ---
     elif issubclass(exc_type, FileNotFoundError):
         severity, fault, friendly = "Minor", "Your files or setup", \
-            "GoldenNugget couldn't find a file or folder it needed."
+            "WorkSlop Desktop couldn't find a file or folder it needed."
     elif issubclass(exc_type, PermissionError):
         severity, fault, friendly = "Minor", "Your files or setup", \
-            "GoldenNugget didn't have permission to access a file or folder."
+            "WorkSlop Desktop didn't have permission to access a file or folder."
     elif issubclass(exc_type, FileExistsError):
         severity, fault, friendly = "Minor", "Your files or setup", \
-            "GoldenNugget tried to create something that already exists."
+            "WorkSlop Desktop tried to create something that already exists."
     elif issubclass(exc_type, (IsADirectoryError, NotADirectoryError)):
         severity, fault, friendly = "Minor", "Your files or setup", \
             "A file path was used as a folder (or a folder as a file)."
     # --- Device / connection ---
     elif is_connection_error(exc_value) or "terminated" in msg.lower():
         severity, fault, friendly = "Moderate", "Your device or connection", \
-            "GoldenNugget couldn't communicate with your device."
+            "WorkSlop Desktop couldn't communicate with your device."
     # --- Out of memory ---
     elif issubclass(exc_type, MemoryError):
         severity, fault, friendly = "Fatal", "Your computer", \

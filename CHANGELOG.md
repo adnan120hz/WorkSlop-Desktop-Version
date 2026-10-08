@@ -4,6 +4,28 @@ Release history of WorkSlop Desktop. Versions marked *pre-release* were
 development builds published for testing; **v11.5** is the current public
 release.
 
+## v14.0 — 2026-10-08 (pre-release)
+
+- New **iOS 18 Icons** page: a 51-app table (name, bundle ID, Light/Dark
+  artwork, WebClip target) bundled from the iOS 18 icon pack by
+  catwithabaloon (https://github.com/catwithabaloon/iOS-18-icon-pack),
+  credited in About and the README. Tinted variants are not bundled.
+- Crash-reporter friendly messages now say "WorkSlop Desktop" throughout
+  (four leftover "GoldenNugget" strings removed).
+- Sidebar entry "Liquid Glass Disable (Beta 1)" no longer clips — the
+  label wraps inside its pill.
+- Documentation corrected: the Nugget FeatureFlags set is eight tweak
+  objects writing **nine** flags into FeatureFlags/Global.plist
+  (IconServices carries two), each `{'Enabled': False}`.
+- iOS 27 flow wording made accurate: the merged flow is the default and
+  does not wipe; wipe wording now only appears where a wipe can occur.
+- Worktree-wide audit (100x, five lanes) + firmware rescan of 23B85 vs
+  23G82 (iPhone14,7 material): `com.apple.SwiftUI.FailSolariumHardwareCheck`
+  has a live NSUserDefaults reader in 23G82 [XREF]; visual effect on a
+  device is still unproven and no payload changed because of it.
+- App version is now 14.0. Liquid Glass v4 set and Animation Speed
+  Coefficient untouched (frozen by the owner).
+
 ## v12 — 2026-10-05 (pre-release, Windows)
 
 - Liquid Glass Disable (Beta 1) now has a dedicated full-backup delivery

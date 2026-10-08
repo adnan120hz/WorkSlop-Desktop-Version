@@ -50,7 +50,7 @@ def make_credits_label(parent, text_color: str, link_color: str,
 # AutoSave banner. All three names are PLAIN TEXT with no links at all
 # (the TikTok links and the Telegram link were both removed by user
 # order); Davy is written with his handle as plain text.
-BETA_TESTER_NAMES = ("Charlie", "rfrz1d_", "Davy (@Davydavpn)")
+BETA_TESTER_NAMES = ("Charlie", "rfrz1d_", "Davy (@Davydavpn)", "@uggtx")
 
 
 def beta_testers_html(text_color: str, link_color: str = "") -> str:

@@ -1,27 +1,26 @@
 #!/usr/bin/env python3
-"""Offline tests for Liquid Glass Disable (Beta 1).
+"""Offline tests for the shared Liquid Glass Disable payload plumbing.
 
-The payload/verify logic is adapted from the offline payload-lab
-(~/workspace/riset/lg-global-plist/payload-lab/: g1_payload.py,
-g2_payload.py, restore_map.py, rollback.py, verify_gate.py — 14/14 tests
-+ 11/11 gate checks green there). This suite pins the same contract
-against the repo integration:
+The Beta 1 G1/G2 route tweaks left the product in v14.0 (user order
+2026-10-07); their registry/UI coverage lives in
+tools/test_lg_latest_protocol.py (removal assertions) and
+tools/test_lg_squair_protocol.py. This suite pins what SURVIVED the
+removal in src/tweaks/lg_disable.py — the shared helpers the Squair and
+Liquid Glass (Latest) payloads consume:
 
-* two registry specs in the new "Liquid Glass Disable (Beta 1)" section
-  (G2 managed overlay / G1 HomeDomain device-file merge), both writing
-  SolariumForceFallback with a REAL bool True, gated to iOS 26+;
-* the frozen v4 set is untouched (its own SolariumForceFallback spec
-  still builds a plain BasicPlistTweak exactly as before);
-* G2 staging lands in the managed overlay dict; the apply gate accepts
-  the resulting restore record and rejects wrong-type / missing records;
-* G1 staging merges into the captured device base (never a tweak-only
-  dict), fails closed without a base, and the fail-hard diff gate keeps
-  100% of the original keys (lab parity: LOST / CHANGED / unexpected NEW
-  all fail; another tweak's deliberately staged key is the only allowed
-  difference);
-* the rollback store keeps the FIRST captured original (never
+* plist loading, key insertion with real-bool enforcement and the
+  fail-hard diff gate (100% of the device file's original keys intact;
+  LOST / CHANGED / unexpected NEW all fail; a deliberately staged key
+  is the only allowed difference);
+* the G1 whole-file payload builder self-checking against that gate;
+* the rollback store keeping the FIRST captured original (never
   overwritten by a later, possibly already-tweaked file);
-* domain/path constants match src.restore.path_mapping (drift guard).
+* domain/path constants matching src.restore.path_mapping (drift
+  guard);
+* the frozen v4 Liquid Glass set untouched;
+* an offscreen GUI smoke of the Liquid Glass page (Squair + Latest
+  switches render, toggling drives the registry tweak, Home route
+  focus marks without enabling).
 
 Run: python tools/test_liquid_glass_disable.py
 """
@@ -87,7 +86,6 @@ except Exception:
 
 from src.tweaks import lg_disable, tweak_loader
 from src.tweaks.basic_plist_locations import FileLocation
-from src.tweaks.capabilities import tweak_deliverability
 from src.tweaks.registry import (
     SPECS_BY_ID, SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section,
     home_tweak_catalogue,
@@ -117,35 +115,39 @@ def _gate(files, **kwargs):
 
 
 def test_registry_shape():
-    print("\nregistry shape")
+    print("\nregistry shape (post-v14.0 removal)")
     check("section name is the feature name",
           Section.LIQUID_GLASS_DISABLE.value == "Liquid Glass Disable (Beta 1)")
     specs = SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]
-    check("section holds exactly the two routes",
-          [s.id for s in specs] == [TweakID.LGDisableG2, TweakID.LGDisableG1],
+    check("section holds Squair (test) + Liquid Glass (Latest)",
+          [s.id for s in specs] == [TweakID.LGDisableSquairTest,
+                                    TweakID.LGDisableLatest],
           str([s.id.name for s in specs]))
-    g2 = SPECS_BY_ID[TweakID.LGDisableG2]
-    g1 = SPECS_BY_ID[TweakID.LGDisableG1]
-    check("G2 targets the managed overlay",
-          g2.location is FileLocation.globalPreferences)
-    check("G1 targets the HomeDomain device file",
-          g1.location is FileLocation.globalPreferencesHomeDomain)
-    check("both write the Beta 1 key",
-          g2.key == KEY and g1.key == KEY)
+    check("removed Beta 1 routes have no spec",
+          TweakID.LGDisableG2 not in SPECS_BY_ID
+          and TweakID.LGDisableG1 not in SPECS_BY_ID)
+    sq = SPECS_BY_ID[TweakID.LGDisableSquairTest]
+    lt = SPECS_BY_ID[TweakID.LGDisableLatest]
+    check("both write into the HomeDomain device file",
+          sq.location is FileLocation.globalPreferencesHomeDomain
+          and lt.location is FileLocation.globalPreferencesHomeDomain)
     check("declared value is a real bool True",
-          g2.value is True and type(g2.value) is bool)
-    check("both are plain switches", g2.kind is Kind.SWITCH
-          and g1.kind is Kind.SWITCH)
-    check("gated to iOS 26+", g2.min_version == "26.0"
-          and g1.min_version == "26.0")
-    check("descriptions carry the honest Beta/unproven grade",
-          "unproven" in (g2.description or "").lower()
-          and "unproven" in (g1.description or "").lower())
+          sq.value is True and lt.value is True
+          and type(sq.value) is bool and type(lt.value) is bool)
+    check("both are plain switches", sq.kind is Kind.SWITCH
+          and lt.kind is Kind.SWITCH)
+    check("gated to iOS 26+", sq.min_version == "26.0"
+          and lt.min_version == "26.0")
+    check("descriptions carry the honest device-test grade",
+          "unproven" in (sq.description or "").lower()
+          and "isolated device test" in (lt.description or "").lower())
     check("feature mapping joins HotLoad's Liquid Glass feature",
           SECTION_FEATURES[Section.LIQUID_GLASS_DISABLE] == "Liquid Glass")
     ids = {e["id"] for e in home_tweak_catalogue()}
-    check("Home catalogue surfaces both routes",
-          {TweakID.LGDisableG2, TweakID.LGDisableG1} <= ids)
+    check("Home catalogue surfaces Squair + Latest, not the removed routes",
+          {TweakID.LGDisableSquairTest, TweakID.LGDisableLatest} <= ids
+          and TweakID.LGDisableG2 not in ids
+          and TweakID.LGDisableG1 not in ids)
 
 
 def test_frozen_v4_untouched():
@@ -160,66 +162,6 @@ def test_frozen_v4_untouched():
           type(v4) is BasicPlistTweak)
 
 
-def test_instances_and_deliverability():
-    print("\ninstances + deliverability")
-    g2 = tweaks[TweakID.LGDisableG2]
-    g1 = tweaks[TweakID.LGDisableG1]
-    check("G2 instance is the LGD tweak class",
-          isinstance(g2, lg_disable.LGDG2Tweak))
-    check("G1 instance is the LGD tweak class",
-          isinstance(g1, lg_disable.LGDG1Tweak))
-    for tid in (TweakID.LGDisableG2, TweakID.LGDisableG1):
-        ok, code, _msg = tweak_deliverability(
-            tid, device_version="26.6.1", device_build="23G83",
-            is_iphone=True, tweak=tweaks[tid])
-        check(f"{tid.name} deliverable on 26.6.1/23G83", ok and code == "OK",
-              code)
-        ok, code, _msg = tweak_deliverability(
-            tid, device_version="25.0", device_build="",
-            is_iphone=True, tweak=tweaks[tid])
-        check(f"{tid.name} locked below iOS 26",
-              not ok and code == "VERSION_BELOW_MIN", code)
-
-
-def test_g2_staging_and_gate():
-    print("\nG2 staging + gate")
-    g2 = tweaks[TweakID.LGDisableG2]
-    g2.set_enabled(False)
-    staged = g2.apply_tweak({})
-    check("disabled G2 stages nothing", staged == {} and not g2.staged)
-    g2.set_enabled(True)
-    staged = g2.apply_tweak({})
-    check("enabled G2 stages the key as a real bool",
-          staged == {FileLocation.globalPreferences: {KEY: True}}
-          and type(staged[FileLocation.globalPreferences][KEY]) is bool
-          and g2.staged)
-    payload = plistlib.dumps(staged[FileLocation.globalPreferences])
-    rec = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH, payload)
-    check("gate accepts the staged G2 record",
-          _gate([rec], g2_active=True, g1_active=False) == [])
-    check("gate is silent when G2 did not stage",
-          _gate([], g2_active=False, g1_active=False) == [])
-    problems = _gate([], g2_active=True, g1_active=False)
-    check("gate fails a missing G2 record", bool(problems)
-          and "no restore record" in problems[0], str(problems))
-    bad = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
-                  plistlib.dumps({KEY: "true"}))
-    problems = _gate([bad], g2_active=True, g1_active=False)
-    check("gate rejects the string 'true' (not a bool)",
-          bool(problems) and "real bool" in problems[0], str(problems))
-    bad = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
-                  plistlib.dumps({KEY: 1}))
-    problems = _gate([bad], g2_active=True, g1_active=False)
-    check("gate rejects the integer 1 (not a bool)",
-          bool(problems) and "real bool" in problems[0], str(problems))
-    bad = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
-                  plistlib.dumps({"OtherKey": True}))
-    problems = _gate([bad], g2_active=True, g1_active=False)
-    check("gate rejects a record without the key",
-          bool(problems) and "missing" in problems[0], str(problems))
-    g2.set_enabled(False)
-
-
 _BASE = {
     "AppleLanguages": ["en-US", "id-ID"],
     "AppleLocale": "en_US",
@@ -229,72 +171,13 @@ _BASE = {
 }
 
 
-def test_g1_staging_and_gate():
-    print("\nG1 staging + diff gate (payload-lab parity)")
-    g1 = tweaks[TweakID.LGDisableG1]
-    g1._lgd_base = None
-    g1.set_enabled(True)
-    staged = g1.apply_tweak({})
-    check("G1 without a device base stages NOTHING (fail closed)",
-          staged == {} and not g1.staged)
-    problems = _gate([], g2_active=False, g1_active=True, g1_base=_BASE)
-    check("gate fails when no G1 record was staged",
-          bool(problems) and "no restore record" in problems[0],
-          str(problems))
-
-    g1._lgd_base = dict(_BASE)
-    staged = g1.apply_tweak({})
-    merged = staged[FileLocation.globalPreferencesHomeDomain]
-    check("G1 stages base + key",
-          set(_BASE) < set(merged) and merged[KEY] is True and g1.staged)
-    check("staged key is a real bool", type(merged[KEY]) is bool)
-
-    rec = _record(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
-                  plistlib.dumps(merged))
-    check("gate accepts base + key",
-          _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE) == [])
-    problems = _gate([rec], g2_active=False, g1_active=True, g1_base=None)
-    check("gate refuses G1 without a captured base",
-          bool(problems) and "no live device base" in problems[0],
-          str(problems))
-
-    lost = dict(merged)
-    del lost["AppleLocale"]
-    rec = _record(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
-                  plistlib.dumps(lost))
-    problems = _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE)
-    check("diff gate fails on a LOST original key",
-          any("LOST" in p for p in problems), str(problems))
-
-    changed = dict(merged)
-    changed["AppleLocale"] = "id_ID"
-    rec = _record(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
-                  plistlib.dumps(changed))
-    problems = _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE)
-    check("diff gate fails on a CHANGED original value",
-          any("CHANGED" in p for p in problems), str(problems))
-
-    extra = dict(merged)
-    extra["InventedKey"] = True
-    rec = _record(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
-                  plistlib.dumps(extra))
-    problems = _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE)
-    check("diff gate fails on an unexpected NEW key",
-          any("unexpected NEW key" in p for p in problems), str(problems))
-    check("another tweak's staged key is the allowed difference",
-          _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE,
-                g1_allowed_new={"InventedKey"}) == [])
-
-    other = {"AppleICUDateTimeSymbols": {"a": "b"}}
-    staged = g1.apply_tweak(
-        {FileLocation.globalPreferencesHomeDomain: dict(other)})
-    check("G1 merge keeps keys other tweaks staged into the same file",
-          staged[FileLocation.globalPreferencesHomeDomain]
-          ["AppleICUDateTimeSymbols"] == {"a": "b"})
-
+def test_shared_payload_helpers():
+    print("\nshared lg_disable helpers (Squair/Latest plumbing)")
     payload = lg_disable.build_g1_payload(_BASE, {KEY: True})
-    check("build_g1_payload round-trips through its own gate",
-          lg_disable.load_plist_dict(payload)[KEY] is True)
+    merged = lg_disable.load_plist_dict(payload)
+    check("build_g1_payload merges base + key as a real bool",
+          merged[KEY] is True and type(merged[KEY]) is bool
+          and all(merged.get(k) == v for k, v in _BASE.items()))
     try:
         lg_disable.build_g1_payload(_BASE, {KEY: "true"})
         raised = False
@@ -307,11 +190,54 @@ def test_g1_staging_and_gate():
     except ValueError:
         raised = True
     check("build_g2_payload rejects non-flat values", raised)
-    check("payload-lab diff parity: clean diff passes",
+    check("diff gate: clean diff passes",
           lg_disable.diff_gate({"a": 1}, {"a": 1, KEY: True},
                                allowed_new={KEY}) == [])
-    g1.set_enabled(False)
-    g1._lgd_base = None
+    check("diff gate: a LOST key fails",
+          any("LOST" in p for p in lg_disable.diff_gate(
+              _BASE, {k: v for k, v in _BASE.items() if k != "AppleLocale"})))
+    changed = dict(_BASE)
+    changed["AppleLocale"] = "id_ID"
+    check("diff gate: a CHANGED value fails",
+          any("CHANGED" in p for p in lg_disable.diff_gate(_BASE, changed)))
+    extra = dict(_BASE)
+    extra["InventedKey"] = True
+    check("diff gate: an unexpected NEW key fails",
+          any("unexpected NEW key" in p
+              for p in lg_disable.diff_gate(_BASE, extra)))
+    check("diff gate: a deliberately staged key is allowed",
+          lg_disable.diff_gate(_BASE, extra,
+                               allowed_new={"InventedKey"}) == [])
+
+
+def test_verify_gate_function():
+    print("\nverify_apply_gate (pure gate over restore records)")
+    merged = lg_disable.load_plist_dict(
+        lg_disable.build_g1_payload(_BASE, {KEY: True}))
+    rec = _record(lg_disable.G1_DOMAIN, lg_disable.G1_REL_PATH,
+                  plistlib.dumps(merged))
+    check("gate accepts base + key",
+          _gate([rec], g2_active=False, g1_active=True, g1_base=_BASE) == [])
+    check("gate is silent when nothing staged",
+          _gate([], g2_active=False, g1_active=False) == [])
+    problems = _gate([], g2_active=False, g1_active=True, g1_base=_BASE)
+    check("gate fails when no G1 record was staged",
+          bool(problems) and "no restore record" in problems[0],
+          str(problems))
+    problems = _gate([rec], g2_active=False, g1_active=True, g1_base=None)
+    check("gate refuses G1 without a captured base",
+          bool(problems) and "no live device base" in problems[0],
+          str(problems))
+    bad = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
+                  plistlib.dumps({KEY: "true"}))
+    problems = _gate([bad], g2_active=True, g1_active=False)
+    check("gate rejects the string 'true' (not a bool)",
+          bool(problems) and "real bool" in problems[0], str(problems))
+    bad = _record(lg_disable.G2_DOMAIN, lg_disable.G2_REL_PATH,
+                  plistlib.dumps({KEY: 1}))
+    problems = _gate([bad], g2_active=True, g1_active=False)
+    check("gate rejects the integer 1 (not a bool)",
+          bool(problems) and "real bool" in problems[0], str(problems))
 
 
 def test_store_first_capture_wins():
@@ -418,42 +344,41 @@ def test_gui_smoke():
     page = IOSLiquidGlassDisablePage(window)
     check("page constructs offscreen", page is not None)
     switches = page.content._switches
-    check("page renders both route switches",
-          TweakID.LGDisableG2 in switches and TweakID.LGDisableG1 in switches)
+    check("page renders the Squair + Latest switches",
+          TweakID.LGDisableSquairTest in switches
+          and TweakID.LGDisableLatest in switches)
+    check("removed G1/G2 switches are gone",
+          TweakID.LGDisableG2 not in switches
+          and TweakID.LGDisableG1 not in switches)
     page.refresh()  # no device: status line, no crash
     check("refresh with no device is safe", True)
-    sw = switches[TweakID.LGDisableG2]
+    sw = switches[TweakID.LGDisableLatest]
     sw.setChecked(True)
-    check("toggling the G2 switch enables the registry tweak",
-          tweaks[TweakID.LGDisableG2].enabled)
+    check("toggling the Latest switch enables the registry tweak",
+          tweaks[TweakID.LGDisableLatest].enabled)
     sw.setChecked(False)
     check("toggling it back disables the tweak",
-          not tweaks[TweakID.LGDisableG2].enabled)
+          not tweaks[TweakID.LGDisableLatest].enabled)
     page._apply_btn.click()
     check("Open Apply navigates to the Apply page (index 6)",
           window.shown_pages == [6], str(window.shown_pages))
-    page.focus_route("g2")
-    check("Home tile focus marks the G2 route without enabling it",
-          page._focused_route == "g2"
-          and not tweaks[TweakID.LGDisableG2].enabled)
-    page.focus_route("g1")
-    check("Home tile focus marks the G1 route without enabling it",
-          page._focused_route == "g1"
-          and not tweaks[TweakID.LGDisableG1].enabled)
+    page.focus_route("latest")
+    check("Home tile focus marks the Latest route without enabling it",
+          page._focused_route == "latest"
+          and not tweaks[TweakID.LGDisableLatest].enabled)
     page.focus_route("bogus")
     check("unknown focus route clears the marker",
           page._focused_route is None)
-    tweaks[TweakID.LGDisableG2].set_enabled(False)
-    tweaks[TweakID.LGDisableG1].set_enabled(False)
+    tweaks[TweakID.LGDisableSquairTest].set_enabled(False)
+    tweaks[TweakID.LGDisableLatest].set_enabled(False)
 
 
 def main():
     tweak_loader.load_plist_tweaks()
     test_registry_shape()
     test_frozen_v4_untouched()
-    test_instances_and_deliverability()
-    test_g2_staging_and_gate()
-    test_g1_staging_and_gate()
+    test_shared_payload_helpers()
+    test_verify_gate_function()
     test_store_first_capture_wins()
     test_domain_constants_no_drift()
     test_gui_smoke()

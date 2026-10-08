@@ -57,7 +57,6 @@ from PySide6.QtCore import QStandardPaths
 
 from src.exceptions.nugget_exception import NuggetException
 from src.tweaks.basic_plist_locations import FileLocation
-from src.tweaks.tweak_classes import BasicPlistTweak
 
 FEATURE_NAME = "Liquid Glass Disable (Beta 1)"
 
@@ -473,65 +472,10 @@ def load_g2_original(udid) -> Optional[bytes]:
     except OSError:
         return None
 
-
 # --- tweak classes ---------------------------------------------------------
-
-class LGDG2Tweak(BasicPlistTweak):
-    """G2 route: stage SolariumForceFallback into the managed overlay.
-
-    The staging itself is the plain BasicPlistTweak merge (the same dict
-    every other GlobalPreferences tweak writes); this subclass only
-    records that it actually staged, so the apply pass's verification gate
-    can insist on the resulting restore record.
-    """
-
-    def __init__(self):
-        super().__init__(G2_LOCATION, GP_KEY, GP_KEY_VALUE)
-        self.staged = False
-
-    def apply_tweak(self, other_tweaks: dict) -> dict:
-        self.staged = False
-        result = super().apply_tweak(other_tweaks)
-        if self.enabled:
-            self.staged = True
-        return result
-
-
-class LGDG1Tweak(BasicPlistTweak):
-    """G1 route: merge the candidate key into the device's own file.
-
-    A plain BasicPlistTweak here would stage a tweak-only dict over the
-    live user file (HIGH bug B1's failure mode — it wiped
-    language/region/keyboard). Instead the apply pass captures the
-    device's live .GlobalPreferences.plist first
-    (``DeviceManager._lgd_prepare_g1``) and hands the parsed dict to this
-    tweak via ``_lgd_base``; staging then writes base + any keys other
-    tweaks staged into the same file + our key. Without a base the tweak
-    stages NOTHING and the pass's verification gate cancels the apply —
-    fail closed, never a blind whole-file write.
-    """
-
-    def __init__(self):
-        super().__init__(G1_LOCATION, GP_KEY, GP_KEY_VALUE)
-        self.staged = False
-        self._lgd_base: Optional[dict] = None
-
-    def apply_tweak(self, other_tweaks: dict) -> dict:
-        self.staged = False
-        if not self.enabled:
-            return other_tweaks
-        base = self._lgd_base
-        if not isinstance(base, dict):
-            return other_tweaks
-        merged = dict(base)
-        staged = other_tweaks.get(self.file_location)
-        if isinstance(staged, dict):
-            merged.update(staged)
-        if type(self.value) is not bool:
-            raise NuggetException(
-                "Liquid Glass Disable (Beta 1): the G1 candidate value is "
-                f"not a real bool ({self.value!r}); refusing to stage it.")
-        merged[self.key] = self.value
-        other_tweaks[self.file_location] = merged
-        self.staged = True
-        return other_tweaks
+# The Beta 1 route tweaks (LGDG2Tweak/LGDG1Tweak) left the product with
+# their registry entries in v14.0 (user order 2026-10-07). What remains
+# in this module is the shared payload plumbing — plist loading, the
+# fail-hard diff gate, the G1 whole-file builder and the rollback
+# original store — consumed by the surviving Squair and Liquid Glass
+# (Latest) payloads (src/tweaks/lg_squair.py, src/tweaks/lg_latest.py).

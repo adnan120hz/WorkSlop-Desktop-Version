@@ -92,14 +92,14 @@ def _watchos_compatibility():
         })
 
 
-def _lgd_g2_factory():
-    from .lg_disable import LGDG2Tweak
-    return LGDG2Tweak()
+def _lgd_squair_factory():
+    from .lg_squair import LGDSquairTweak
+    return LGDSquairTweak()
 
 
-def _lgd_g1_factory():
-    from .lg_disable import LGDG1Tweak
-    return LGDG1Tweak()
+def _lgd_latest_factory():
+    from .lg_latest import LGDLatestTweak
+    return LGDLatestTweak()
 
 
 GP = FileLocation.globalPreferences
@@ -370,23 +370,44 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.SiriDeclined, Section.INTERNAL, "Siri Declined Flag", GP, "UserHasDeclinedEnable",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Flag for declined Siri setup.")),
 
-    # === Liquid Glass Disable (Beta 1) — new feature (2026-10-04) ===
-    # One Beta 1 candidate key (SolariumForceFallback = true) behind two
-    # delivery routes; the payload logic, diff gate and rollback store
-    # live in src/tweaks/lg_disable.py. HONEST STATUS: the key string is
-    # attested in the iOS 26.6.1 (23G83) DesignLibrary binary cluster, but
-    # it is NOT proven that iOS 26.6.1 reads it from either file — these
-    # rows are a structured device-test candidate, not a working
-    # "disable glass" claim. The frozen v4 set above is untouched.
-    _t(TweakID.LGDisableG2, Section.LIQUID_GLASS_DISABLE, "Managed Overlay (G2)",
-       GP, "SolariumForceFallback", factory=_lgd_g2_factory,
+    # === Liquid Glass Disable section ===
+    # The Beta 1 G1/G2 routes were REMOVED from the product in v14.0
+    # (user order 2026-10-07: "G1 G2 ga work, hapus") after beta testing
+    # showed no device effect. Their TweakIDs stay as tombstones
+    # (REMOVED_TWEAK_IDS in src/tweaks/capabilities.py). The section now
+    # carries the Squair test payload and Liquid Glass (Latest); the
+    # shared payload helpers live on in src/tweaks/lg_disable.py.
+
+    # === Squair Protocol (test) — test-only payload (2026-10-07) ===
+    # TEST-ONLY payload ordered as a device experiment (Squair's two
+    # hints). File A merges SBDisallowGlassTime + SBDisallowGlassButtons
+    # into the device's own .GlobalPreferences.plist; File Domain injects
+    # FeatureFlags/Domain/SpringBoard.plist through the same full-backup
+    # route. The Domain file is predicted to be skipped silently by the
+    # restore channel, so its landing is never claimed. Payload core and
+    # planner live in src/tweaks/lg_squair.py. The Beta 1 entries above
+    # are untouched.
+    _t(TweakID.LGDisableSquairTest, Section.LIQUID_GLASS_DISABLE, "Squair Protocol (Test)",
+       FileLocation.globalPreferencesHomeDomain, "SBDisallowGlassTime",
+       factory=_lgd_squair_factory,
        min_version="26.0",
-       description=QT_TRANSLATE_NOOP("Nugget", "Beta 1 — unproven. Writes SolariumForceFallback = true into the managed .GlobalPreferences.plist overlay (/var/Managed Preferences/mobile/). Whether iOS 26.6.1 reads this key from the managed overlay is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying). Roll back from the Liquid Glass Disable (Beta 1) page.")),
-    _t(TweakID.LGDisableG1, Section.LIQUID_GLASS_DISABLE, "Device File Merge (G1)",
-       FileLocation.globalPreferencesHomeDomain, "SolariumForceFallback",
-       factory=_lgd_g1_factory,
+       description=QT_TRANSLATE_NOOP("Nugget", "Test-only — unproven. Surgically merges SBDisallowGlassTime = true and SBDisallowGlassButtons = true into your device's own .GlobalPreferences.plist and injects a FeatureFlags/Domain/SpringBoard.plist (SolariumElasticHUD disabled) through the full-backup route. Whether iOS 26.6.1 honors either write is not proven, and the Domain file is predicted to be skipped silently by the restore channel — its landing can never be claimed without a device read-back. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
+
+    # === Liquid Glass (Latest) — product payload (2026-10-07) ===
+    # The newest audited key set in one payload: SolariumForceFallback
+    # written to its real reader home (com.apple.SwiftUI.plist — the
+    # reader is firmware-verified ALIVE in iOS 26.6.1, audit S8), the
+    # two lock-screen keys merged into the device's own
+    # .GlobalPreferences.plist, and the specular key merged into the
+    # device's own com.apple.springboard.plist, all through the
+    # full-backup route. Payload core and planner live in
+    # src/tweaks/lg_latest.py. The Beta 1 and Squair entries above are
+    # untouched.
+    _t(TweakID.LGDisableLatest, Section.LIQUID_GLASS_DISABLE, "Liquid Glass iOS 26.6.1 RC S8",
+       FileLocation.globalPreferencesHomeDomain, "SBDisallowGlassTime",
+       factory=_lgd_latest_factory,
        min_version="26.0",
-       description=QT_TRANSLATE_NOOP("Nugget", "Beta 1 — unproven. Builds the payload at apply time from your device's own .GlobalPreferences.plist (HomeDomain), inserts SolariumForceFallback = true, and writes it back only if 100% of your original keys survive (automatic diff gate; the apply is cancelled otherwise). Your original file is saved before the first apply for rollback. Whether iOS 26.6.1 reads this key is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
+       description=QT_TRANSLATE_NOOP("Nugget", "Writes Apple's real firmware keys into the files their readers open: SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), SBDisallowGlassTime and SBDisallowGlassButtons = true merged into your own .GlobalPreferences.plist, and SBDisableSpecularEverywhereUsingLSSAssertion = true merged into your own com.apple.springboard.plist. Delivered through the full backup, modify, full restore route with fail-hard checks (100% of your existing keys must survive; nothing is claimed disabled). Whether the glass look actually changes on screen is for an isolated device test to judge (full backup first, Low Power Mode off, reboot after applying).")),
 ) + _FF_SPECS
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}

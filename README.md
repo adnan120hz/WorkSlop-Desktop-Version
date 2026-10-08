@@ -203,6 +203,9 @@ Also credited: awesomenull · Wind0ws11Aero · PosterRestore ·
 pymobiledevice3 · PySide6 · Quiet Daemon (Mikasa-san) · Snoolie ·
 f1shy-dev · JJTech0130
 
+**iOS 18 icon artwork (Custom Icons gallery):**
+[iOS 18 App Icons by catwithabaloon](https://github.com/catwithabaloon/iOS-18-icon-pack)
+
 **Beta tester team:** Charlie, rfrz1d_, Davy (@Davydavpn)
 
 ## License
