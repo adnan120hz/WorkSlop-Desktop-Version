@@ -36,7 +36,7 @@ Grab it from the [Releases page](https://github.com/adnan120hz/WorkSlop-Desktop-
 
 ## Features
 
-- **Liquid Glass tweaks** — the WorkSlop Liquid Glass set, including the S8 set for iOS 26.6.1. ⚠️ The S8 route is **EXPERIMENTAL** and its visual effect is not yet proven on a device.
+- **Liquid Glass tweaks** — the WorkSlop Liquid Glass set, including the S8 set for iOS 26.6.1. ⚠️ **S8 does not work**: it was tested on the developer's own iPhone (iOS 26.6.1) and Liquid Glass stayed fully active. Development of S8 has been abandoned — the author has given up on this feature. The option remains in the app unchanged, but do not rely on it.
 - **Custom Icons** — a built-in iOS 18 Icons table (51 apps, Light/Dark) plus *Import Icon Pack (.zip)*. ✅ Proven working on the developer's own device on iOS 26.6.1.
 - **Status Bar** — carrier text and status bar behavior options.
 - **PosterBoard themes** — wallpaper/theme delivery (`.tendies` / `.batter`).
@@ -45,7 +45,7 @@ Grab it from the [Releases page](https://github.com/adnan120hz/WorkSlop-Desktop-
 - **Passcode** — passcode theme options.
 - **Daemons** — enable/disable system services.
 - **Three interfaces** — WorkSlop (Main), WorkSlop 2, and a Nugget-style interface, switchable in Settings → Appearance.
-- **Honest delivery routes** — Partial restore up to iOS 26; iOS 27 uses Full backup → modify → restore; the S8 set on iOS 26.6.1 uses a full backup of all data.
+- **Honest delivery routes** — Partial restore up to iOS 26; iOS 27 uses Full backup → modify → restore; the S8 set on iOS 26.6.1 uses a full backup of all data (delivery works; the S8 glass effect itself does not — see above).
 
 Some options are version-gated and show as locked, with the reason, when a device does not support them. Test changes one at a time.
 
