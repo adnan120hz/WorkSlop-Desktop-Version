@@ -150,11 +150,24 @@ from src.devicemanagement.device_manager import DeviceManager  # noqa: E402
 from src.gui.ios.theme_manager import ThemeManager  # noqa: E402
 from src.gui.main_window import MainWindow  # noqa: E402
 
+def pump(times=5):
+    """Flush queued theme/visibility work before asserting on it.
+
+    Theme switches travel through queued signals whose delivery depth
+    differs between Qt builds (6.11 needed more pumps than 6.12 in CI,
+    2026-10-09); assert only on the settled state.
+    """
+    from PySide6.QtCore import QCoreApplication, QEventLoop
+    for _ in range(times):
+        app.processEvents(QEventLoop.AllEvents, 50)
+        QCoreApplication.sendPostedEvents()
+
+
 win = MainWindow(device_manager=DeviceManager(),
                  translator=Translator(app, Settings()))
 win.resize(1280, 800)
 win.show()
-app.processEvents()
+pump()
 
 content = win.ios_liquidglass.content
 box = content._nugget_lg_box
@@ -179,7 +192,7 @@ def _tri_buttons(label_text):
 
 win.apply_theme(ThemeManager.CLASSIC)
 win.show_ios_page(9)
-app.processEvents()
+pump()
 check("visible in Nugget UI", box.isVisible())
 btns = _tri_buttons("Disable Liquid Glass")
 check("three-state row found (Default/Enabled/Disabled)",

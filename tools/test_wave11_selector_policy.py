@@ -42,8 +42,17 @@ if sys.platform != "win32":
           "WindowsSelectorEventLoopPolicy" in _read(
               "src/devicemanagement/session.py"))
 else:
-    check("selector policy installed on Windows",
-          after == "WindowsSelectorEventLoopPolicy", after)
+    # Python 3.14 renamed the policy class behind the public alias, so
+    # assert the behaviour instead of the class name: the installed
+    # policy must hand out selector loops, never Proactor loops.
+    _policy = asyncio.get_event_loop_policy()
+    _loop = _policy.new_event_loop()
+    try:
+        check("selector policy installed on Windows",
+              isinstance(_loop, asyncio.SelectorEventLoop),
+              type(_loop).__name__)
+    finally:
+        _loop.close()
 
 # Every device asyncio entry point re-asserts the policy before
 # asyncio.run (the policy object is process-global; these calls are the
