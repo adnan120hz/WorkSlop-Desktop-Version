@@ -61,7 +61,11 @@ Questions and bug reports: [GitHub Issues](https://github.com/adnan120hz/WorkSlo
 
 **Developer:** Adnan.120hz
 
-Derived from the GoldenNugget project (AGPL-3.0). UI reference: Nugget UI by leminlimez. iOS 18 icon pack artwork by [catwithabaloon](https://github.com/catwithabaloon/iOS-18-icon-pack).
+### Based on
+
+WorkSlop Desktop is a fork of **GoldenNugget** by awesomenull, which is itself a fork of **Nugget** by leminlimez. Building on that foundation, we have upgraded and improved the underlying system, increased overall stability, added new features, and redesigned the user interface.
+
+iOS 18 icon pack artwork by [catwithabaloon](https://github.com/catwithabaloon/iOS-18-icon-pack).
 
 ## License
 
