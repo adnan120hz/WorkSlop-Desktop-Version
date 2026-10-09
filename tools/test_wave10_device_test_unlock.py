@@ -409,10 +409,12 @@ finally:
 
 print("\nGUI: Home MobileGestalt tile follows the shared decision")
 from src.devicemanagement.constants import mobilegestalt_decision  # noqa: E402
+import gc as _gc  # noqa: E402
 for build, ver, expected_locked in (
         ("23G82", "26.6.1", True), ("23G83", "26.6.1", True),
         ("23C5027f", "26.1", False)):
     home = IOSHomePage(_Window(build=build, version=ver))
+    _gc.collect()
     app.processEvents()
     # The shell (MainWindow.change_selected_device) drives the tile from
     # the one shared decision; replay exactly those two calls here.
@@ -425,7 +427,14 @@ for build, ver, expected_locked in (
         check(f"Home gestalt tile on {build} explains the boundary",
               "26.2 beta 1" in home._tile_locks[home.mobilegestalt_card],
               home._tile_locks[home.mobilegestalt_card][:60])
-    home.close()
+    # Keep the last instance for the hero check below; on constrained
+    # CI runners, undeleted predecessors' C++ widgets pile up and later
+    # page construction can fail (QVBoxLayout NULL, 2026-10-09).
+    if build != "23C5027f":
+        home.close()
+        home.deleteLater()
+        app.processEvents()
+        _gc.collect()
 check("Home hero is the Apple logo tile (no phone frame)",
       not home._hero_logo.pixmap().isNull() and not hasattr(home, "_phone"))
 check("Home carries the ten feature tiles (G1/G2 removed in v14.0)",
