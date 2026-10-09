@@ -24,6 +24,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run offscreen tests
+        env:
+          WORKSHOP_CI_WINDOWS: "1"
         run: |
           .env\Scripts\activate.bat
           python tools/run_offscreen_tests.py

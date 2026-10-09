@@ -194,6 +194,8 @@ jobs:
           pip install pyuac
 
       - name: Run offscreen tests
+        env:
+          WORKSHOP_CI_WINDOWS: "1"
         run: python tools/run_offscreen_tests.py
 
       - name: Set up MSBuild (for zsign)
