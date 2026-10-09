@@ -1,3 +1,6 @@
+# FROZEN 2026-10-09 (user order): Icon Themes menu is device-proven.
+# Do not change behavior without an explicit order from the user;
+# verified by tools/test_icon_themes_frozen.py.
 import os
 
 from PySide6.QtCore import Qt, QCoreApplication, QSize
