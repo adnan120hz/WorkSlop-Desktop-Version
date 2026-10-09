@@ -173,6 +173,10 @@ content = win.ios_liquidglass.content
 box = content._nugget_lg_box
 check("subsection exists at the bottom of the Liquid Glass section",
       box is not None)
+# Do not depend on whatever theme a previous run left in QSettings:
+# drive the UI to the WorkSlop theme explicitly, then settle.
+win.apply_theme(ThemeManager.IOS)
+pump()
 check("hidden in WorkSlop UI",
       win.theme_manager.current_theme == ThemeManager.IOS
       and not box.isVisible())
