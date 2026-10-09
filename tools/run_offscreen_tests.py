@@ -49,8 +49,19 @@ def main(argv: list[str]) -> int:
             print("  " + os.path.relpath(path, ROOT))
         return 0
 
+    # Windows runners default to a cp1252 console: printing test output
+    # containing non-cp1252 characters crashed THIS runner (2026-10-09
+    # CI run: UnicodeEncodeError while reporting test_icon_themes_frozen),
+    # hiding the real results. Force replacement-tolerant UTF-8.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
     env = dict(os.environ)
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    env.setdefault("PYTHONUTF8", "1")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
     failures: list[str] = []
     for index, path in enumerate(tests, 1):
         name = os.path.relpath(path, ROOT)
@@ -58,8 +69,8 @@ def main(argv: list[str]) -> int:
             [sys.executable, path],
             cwd=ROOT,
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             timeout=PER_FILE_TIMEOUT_S,
         )
         if result.returncode == 0:
@@ -67,8 +78,8 @@ def main(argv: list[str]) -> int:
         else:
             print(f"[{index}/{len(tests)}] FAIL {name} (rc={result.returncode})",
                   flush=True)
-            tail = result.stderr.decode("utf-8", "replace").strip().splitlines()
-            for line in tail[-15:]:
+            tail = result.stdout.decode("utf-8", "replace").strip().splitlines()
+            for line in tail[-25:]:
                 print("     " + line, flush=True)
             failures.append(name)
 

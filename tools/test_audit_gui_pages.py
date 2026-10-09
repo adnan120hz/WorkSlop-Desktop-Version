@@ -57,14 +57,19 @@ def main():
     count = win.ios_pages.count()
     check("iOS stack has all pages", count >= 17, str(count))
     visited = 0
+    failed_pages = []
     for i in range(count):
         win.show_ios_page(i)
         app.processEvents()
         if win.ios_pages.currentIndex() == i and \
                 win.ios_pages.currentWidget() is not None:
             visited += 1
+        else:
+            widget = win.ios_pages.widget(i)
+            failed_pages.append(
+                f"{i}:{type(widget).__name__ if widget else 'None'}")
     check("every iOS page navigates", visited == count,
-          f"{visited}/{count}")
+          f"{visited}/{count} failed={failed_pages}")
 
     home = win.ios_home
     cards = list(home.cards_grid._cards)

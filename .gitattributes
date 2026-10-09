@@ -1,2 +1,17 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# WorkSlop Desktop line-ending rules.
+# The frozen-file guard (tools/test_icon_themes_frozen.py) pins SHA-256
+# of source files; a CRLF checkout on Windows changed the bytes and
+# failed the guard in CI (2026-10-09). Text sources are LF everywhere.
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.txt text eol=lf
+*.ts text eol=lf
+*.svg text eol=lf
+*.qm binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
