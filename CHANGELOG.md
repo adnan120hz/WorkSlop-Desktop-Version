@@ -1,7 +1,8 @@
 # Changelog
 
 Release history of WorkSlop Desktop. Versions marked *pre-release* were
-development builds published for testing; **v11.5** is the current public
+development builds published for testing; **v14.0** is the current
+version and is still a *pre-release* — **v11.5** was the last public
 release.
 
 ## v14.0 — 2026-10-08 (pre-release)

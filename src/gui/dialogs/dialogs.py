@@ -122,6 +122,27 @@ class AboutProgramDialog(QDialog):
         ui_ref.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; padding: 0 20px;")
         layout.addWidget(ui_ref)
 
+        # License section (audit 69+80): AGPL-3.0 summary plus how to
+        # read the full text. compile.py bundles the repo LICENSE file
+        # into every build, so the pointer below is always valid.
+        license_title = QLabel(self.tr("License"))
+        license_title.setStyleSheet(f"font-size: 17px; font-weight: 600; color: {c.text_primary}; padding-top: 8px;")
+        layout.addWidget(license_title)
+
+        license_body = QLabel(self.tr(
+            "WorkSlop Desktop is free software, released under the "
+            "GNU Affero General Public License, version 3 (AGPL-3.0). "
+            "You may use, study, share, and modify it under the terms of "
+            "that license, and the source code is available from the "
+            "GitHub link below. The complete license text is bundled "
+            "with this application as the LICENSE file in the "
+            "WorkSlopDesktop program folder (on macOS, inside the "
+            "WorkSlopDesktop.app bundle); it is also published at "
+            "https://www.gnu.org/licenses/agpl-3.0.html"))
+        license_body.setWordWrap(True)
+        license_body.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; padding: 0 8px;")
+        layout.addWidget(license_body)
+
         # Credits section
         credits_title = QLabel(self.tr("Credits"))
         credits_title.setStyleSheet(f"font-size: 17px; font-weight: 600; color: {c.text_primary}; padding-top: 8px;")

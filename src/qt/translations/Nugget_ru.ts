@@ -26,7 +26,17 @@
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+7" />
+      <location line="+9" />
+      <source>License</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+5" />
+      <source>WorkSlop Desktop is free software, released under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use, study, share, and modify it under the terms of that license, and the source code is available from the GitHub link below. The complete license text is bundled with this application as the LICENSE file in the WorkSlopDesktop program folder (on macOS, inside the WorkSlopDesktop.app bundle); it is also published at https://www.gnu.org/licenses/agpl-3.0.html</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+14" />
       <source>Credits</source>
       <translation>Авторы</translation>
     </message>
@@ -34,12 +44,12 @@
   <context>
     <name>ApplyMixin</name>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="+1577" />
+      <location filename="../../gui/main_window_mixins.py" line="+1762" />
       <source>Restore data from backup</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+407" />
+      <location line="+416" />
       <source>Enjoying WorkSlop Desktop?</source>
       <translation type="unfinished" />
     </message>
@@ -74,12 +84,17 @@ Use at your own risk!</source>
 Используйте на свой страх и риск</translation>
     </message>
     <message>
-      <location line="-1852" />
+      <location line="-1981" />
       <source>Searching for devices…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+58" />
+      <location line="+83" />
+      <source>No device connected</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+30" />
       <source>Device found…</source>
       <translation type="unfinished" />
     </message>
@@ -101,7 +116,7 @@ Use at your own risk!</source>
   <context>
     <name>IOSSummaryDialog</name>
     <message>
-      <location filename="../../gui/ios/components.py" line="+191" />
+      <location filename="../../gui/ios/components.py" line="+232" />
       <source>Cancel</source>
       <translation type="unfinished" />
     </message>
@@ -146,10 +161,8 @@ Use at your own risk!</source>
       <translation type="vanished">Не сейчас</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="+787" />
-      <location filename="../../gui/ios/settings.py" line="-85" />
-      <location line="+41" />
-      <location filename="../../gui/main_window.py" line="+175" />
+      <location filename="../../gui/ios/posterboard.py" line="+802" />
+      <location filename="../../gui/main_window.py" line="+235" />
       <source>None</source>
       <translation>Ничего</translation>
     </message>
@@ -691,13 +704,13 @@ This is necessary if badges persist on the Settings app after disabling FollowUp
       <translation type="vanished">GoldenNugget</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="+165" />
-      <location line="+282" />
+      <location filename="../../gui/ios/home.py" line="+164" />
+      <location line="+285" />
       <source>iPhone (iOS —)</source>
       <translation>iPhone (iOS —)</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="+1033" />
+      <location filename="../../gui/main_window_mixins.py" line="+1080" />
       <source>PosterBoard</source>
       <extracomment>iOS-page index -&gt; Nugget stack key, for theme-switch landing.</extracomment>
       <translation>PosterBoard</translation>
@@ -745,7 +758,17 @@ This is necessary if badges persist on the Settings app after disabling FollowUp
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+53" />
+      <location line="+39" />
+      <source>Apply in Progress</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>WorkSlop Desktop is already applying changes. Wait for the current apply to finish, then try again — nothing was started.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+31" />
       <source>Backup complete — file manager opened. Copy the backup somewhere safe, then the apply continues.</source>
       <translation type="unfinished" />
     </message>
@@ -801,7 +824,7 @@ This is necessary if badges persist on the Settings app after disabling FollowUp
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+135" />
+      <location line="+144" />
       <source>Back up your device</source>
       <translation type="unfinished" />
     </message>
@@ -843,8 +866,8 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="+24" />
-      <location filename="../../gui/main_window.py" line="+127" />
-      <location filename="../../gui/main_window_mixins.py" line="-740" />
+      <location filename="../../gui/main_window.py" line="+101" />
+      <location filename="../../gui/main_window_mixins.py" line="-767" />
       <source>Status Bar</source>
       <translation>Строка состояния</translation>
     </message>
@@ -874,7 +897,7 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="+74" />
+      <location filename="../../gui/ios/home.py" line="+73" />
       <source>Customize the status bar</source>
       <translation>Настройка строки состояния</translation>
     </message>
@@ -900,12 +923,12 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="-265" />
+      <location filename="../../gui/ios/home.py" line="-271" />
       <source>Reset Tweaks</source>
       <translation>Сбросить твики</translation>
     </message>
     <message>
-      <location line="+164" />
+      <location line="+171" />
       <source>Partially Supported</source>
       <translation>Частично поддерживается</translation>
     </message>
@@ -921,16 +944,11 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+49" />
-      <source>Device feature flags (iOS 26.1-)</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
       <source>iPhone (iOS {0} {1})</source>
       <translation type="vanished">iPhone (iOS {0} {1})</translation>
     </message>
     <message>
-      <location line="-17" />
+      <location line="+31" />
       <source>MobileGestalt is supported on iOS 16.0 – 26.2 beta 1 only.
 
 This device is on iOS {ver}, so MobileGestalt is locked.</source>
@@ -942,7 +960,12 @@ This device is on iOS {ver}, so MobileGestalt is locked.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+16" />
+      <location line="+6" />
+      <source>Device feature flags (iOS 16.0 – 26.2 beta 1)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+10" />
       <source>Status Bar is locked on iOS 27.
 
 It is only open on iOS 26 and below.</source>
@@ -967,10 +990,12 @@ It is only open on iOS 26 and below.</source>
       <translation type="vanished">Основной SIM</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="+491" />
+      <location filename="../../gui/ios/statusbar.py" line="+490" />
       <location line="+34" />
       <location line="+8" />
       <location line="+14" />
+      <location line="+25" />
+      <location line="+25" />
       <location line="+25" />
       <source>Default</source>
       <translation>По умолчанию</translation>
@@ -984,7 +1009,7 @@ It is only open on iOS 26 and below.</source>
       <translation type="vanished">Принудительное скрытие</translation>
     </message>
     <message>
-      <location line="-458" />
+      <location line="-506" />
       <source>Change Carrier Text</source>
       <translation>Изменить название оператора</translation>
     </message>
@@ -1121,7 +1146,7 @@ It is only open on iOS 26 and below.</source>
       <translation>Изменить силу сигнала Wi-Fi</translation>
     </message>
     <message>
-      <location line="+40" />
+      <location line="+38" />
       <source>Show Numeric Wi-Fi Strength</source>
       <translation>Показать числовую силу сигнала Wi-Fi</translation>
     </message>
@@ -1159,7 +1184,7 @@ It is only open on iOS 26 and below.</source>
       <translation type="vanished">^Также скроет индикатор сотовых данных.</translation>
     </message>
     <message>
-      <location line="-147" />
+      <location line="-145" />
       <source>Status Bar Overrides</source>
       <translation>Переопределения строки состояния</translation>
     </message>
@@ -1210,12 +1235,12 @@ It is only open on iOS 26 and below.</source>
       <translation>Вторичные полоски сигнала сотовой связи</translation>
     </message>
     <message>
-      <location line="+32" />
+      <location line="+31" />
       <source>Secondary Data Network Type</source>
       <translation>Вторичный тип сети передачи данных</translation>
     </message>
     <message>
-      <location line="+9" />
+      <location line="+8" />
       <source>Raw Signal Strength</source>
       <translation>Сырая сила сигнала</translation>
     </message>
@@ -1296,7 +1321,7 @@ It is only open on iOS 26 and below.</source>
     </message>
     <message>
       <location line="+21" />
-      <source>iOS 27 replaced the status bar override file, so only the carrier name can be changed here. The other options need iOS 26 or lower. Note: the iOS 27 carrier-name path is experimental and unverified on real devices — it may silently do nothing.</source>
+      <source>iOS 27 replaced the status bar override file, so only the carrier name can be changed here. The other options need iOS 26 or lower. Note: the iOS 27 carrier-name path is experimental and has not been tested on real devices — it may silently do nothing.</source>
       <translation type="unfinished" />
     </message>
     <message>
@@ -1342,7 +1367,7 @@ It is only open on iOS 26 and below.</source>
       <translation>Дополнительно</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="+232" />
+      <location filename="../../gui/ios/daemons.py" line="+234" />
       <source>VPN Icon</source>
       <translation>Значок VPN</translation>
     </message>
@@ -1696,12 +1721,22 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+52" />
+      <location line="+50" />
+      <source>blocked</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+11" />
       <source>safety rules</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+48" />
+      <location line="+49" />
+      <source>Voice Control Blocked</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+10" />
       <source>Daemon Locked by Safety Rules</source>
       <translation type="unfinished" />
     </message>
@@ -1718,8 +1753,9 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="+350" />
+      <location filename="../../controllers/hotload.py" line="+566" />
       <source>This feature is currently flagged as dangerous or broken.</source>
+      <extracomment>Actions the matching code below actually consumes. A rule whose action is none of these (and which names no tweak) can never match anything, so the schema validator rejects it (Fix Audit 13/84b).</extracomment>
       <translation type="unfinished" />
     </message>
     <message>
@@ -1763,7 +1799,7 @@ It is recommended not to enable it. Do you still want to enable it?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-219" />
+      <location line="-239" />
       <source>Disable Voice Control</source>
       <translation>Отключить голосовое управление</translation>
     </message>
@@ -1840,7 +1876,7 @@ It is recommended not to enable it. Do you still want to enable it?</source>
       <translation type="vanished">Выберите файл обоев с расширением .tendies.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="-322" />
+      <location filename="../../gui/ios/posterboard.py" line="-333" />
       <source>  Import Files (.tendies)</source>
       <translation>  Импорт файлов (.tendies)</translation>
     </message>
@@ -1861,7 +1897,7 @@ Will show up in Collections</source>
     </message>
     <message>
       <location line="-427" />
-      <location line="+925" />
+      <location line="+1007" />
       <source>Reset PosterBoard</source>
       <translation>Сбросить PosterBoard</translation>
     </message>
@@ -1870,7 +1906,7 @@ Will show up in Collections</source>
       <translation type="vanished">Аварийный сброс на случай, если PosterBoard ведёт себя странно или база данных не загружается после восстановления. Сброс произойдёт при следующем применении.</translation>
     </message>
     <message>
-      <location line="-920" />
+      <location line="-1002" />
       <source>Recovery for when a wallpaper misbehaves: clears the delivered descriptors on the next apply and PosterBoard rebuilds itself. No database is restored, so this cannot corrupt the store.</source>
       <translation type="unfinished" />
     </message>
@@ -1891,23 +1927,23 @@ Will show up in Collections</source>
     </message>
     <message>
       <location line="+22" />
-      <location line="+655" />
+      <location line="+666" />
       <source>Database: none selected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-596" />
+      <location line="-607" />
       <source>Tendies</source>
       <translation>Тенди</translation>
     </message>
     <message>
       <location line="+2" />
-      <location line="+380" />
+      <location line="+382" />
       <source>Video</source>
       <translation>Видео</translation>
     </message>
     <message>
-      <location line="-119" />
+      <location line="-121" />
       <source>Browse and import wallpapers from Cowabunga and CaPlayground</source>
       <translation type="unfinished" />
     </message>
@@ -1922,7 +1958,7 @@ Will show up in Collections</source>
       <translation>Выберите файлы шаблонов Nugget</translation>
     </message>
     <message>
-      <location line="+46" />
+      <location line="+48" />
       <source>Thumbnail</source>
       <translation>Миниатюра</translation>
     </message>
@@ -1972,12 +2008,12 @@ Will show up in Collections</source>
       <translation>Выберите файл изображения</translation>
     </message>
     <message>
-      <location line="+12" />
+      <location line="+13" />
       <source>Select Video File</source>
       <translation>Выберите видеофайл</translation>
     </message>
     <message>
-      <location line="+29" />
+      <location line="+34" />
       <source>Select Directory</source>
       <translation>Выберите папку</translation>
     </message>
@@ -1987,17 +2023,22 @@ Will show up in Collections</source>
       <translation>Выберите файлы PosterBoard</translation>
     </message>
     <message>
-      <location line="+77" />
+      <location line="+80" />
       <source>Database: selected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+98" />
+      <location line="+126" />
       <source>Lock screen preview</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+129" />
+      <location line="+83" />
+      <source>No Preview</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+89" />
       <source>If a wallpaper misbehaves after an apply, reset the items below and apply again — the descriptors are cleared and PosterBoard rebuilds its store itself. "Everything" clears the whole descriptor store.</source>
       <translation type="unfinished" />
     </message>
@@ -2007,7 +2048,7 @@ Will show up in Collections</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+28" />
+      <location line="+29" />
       <source>A full PosterBoard descriptor reset has been scheduled. All delivered wallpapers will be cleared on the next apply. Apply your tweaks to execute the reset.</source>
       <translation type="unfinished" />
     </message>
@@ -2016,7 +2057,7 @@ Will show up in Collections</source>
       <translation type="vanished">Выберите, что сбросить. Это полезно, если PosterBoard ведёт себя странно или база данных повреждена (искажена) после восстановления.</translation>
     </message>
     <message>
-      <location line="-23" />
+      <location line="-24" />
       <source>Collections</source>
       <translation>Коллекции</translation>
     </message>
@@ -2031,8 +2072,8 @@ Will show up in Collections</source>
       <translation>Кэш галереи</translation>
     </message>
     <message>
-      <location line="+14" />
-      <location line="+18" />
+      <location line="+15" />
+      <location line="+19" />
       <source>Reset Scheduled</source>
       <translation>Сброс запланирован</translation>
     </message>
@@ -2046,7 +2087,7 @@ Will show up in Collections</source>
       <translation type="vanished">Выберите фотографию, которая будет отображаться в качестве обоев после завершения (ТОЛЬКО .heic)</translation>
     </message>
     <message>
-      <location line="-515" />
+      <location line="-597" />
       <location line="+68" />
       <source>Choose Freeze Frame (.HEIC)</source>
       <translation>Выбрать стоп-кадр (.HEIC)</translation>
@@ -2063,7 +2104,7 @@ Will show up in Collections</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="-1" />
-      <location filename="../../gui/ios/posterboard.py" line="-442" />
+      <location filename="../../gui/ios/posterboard.py" line="-444" />
       <location filename="../../gui/main_window_mixins.py" line="-20" />
       <source>Templates</source>
       <translation>Шаблоны</translation>
@@ -2262,7 +2303,7 @@ DO NOT unplug your device during restores.</source>
       <translation type="vanished">О GoldenNugget</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="-67" />
+      <location filename="../../gui/ios/settings.py" line="-111" />
       <source>Enter value:</source>
       <translation>Введите значение:</translation>
     </message>
@@ -2304,7 +2345,13 @@ DO NOT unplug your device during restores.</source>
       <translation>Удалить выбранное</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="+228" />
+      <location filename="../../gui/ios/settings.py" line="+26" />
+      <location line="+41" />
+      <source>None</source>
+      <translation type="unfinished">Ничего</translation>
+    </message>
+    <message>
+      <location line="+163" />
       <location line="+29" />
       <source>Pairing Reset</source>
       <translation type="unfinished">Сброс сопряжения</translation>
@@ -2322,6 +2369,13 @@ DO NOT unplug your device during restores.</source>
     <message>
       <location line="+8" />
       <source>Failed to reset device pairing: %1</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+10" />
+      <source>Full Backup: a standard iPhone backup folder in iTunes/Finder format (Manifest.db/Manifest.plist + Info.plist).
+
+WorkSlop Backup: the selective protective backup this app keeps on this computer (only restorable from this app).</source>
       <translation type="unfinished" />
     </message>
     <message>
@@ -2361,7 +2415,43 @@ Continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+74" />
+      <location line="+12" />
+      <source>Enable Fast Backup Cache?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>WARNING: The cached backup feature is experimental and, when it fails, can leave your device without wallpaper data or on the Setup screen.
+
+Enable the fast backup cache anyway?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+21" />
+      <source>Enable Encrypted Backups?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>WARNING: Using encrypted backups with WorkSlop Desktop is experimental and may cause DATA LOSS or leave your device stuck on the Setup screen after applying tweaks.
+
+Make sure you know your backup password before continuing.
+
+Enable encrypted backups anyway?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+22" />
+      <source>Fast Backup Cache is on</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>The Fast Backup Cache also uses the AFC (parallel) media channel for photos, so this switch has no effect while the cache is on. Turn the cache off to use it on the standard backup path.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+22" />
       <source>Default (system drive)</source>
       <translation type="unfinished" />
     </message>
@@ -2371,7 +2461,7 @@ Continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="+616" />
+      <location filename="../../gui/ios/posterboard.py" line="+627" />
       <source>Get Database</source>
       <translation>Получить базу данных</translation>
     </message>
@@ -2386,7 +2476,7 @@ Continue?</source>
       <translation>База данных имеет неверный формат!</translation>
     </message>
     <message>
-      <location line="+19" />
+      <location line="+41" />
       <source>Clear Saved IDs</source>
       <translation>Очистить сохранённые ID</translation>
     </message>
@@ -2449,9 +2539,9 @@ Continue?</source>
     <message>
       <source>Delete</source>
       <translation>Удалить</translation>
-      <location line="-309" />
-      <location line="+324" />
-      <location filename="../../gui/ios/settings.py" line="+636" />
+      <location line="-338" />
+      <location line="+353" />
+      <location filename="../../gui/ios/settings.py" line="+659" />
     </message>
     <message>
       <source>Refresh</source>
@@ -2583,7 +2673,7 @@ GoldenNugget будет перезапущен, чтобы применить и
       <translation type="vanished">Переводчики</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="-145" />
+      <location filename="../../gui/ios/statusbar.py" line="-143" />
       <source>Change Status Bar Date Text</source>
       <translation>Изменить текст даты в строке состояния</translation>
     </message>
@@ -2635,26 +2725,9 @@ GoldenNugget будет перезапущен, чтобы применить и
       <location filename="../../gui/ios/themes_hub.py" line="+65" />
     </message>
     <message>
+      <location line="+1" />
       <source>App Data</source>
       <translation type="unfinished" />
-      <location line="-288" />
-      <location line="+6" />
-      <location line="+58" />
-      <location line="+52" />
-      <location line="+43" />
-      <location line="+9" />
-      <location line="+4" />
-      <location line="+15" />
-      <location line="+2" />
-      <location line="+8" />
-      <location line="+7" />
-      <location line="+2" />
-      <location line="+6" />
-      <location line="+15" />
-      <location line="+20" />
-      <location line="+8" />
-      <location line="+15" />
-      <location line="+14" />
     </message>
     <message>
       <location line="+1" />
@@ -2662,7 +2735,7 @@ GoldenNugget будет перезапущен, чтобы применить и
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+4" />
+      <location line="+7" />
       <source>+ Add Icon</source>
       <translation type="unfinished" />
     </message>
@@ -2672,7 +2745,7 @@ GoldenNugget будет перезапущен, чтобы применить и
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+467" />
+      <location line="+691" />
       <source>A device %1 is running. Closing now can interrupt it mid-write and leave the protective backup corrupted.
 
 Close anyway?</source>
@@ -2741,7 +2814,7 @@ Close anyway?</source>
       <translation type="vanished">Режим расчета кадров</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="-211" />
+      <location filename="../../gui/ios/posterboard.py" line="-242" />
       <source>Linear</source>
       <translation>Линейный</translation>
     </message>
@@ -2819,7 +2892,7 @@ Close anyway?</source>
       <translation type="vanished">Режим отладки в Notes</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="-480" />
+      <location filename="../../gui/main_window.py" line="-707" />
       <source>Liquid Glass</source>
       <translation>Жидкое стекло</translation>
     </message>
@@ -2923,7 +2996,7 @@ bl_sbx</translation>
       <location line="+4" />
     </message>
     <message>
-      <location filename="../../gui/ios/components.py" line="+126" />
+      <location filename="../../gui/ios/components.py" line="+134" />
       <source>←  Back</source>
       <translation>←  Назад</translation>
     </message>
@@ -2933,7 +3006,7 @@ bl_sbx</translation>
       <translation>Недостаточно свободного места на диске: доступно только {0} ГБ, а для резервной копии требуется минимум {1} ГБ. Освободите место на компьютере (резервные копии записываются в {2}) и попробуйте снова.</translation>
     </message>
     <message>
-      <location line="+689" />
+      <location line="+719" />
       <source>Could not back up photos/videos over AFC: {0}</source>
       <translation type="unfinished" />
     </message>
@@ -2944,7 +3017,7 @@ bl_sbx</translation>
     </message>
     <message>
       <location line="+71" />
-      <location filename="../../gui/ios/icon_themes.py" line="+62" />
+      <location filename="../../gui/ios/icon_themes.py" line="+181" />
       <source>Download Icon Packs</source>
       <translation type="unfinished" />
     </message>
@@ -3006,12 +3079,17 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
+      <location line="+8" />
+      <source>All icons from "{0}" are already in Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
       <location line="+5" />
       <source>Imported {0} icons from "{1}".</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+3" />
+      <location line="+6" />
       <source>({0} bundles skipped — missing icon files).</source>
       <translation type="unfinished" />
     </message>
@@ -3077,7 +3155,7 @@ Author: {2}</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/wallpaper_downloader.py" line="-57" />
-      <location filename="../../gui/ios/posterboard.py" line="-151" />
+      <location filename="../../gui/ios/posterboard.py" line="-153" />
       <source>Download Wallpapers</source>
       <translation type="unfinished" />
     </message>
@@ -3185,10 +3263,14 @@ Author: {2}</source>
       <source>Choose your interface style</source>
       <translation type="unfinished" />
     </message>
-    <message>
+    <message numerus="yes">
       <location filename="../../gui/ios/backup.py" line="-120" />
       <source>%n tweak(s) enabled — ready to apply.</source>
-      <translation type="unfinished" />
+      <translation type="unfinished">
+        <numerusform />
+        <numerusform />
+        <numerusform />
+      </translation>
     </message>
     <message>
       <location filename="../../gui/ios/icon_themes.py" line="-20" />
@@ -3197,12 +3279,17 @@ Author: {2}</source>
     </message>
     <message>
       <location line="+12" />
-      <location line="+41" />
+      <location line="+264" />
       <source>Reset Icon Themes</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-25" />
+      <location line="-248" />
+      <source>Import Icon Pack (.zip)…</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+8" />
       <source>Apps on iPhone</source>
       <translation type="unfinished" />
     </message>
@@ -3212,12 +3299,12 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+18" />
+      <location line="+233" />
       <source>Remove all icon themes from WorkSlop Desktop? The themed home-screen icons already on the device are not touched.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+108" />
+      <location line="+187" />
       <source>?</source>
       <translation type="unfinished" />
     </message>
@@ -3227,19 +3314,24 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+49" />
-      <location line="+131" />
+      <location line="+13" />
+      <source>Remove {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+41" />
+      <location line="+189" />
       <location line="+6" />
       <source>Warning</source>
       <translation type="unfinished">Предупреждение</translation>
     </message>
     <message>
-      <location line="-136" />
+      <location line="-194" />
       <source>Could not store the icon file in the persistent folder. The theme may not apply reliably.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+20" />
+      <location line="+78" />
       <source>Add Icon Theme</source>
       <translation type="unfinished" />
     </message>
@@ -3294,7 +3386,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="-432" />
+      <location filename="../../gui/ios/tweaks.py" line="-488" />
       <source>Requires iOS %1 or later</source>
       <translation type="unfinished" />
     </message>
@@ -3314,12 +3406,27 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
+      <location line="+33" />
+      <source>no device connected. This full backup (all data) route needs an iPhone on iOS 26.6.1 (build 23G82 or 23G83).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+12" />
+      <source>this device: iOS %1, build %2</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+5" />
+      <source>this full backup (all data) route runs only on iOS 26.6.1 builds 23G82 and 23G83 (%1).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
       <source>Locked: </source>
       <translation type="unfinished" />
       <location filename="../../gui/ios/risky.py" line="+108" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="+280" />
+      <location filename="../../gui/ios/tweaks.py" line="+290" />
       <source>Range: {0} – {1}</source>
       <translation type="unfinished" />
     </message>
@@ -3340,7 +3447,7 @@ Author: {2}</source>
       <location line="+41" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="+446" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="+463" />
       <source>Restoring backup... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
@@ -3383,7 +3490,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="+137" />
+      <location filename="../../tweaks/registry.py" line="+132" />
       <source>Sets custom text shown at the bottom of the Lock Screen below the time. Long text is cut off — keep it short. Leave empty to remove.</source>
       <translation type="unfinished" />
     </message>
@@ -3478,7 +3585,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+18" />
+      <location line="+19" />
       <source>Disables the thermalmonitord daemon via launchd's disabled list, so iOS stops applying thermal throttling. Reported working by users; also removes the device's thermal protection — the phone can run hotter under load. Re-enable by turning this off and applying again. A reboot is required.</source>
       <translation type="unfinished" />
     </message>
@@ -3518,22 +3625,17 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+156" />
-      <source>Beta 1 — unproven. Writes SolariumForceFallback = true into the managed .GlobalPreferences.plist overlay (/var/Managed Preferences/mobile/). Whether iOS 26.6.1 reads this key from the managed overlay is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying). Roll back from the Liquid Glass Disable (Beta 1) page.</source>
+      <location line="+182" />
+      <source>Writes Apple's real firmware keys into the files their readers open: SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), SBDisallowGlassTime and SBDisallowGlassButtons = true merged into your own .GlobalPreferences.plist, and SBDisableSpecularEverywhereUsingLSSAssertion = true merged into your own com.apple.springboard.plist. Delivered through the full backup, modify, full restore route with fail-hard checks (100% of your existing keys must survive; nothing is claimed disabled). Whether the glass look actually changes on screen is for an isolated device test to judge (full backup first, Low Power Mode off, reboot after applying).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+5" />
-      <source>Beta 1 — unproven. Builds the payload at apply time from your device's own .GlobalPreferences.plist (HomeDomain), inserts SolariumForceFallback = true, and writes it back only if 100% of your original keys survive (automatic diff gate; the apply is cancelled otherwise). Your original file is saved before the first apply for rollback. Whether iOS 26.6.1 reads this key is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+15" />
+      <location line="-16" />
       <source>Test-only — unproven. Surgically merges SBDisallowGlassTime = true and SBDisallowGlassButtons = true into your device's own .GlobalPreferences.plist and injects a FeatureFlags/Domain/SpringBoard.plist (SolariumElasticHUD disabled) through the full-backup route. Whether iOS 26.6.1 honors either write is not proven, and the Domain file is predicted to be skipped silently by the restore channel — its landing can never be claimed without a device read-back. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-174" />
+      <location line="-164" />
       <source>Shows the side button / action button hint labels in screenshots (engineering debug UI).</source>
       <translation type="unfinished" />
     </message>
@@ -3575,7 +3677,7 @@ Author: {2}</source>
     <message>
       <source>No device connected.</source>
       <translation>Устройство не подключено.</translation>
-      <location line="-284" />
+      <location line="+31" />
     </message>
     <message>
       <source>Error!</source>
@@ -3639,7 +3741,12 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-20" />
+      <location line="-26" />
+      <source>Writes SolariumForceFallback = true into com.apple.SwiftUI.plist (its reader is confirmed in the iOS 26.6.1 firmware). Whether the glass look changes on screen has not been shown yet — judge it with an isolated device test.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+6" />
       <source>PLACEHOLDER: Specific Solarium flags not yet defined. Channel dead on 26.2+. WARNING: Can break Control Center.</source>
       <translation type="unfinished" />
     </message>
@@ -3684,12 +3791,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-12" />
-      <source>Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+4" />
+      <location line="-8" />
       <source>Glass legibility value 2 = unobserved branch. 0=Clear, 1=Tinted (proven).</source>
       <translation type="unfinished" />
     </message>
@@ -3816,42 +3918,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="+99" />
-      <source>Liquid Glass Disable (Beta 1): the full-backup route needs the device's own .GlobalPreferences.plist as the G1 merge base, and it could not be read. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+32" />
-      <source>Liquid Glass Disable (Beta 1): the saved managed overlay original is unreadable, so it was NOT written back. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+25" />
-      <source>Liquid Glass Disable (Beta 1): no saved original .GlobalPreferences.plist for this device, so there is nothing safe to roll back to.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+10" />
-      <source>Liquid Glass Disable (Beta 1): the saved original .GlobalPreferences.plist is unreadable, so it was NOT written back.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+7" />
-      <source>Liquid Glass Disable (Beta 1): unknown rollback route.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+25" />
-      <source>Liquid Glass Disable (Beta 1): the staged %1 payload could not be prepared for the full-backup route: %2</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+6" />
-      <source>Liquid Glass Disable (Beta 1): the staged %1 payload is missing, so the full-backup route was cancelled. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+217" />
+      <location filename="../../restore/lgd_full.py" line="+287" />
       <source>Liquid Glass Disable (Beta 1): the full-backup route was given nothing to deliver.</source>
       <translation type="unfinished" />
     </message>
@@ -3891,7 +3958,7 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+60" />
+      <location line="+53" />
       <source>Liquid Glass Disable: writing the payload into the backup...</source>
       <translation type="unfinished" />
     </message>
@@ -3912,9 +3979,57 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="+741" />
+      <location filename="../../restore/restore.py" line="+746" />
       <source>{0} tweak file(s) could not be written into the protective backup (the backup may be encrypted), so the apply was cancelled before anything was restored.</source>
       <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+21" />
+      <source>The protective backup is incomplete: {0} file(s) it promises are missing on disk (e.g. {1}). The apply was cancelled before anything was restored — free up disk space and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+80" />
+      <source>The device rejected the tweak restore (the connection dropped with no restore progress on every attempt), so no tweaks were applied. Your data was not wiped. The protective backup is kept on this computer.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Restore Backup</source>
+      <translation type="unfinished" />
+      <location line="+4" />
+      <location line="+249" />
+      <location filename="../../gui/ios/settings.py" line="-2" />
+    </message>
+    <message>
+      <source>Choose the backup format to restore:</source>
+      <translation type="unfinished" />
+      <location line="+18" />
+    </message>
+    <message>
+      <source>Restore Full Backup?</source>
+      <translation type="unfinished" />
+      <location line="+5" />
+    </message>
+    <message>
+      <source>This restores the selected backup to the connected iPhone, then reboots it.
+
+Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
+      <translation type="unfinished" />
+      <location line="+1" />
+    </message>
+    <message>
+      <source>Restore Data From Backup?</source>
+      <translation type="unfinished" />
+      <location line="+10" />
+    </message>
+    <message>
+      <source>This restores photos, messages, contacts and settings from the last protective backup on this computer.
+
+Applied tweaks and wallpapers are KEPT.
+
+Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
+      <translation type="unfinished" />
+      <location line="+1" />
     </message>
     <message>
       <location filename="../../../main_app.py" line="+51" />
@@ -3965,12 +4080,17 @@ Author: {2}</source>
     </message>
     <message>
       <location line="+9" />
-      <location line="+193" />
+      <location line="+239" />
       <source>Select an app to browse its data</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-185" />
+      <location line="-222" />
+      <source>Read via device backup</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+8" />
       <source>Name</source>
       <translation type="unfinished" />
     </message>
@@ -3996,50 +4116,18 @@ Author: {2}</source>
     </message>
     <message>
       <location line="+4" />
-      <location line="+302" />
+      <location line="+331" />
       <source>New Folder</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-298" />
-      <location line="+313" />
+      <location line="-327" />
+      <location line="+342" />
       <source>Rename</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+3" />
-      <source>Loading apps...</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+17" />
-      <source>File Sharing enabled — Documents accessible</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+30" />
-      <source>Full container access</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+1" />
-      <source>Documents only (File Sharing)</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+4" />
-      <location line="+75" />
-      <source>Folder</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="-75" />
-      <location line="+75" />
-      <source>File</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="-65" />
+      <location line="-318" />
       <source>Cannot access %1 directly:
 %2
 
@@ -4051,7 +4139,39 @@ Only this app's data is backed up — nothing else is copied.
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+20" />
+      <location line="+5" />
+      <source>Loading apps...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+18" />
+      <source>File Sharing enabled — Documents accessible</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+32" />
+      <source>Full container access</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>Documents only (File Sharing)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+4" />
+      <location line="+70" />
+      <source>Folder</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="-70" />
+      <location line="+70" />
+      <source>File</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="-46" />
       <source>Reading %1 via device backup...</source>
       <translation type="unfinished" />
     </message>
@@ -4066,12 +4186,12 @@ Only this app's data is backed up — nothing else is copied.
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+7" />
+      <location line="+8" />
       <source>Via device backup (read-only, like iMazing)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+37" />
+      <location line="+36" />
       <source>This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</source>
       <translation type="unfinished" />
     </message>
@@ -4189,13 +4309,6 @@ This is NOT a full backup — app data and the rest of the iPhone are not includ
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+4" />
-      <location line="+249" />
-      <location filename="../../gui/ios/settings.py" line="-2" />
-      <source>Restore Backup</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
       <location line="-248" />
       <source>Restore a backup to the iPhone. Two formats are supported: a standard full-backup folder (iTunes/Finder format), or the protective backup this app keeps on this computer.</source>
       <translation type="unfinished" />
@@ -4234,41 +4347,10 @@ Continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+18" />
-      <source>Choose the backup format to restore:</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
       <location line="+2" />
       <source>Full Backup: a standard iPhone backup folder in iTunes/Finder format (Manifest.db/Manifest.plist + Info.plist).
 
 Protective Backup: the selective protective backup this app keeps on this computer (only restorable from this app).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+5" />
-      <source>Restore Full Backup?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+1" />
-      <source>This restores the selected backup to the connected iPhone, then reboots it.
-
-Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+10" />
-      <source>Restore Data From Backup?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+1" />
-      <source>This restores photos, messages, contacts and settings from the last protective backup on this computer.
-
-Applied tweaks and wallpapers are KEPT.
-
-Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
@@ -4312,7 +4394,7 @@ Make sure the iPhone is connected, unlocked and awake, then do you want to conti
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="+103" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="+104" />
       <source>MobileGestalt File</source>
       <translation type="unfinished" />
     </message>
@@ -4368,7 +4450,7 @@ Make sure the iPhone is connected, unlocked and awake, then do you want to conti
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+38" />
+      <location line="+44" />
       <source>No file selected.</source>
       <translation type="unfinished" />
     </message>
@@ -4429,7 +4511,12 @@ Are you sure you want to use this one?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="-166" />
+      <location line="+45" />
+      <source>Custom Resolution will be skipped: </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="-182" />
       <source>Model</source>
       <translation type="unfinished" />
     </message>
@@ -4454,7 +4541,7 @@ Are you sure you want to use this one?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+56" />
+      <location line="+72" />
       <source>Accent color</source>
       <translation type="unfinished" />
     </message>
@@ -5134,7 +5221,7 @@ Reconnect the iPhone if it is not detected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="+499" />
+      <location filename="../../gui/ios/tweaks.py" line="+555" />
       <source>Liquid Glass Tweaks (Nugget)</source>
       <translation type="unfinished" />
     </message>
@@ -5193,331 +5280,456 @@ Reconnect the iPhone if it is not detected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="87" />
-      <source>BETA 1 — unproven. This page writes one research candidate key, SolariumForceFallback = true, through two delivery routes. The key string exists in the iOS 26.6.1 system binaries, but it is NOT proven that iOS 26.6.1 reads it from either file — enabling a route does not claim to disable Liquid Glass. Test one route at a time: full backup first, Low Power Mode off, reboot after applying, then judge the result. Every apply is checked by an automatic verification gate (payload parses, value is a real bool, G1 keeps 100% of your original keys) and is cancelled if the check fails. On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers these routes through a full device backup and restore instead of a partial restore, because the partial route showed no effect in beta testing; the same checks run first, an encrypted backup is refused, and any failure cancels the apply before your device is changed.</source>
+      <location filename="../../gui/ios/icon_themes.py" line="218" />
+      <source>iOS 18 Icons</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="136" />
-      <source>Roll Back G2 (Restore Saved Overlay)</source>
+      <location filename="../../gui/ios/icon_themes.py" line="223" />
+      <source>Stock iOS 18 app icons from the catwithabaloon icon pack, in two tables: Light and Dark. Use Add on a row to add that artwork to Icon Themes, or a table's Add All to add every app of that artwork that is not in Icon Themes yet; it is delivered as a WebClip to the target shown, exactly like any other icon theme.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="140" />
-      <source>Roll Back G1 (Restore Saved Original)</source>
+      <location filename="../../gui/ios/icon_themes.py" line="264" />
+      <source>Icon artwork: iOS 18 App Icons by catwithabaloon (github.com/catwithabaloon/iOS-18-icon-pack).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="353" />
+      <location filename="../../gui/ios/icon_themes.py" line="283" />
+      <source>Add</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="414" />
+      <location filename="../../gui/ios/icon_themes.py" line="392" />
+      <location filename="../../gui/ios/icon_themes.py" line="364" />
+      <source>Dark</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="414" />
+      <location filename="../../gui/ios/icon_themes.py" line="392" />
+      <location filename="../../gui/ios/icon_themes.py" line="364" />
+      <source>Light</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="708" />
+      <source>Import Icon Pack (.zip)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="757" />
+      <source>Icon Pack Import</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="282" />
+      <source>App</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="283" />
+      <source>Target on device</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="729" />
+      <source>That file could not be read as an icon pack (.zip).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="735" />
+      <source>Imported {0} icons from the pack.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="390" />
+      <source>Added {0} ({1}) to Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="249" />
+      <source>Add All {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="362" />
+      <source>No {0} version of this icon in the pack.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="416" />
+      <source>Added {0} iOS 18 icons ({1}) to Icon Themes; {2} could not be stored (those themes may not apply reliably).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="739" />
+      <source>{0} icons were already in Icon Themes and were left as they are.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="743" />
+      <source>{0} icons could not be stored in the persistent folder; those themes may not apply reliably.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="749" />
+      <source>{0} files in the pack did not match any icon in the built-in 51-app catalog, so they could not be identified per app and were skipped — no theme was created for them. They are listed in the details below.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="421" />
+      <source>Added {0} iOS 18 icons ({1}) to Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="425" />
+      <source>Nothing new was added, and {0} icons could not be stored (those themes may not apply reliably).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="430" />
+      <source>Every iOS 18 icon ({0}) is already in Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="85" />
+      <source>UNPROVEN on screen. This page writes Apple's real firmware keys through the full-backup route: Liquid Glass (Latest) puts SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), plus the two lock-screen keys into .GlobalPreferences.plist and the specular key into com.apple.springboard.plist; the Lock Screen Keys (Test) entry is a test-only experiment. Nothing on this page claims the glass look is disabled — judge it with an isolated device test: full backup first, Low Power Mode off, reboot after applying. Every apply is checked by an automatic verification gate (payload parses, value is a real bool, and 100% of your existing keys must survive) and is cancelled if the check fails. your original keys) and is cancelled if the check fails. On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers these routes through a full device backup and restore instead of a partial restore, because the partial route showed no effect in beta testing; the same checks run first, an encrypted backup is refused, and any failure cancels the apply before your device is changed.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="139" />
+      <source>Roll Back Lock-Screen Keys (Remove Its 2 Keys)</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/ios/liquid_glass_disable.py" line="144" />
-      <source>Roll Back Squair (Remove 2 Lock-Screen Keys)</source>
+      <source>Roll Back Latest (Remove Its 4 Keys)</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/ios/liquid_glass_disable.py" line="150" />
-      <source>Enable a route above, then press Apply Tweaks on the Apply page. The rollback buttons write to the device immediately (G2 restores the device's managed overlay saved before your first apply — or an empty overlay when none was saved; G1 writes back the original .GlobalPreferences.plist saved before your first G1 apply).</source>
+      <source>Enable a payload above, then press Apply Tweaks on the Apply page. The rollback buttons write to the device immediately: each reads your device's current files and removes only that payload's own keys — your other settings stay.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="165" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="163" />
       <source>Open Apply Page</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="194" />
-      <source>A managed overlay original is also saved for G2 rollback.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="297" />
+      <source>Remove the four Liquid Glass (Latest) keys? Your device's three preference files are read fresh and only SolariumForceFallback (com.apple.SwiftUI.plist), SBDisallowGlassTime and SBDisallowGlassButtons (.GlobalPreferences.plist) and SBDisableSpecularEverywhereUsingLSSAssertion (com.apple.springboard.plist) are removed — your other settings stay. The device reboots if auto-reboot is on.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="196" />
-      <source>No managed overlay original saved yet for G2 rollback.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="278" />
-      <source>Restore the managed .GlobalPreferences.plist overlay saved before your first G1/G2 apply (or an empty overlay when none was saved)? This removes the SolariumForceFallback key (other WorkSlop GlobalPreferences tweaks re-apply on your next Apply). The device reboots if auto-reboot is on.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="124" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="127" />
       <source>Rollback</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="184" />
-      <source>No device connected. Connect your iPhone to apply or roll back.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="200" />
+      <source>No device connected. Connect your iPhone to apply or roll back. The switches above stay locked: this S8 route is a full backup (all data) for iOS 26.6.1 builds 23G82 and 23G83 only — separate from Partial Restore (up to iOS 26) and the iOS 27 Full Backup route.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="262" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="281" />
       <source>An apply or reset is already running. Wait for it to finish first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="275" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="294" />
       <source>No device connected. Connect your iPhone first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="286" />
-      <source>Remove the two Squair Protocol (Test) keys? The device's .GlobalPreferences.plist is read fresh and only SBDisallowGlassTime and SBDisallowGlassButtons are removed — your other settings stay. The FeatureFlags/Domain/SpringBoard.plist file, if it landed on the device, cannot be removed by a restore and is left in place. The device reboots if auto-reboot is on.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="308" />
+      <source>Remove the two Lock Screen Keys (Test) keys? The device's .GlobalPreferences.plist is read fresh and only SBDisallowGlassTime and SBDisallowGlassButtons are removed — your other settings stay. The FeatureFlags/Domain/SpringBoard.plist file, if it landed on the device, cannot be removed by a restore and is left in place. The device reboots if auto-reboot is on.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="300" />
-      <source>No saved original .GlobalPreferences.plist for this device yet, so there is nothing safe to roll back to. The original is saved automatically before your first G1 apply.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="334" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="341" />
       <source>The rollback did not complete: %1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="335" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="342" />
       <source>unknown error</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="207" />
-      <source>Device: %1. No saved original yet — it is captured automatically before your first G1 apply. %2</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="219" />
+      <source>Device: %1 (iOS %2, build %3). This build can run the S8 full backup (all data) route. Rollback reads your device's current files and removes only each payload's own keys.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="305" />
-      <source>Write back the saved original .GlobalPreferences.plist (captured %1, iOS %2)? This replaces the device's current file with that exact copy. The device reboots if auto-reboot is on.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="209" />
+      <source>Device: %1 (iOS %2, build %3). The switches above are locked: this S8 route is a full backup (all data) and runs only on iOS 26.6.1 builds 23G82 and 23G83 — separate from Partial Restore (up to iOS 26) and the iOS 27 Full Backup route. Rollback reads your device's current files and removes only each payload's own keys.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="198" />
-      <source>Device: %1. A pristine original .GlobalPreferences.plist is saved for rollback (captured %2, iOS %3, %4 keys). %5</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="203" />
+      <location filename="../../gui/ios/passcode_theme.py" line="401" />
       <source>Customize the Passcode keypad with a theme package (.passthm) — images, sub-labels and bold keys. Themes are written straight to the device over USB/Wi-Fi (no reboot).
 
 AirLift only creates NEW files on the device: re-applying the same theme is a no-op, and replacing an existing theme with different art requires removing the old keypad cache first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="216" />
+      <location filename="../../gui/ios/passcode_theme.py" line="414" />
       <source>No theme selected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="225" />
+      <location filename="../../gui/ios/passcode_theme.py" line="423" />
       <source>Choose .passthm…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="260" />
+      <location filename="../../gui/ios/passcode_theme.py" line="458" />
       <source>Write Theme to Device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="287" />
+      <location filename="../../gui/ios/passcode_theme.py" line="485" />
       <source>Device Language</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="288" />
+      <location filename="../../gui/ios/passcode_theme.py" line="486" />
       <source>All Languages</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="306" />
+      <location filename="../../gui/ios/passcode_theme.py" line="504" />
       <source>Both (Regular + Bold)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="307" />
+      <location filename="../../gui/ios/passcode_theme.py" line="505" />
       <source>Regular only</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="308" />
+      <location filename="../../gui/ios/passcode_theme.py" line="506" />
       <source>Bold only</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="317" />
+      <location filename="../../gui/ios/passcode_theme.py" line="515" />
       <source>All (8, 9, 10)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="356" />
+      <location filename="../../gui/ios/passcode_theme.py" line="554" />
       <source>Choose a Passcode Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="356" />
+      <location filename="../../gui/ios/passcode_theme.py" line="554" />
       <source>passthemes (*.passthm)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="406" />
+      <location filename="../../gui/ios/passcode_theme.py" line="604" />
       <source>, small keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="414" />
+      <location filename="../../gui/ios/passcode_theme.py" line="612" />
       <source>Remove</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="496" />
+      <location filename="../../gui/ios/passcode_theme.py" line="768" />
       <source>Starting…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="99" />
+      <location filename="../../gui/ios/passcode_theme.py" line="186" />
       <source>Parsing theme…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="214" />
+      <location filename="../../gui/ios/passcode_theme.py" line="412" />
       <source>Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="239" />
+      <location filename="../../gui/ios/passcode_theme.py" line="437" />
       <source>Keypad Language</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="243" />
+      <location filename="../../gui/ios/passcode_theme.py" line="441" />
       <source>Bold Keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="248" />
+      <location filename="../../gui/ios/passcode_theme.py" line="446" />
       <source>Target TelephonyUI</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="254" />
+      <location filename="../../gui/ios/passcode_theme.py" line="452" />
       <source>Write to device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="408" />
+      <location filename="../../gui/ios/passcode_theme.py" line="606" />
       <source>, big keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="448" />
-      <source>No trusted iPhone connected. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, and wait for it to appear here.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="647" />
+      <source>Device: {0} — iOS {1} ({2}).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="464" />
-      <source>Device present, but it is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="473" />
-      <source>Choose a theme first.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="478" />
-      <source>No trusted iPhone is listed. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, then wait for it to appear.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="485" />
-      <source>This device is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="491" />
-      <source>A write is already running.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="362" />
-      <source>Invalid Theme</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="409" />
-      <source>{0} key images{1}</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="457" />
-      <source>Device: {0} — iOS {1} ({2}). This computer is trusted by it, so the write runs immediately — no “Trust This Computer” pop-up will appear.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="461" />
+      <location filename="../../gui/ios/passcode_theme.py" line="648" />
       <source>iPhone</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="528" />
+      <location filename="../../gui/ios/passcode_theme.py" line="660" />
+      <source>No trusted iPhone connected. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, and wait for it to appear here.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="667" />
+      <source>Checking whether this computer is trusted — live, on the device…</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="700" />
+      <source>Trust status shown from the last device scan (cached) — the device could not be reached for a live trust check, so this may be out of date.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="745" />
+      <source>Choose a theme first.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="750" />
+      <source>No trusted iPhone is listed. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, then wait for it to appear.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="757" />
+      <source>This device is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="763" />
+      <source>A write is already running.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="560" />
+      <source>Invalid Theme</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="607" />
+      <source>{0} key images{1}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="718" />
+      <source>This computer is trusted by it (checked live just now), so the write runs immediately — no “Trust This Computer” pop-up will appear.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="725" />
+      <source>This computer is NOT trusted by it (checked live just now). Unlock the iPhone and tap “Trust This Computer”, then reopen this page.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="736" />
+      <source>Device present, but it is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="801" />
       <source>Passcode Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="106" />
+      <location filename="../../gui/ios/passcode_theme.py" line="194" />
       <source>Staged {0} key files, {1} targets</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="112" />
+      <location filename="../../gui/ios/passcode_theme.py" line="203" />
       <source>Step 1/3 — Trust check: opening a device session. If this computer isn't trusted yet, unlock your iPhone and tap “Trust This Computer” now.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="158" />
-      <source>Wrote {0} file(s) to the device.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="285" />
+      <source>Nothing was written: the device rejected the AirLift session. Unlock the iPhone, keep it awake, open Apple Books once, and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="125" />
+      <location filename="../../gui/ios/passcode_theme.py" line="216" />
       <source>Step 2/3 — Device trust confirmed; staging the theme…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="135" />
-      <source>Step 3/3 — Done.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="244" />
+      <source>Step 3/3 — Finishing…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="139" />
+      <location filename="../../gui/ios/passcode_theme.py" line="248" />
       <source>The device is locked. Unlock your iPhone, then tap “Trust This Computer” when the dialog appears and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="144" />
+      <location filename="../../gui/ios/passcode_theme.py" line="253" />
       <source>You declined the trust request on the device. Connect your iPhone, tap “Trust This Computer” and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="149" />
+      <location filename="../../gui/ios/passcode_theme.py" line="258" />
       <source>The device did not confirm this computer as trusted — the Apple® sync service (ATC) refuses an untrusted host and the write would fail. Unlock your iPhone and tap “Trust This Computer”, then try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="162" />
-      <source>{0} file(s) skipped — they already exist (AirLift only writes new names). Remove the old keypad cache first to replace an existing theme.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="281" />
+      <source>Wrote {0} file(s) to the device.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="121" />
+      <location filename="../../gui/ios/passcode_theme.py" line="305" />
+      <source>Partially written: {0} of {1} file(s) reached the device; {2} could not be written{3}. A file that already exists on the device cannot be overwritten by AirLift, and a dropped or rejected session fails the same way — remove the old keypad cache to replace an existing theme, or reconnect and retry.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="212" />
       <source>the iPhone did not confirm this computer as trusted — tap “Trust This Computer” on the device and try again</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="529" />
+      <location filename="../../gui/ios/passcode_theme.py" line="290" />
+      <source>Nothing was written: all {0} file write(s) failed. Reconnect the iPhone and try again. If this theme is already on the device, remove the old keypad cache first — AirLift cannot overwrite existing files.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="303" />
+      <source> ({0})</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="802" />
       <source>Apply failed:
 
 {0}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="130" />
+      <location filename="../../gui/ios/passcode_theme.py" line="221" />
       <source>Writing {0} files to {1}…</source>
       <translation type="unfinished" />
     </message>
@@ -5525,7 +5737,7 @@ AirLift only creates NEW files on the device: re-applying the same theme is a no
   <context>
     <name>PBHelpDialog</name>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="-108" />
+      <location filename="../../gui/dialogs/dialogs.py" line="-129" />
       <source>PosterBoard Info</source>
       <translation>Информация по PosterBoard</translation>
     </message>
@@ -5559,7 +5771,7 @@ or you've reached the maximum amount of wallpapers (15) and have to wipe them.</
   <context>
     <name>QCoreApplication</name>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="+322" />
+      <location filename="../../gui/ios/posterboard.py" line="+333" />
       <location filename="../../gui/pages/main/home.py" line="+157" />
       <source>Please connect a device.</source>
       <translation>Пожалуйста, подключите устройство.</translation>
@@ -5570,7 +5782,7 @@ or you've reached the maximum amount of wallpapers (15) and have to wipe them.</
       <translation>Видео должно содержать менее {0} кадров, чтобы можно было воспроизводить его в цикле. Уменьшите частоту кадров или сократите длительность видео.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="+97" />
+      <location filename="../../devicemanagement/device_manager.py" line="+100" />
       <source>Find My must be disabled in order to use this tool.</source>
       <translation>Чтобы использовать этот инструмент, необходимо отключить функцию «Найти iPhone».</translation>
     </message>
@@ -5580,22 +5792,20 @@ or you've reached the maximum amount of wallpapers (15) and have to wipe them.</
       <translation>Отключите "Локатор" в настройках (Apple ID -&gt; Локатор) и попробуйте снова.</translation>
     </message>
     <message>
-      <location line="+2" />
       <source>Nugget cannot be used on this device. Click Show Details for more info.</source>
-      <translation>Nugget не может быть использован на этом устройстве. Нажмите «Показать подробности» для получения дополнительной информации.</translation>
+      <translation type="vanished">Nugget не может быть использован на этом устройстве. Нажмите «Показать подробности» для получения дополнительной информации.</translation>
     </message>
     <message>
-      <location line="+1" />
       <source>Your device is managed and MDM backup encryption is on. This must be turned off in order for Nugget to work. Please do not use Nugget on your school/work device!</source>
-      <translation>Ваше устройство находится под управлением, и включено шифрование резервных копий MDM. Для работы Nugget необходимо отключить эту функцию. Пожалуйста, не используйте Nugget на устройствах, принадлежащих школе или работе!</translation>
+      <translation type="vanished">Ваше устройство находится под управлением, и включено шифрование резервных копий MDM. Для работы Nugget необходимо отключить эту функцию. Пожалуйста, не используйте Nugget на устройствах, принадлежащих школе или работе!</translation>
     </message>
     <message>
-      <location line="+2" />
+      <location line="+15" />
       <source>The session was terminated. Refresh the device list and try again.</source>
       <translation>Сеанс был прерван. Обновите список устройств и повторите попытку.</translation>
     </message>
     <message>
-      <location line="+2" />
+      <location line="-3" />
       <source>Device is password protected! You must trust the computer on your device.</source>
       <translation>Устройство защищено паролем! Вы должны довериться компьютеру на своем устройстве.</translation>
     </message>
@@ -5605,12 +5815,11 @@ or you've reached the maximum amount of wallpapers (15) and have to wipe them.</
       <translation>Разблокируйте устройство. Во всплывающем окне нажмите «Доверять», введите пароль, а затем повторите попытку.</translation>
     </message>
     <message>
-      <location line="+3" />
       <source>Device failed in sending files. The file list is possibly corrupted or has duplicates. Click Show Details for more info.</source>
-      <translation>Устройство не смогло отправить файлы. Возможно, список файлов поврежден или содержит дубликаты. Нажмите «Показать подробности» для получения дополнительной информации.</translation>
+      <translation type="vanished">Устройство не смогло отправить файлы. Возможно, список файлов поврежден или содержит дубликаты. Нажмите «Показать подробности» для получения дополнительной информации.</translation>
     </message>
     <message>
-      <location line="+3" />
+      <location line="+35" />
       <source>Access denied while sending files.</source>
       <translation>Отказано в доступе при отправке файлов.</translation>
     </message>
@@ -5624,7 +5833,7 @@ You can enable this at the bottom of Settings &gt; Privacy &amp; Security &gt; D
 Его можно включить внизу: Настройки &gt; Конфиденциальность и безопасность &gt; Режим разработчика на вашем iPhone или iPad.</translation>
     </message>
     <message>
-      <location line="+124" />
+      <location line="+316" />
       <source>Getting the device list timed out.</source>
       <translation type="unfinished" />
     </message>
@@ -5689,7 +5898,7 @@ Unlock your device. On the popup, click "Trust", enter your password, then try a
       <translation>Если эта ошибка продолжает появляться, попробуйте использовать другой кабель или порт.</translation>
     </message>
     <message>
-      <location line="+107" />
+      <location line="+108" />
       <source>Pairing Reset</source>
       <translation>Сброс сопряжения</translation>
     </message>
@@ -5726,17 +5935,38 @@ WorkSlop Desktop supports iOS 16.0 -&gt; 27.x (detected from the device over the
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+28" />
+      <location line="+24" />
+      <source>MobileGestalt apply blocked by HotLoad safety rules: </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+53" />
+      <source>MobileGestalt apply blocked by HotLoad safety rules: every enabled MobileGestalt tweak is flagged for this device. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+4" />
       <source>No MobileGestalt tweaks are enabled.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+24" />
+      <location line="+49" />
       <source>Applying MobileGestalt tweaks...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+235" />
+      <location line="+260" />
+      <source>Apply aborted: the protective backup could not be created (not enough disk space) and no confirmation prompt is available. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+4" />
+      <location line="+26" />
+      <source>Apply Aborted</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="-22" />
       <source>Not Enough Disk Space</source>
       <translation type="unfinished" />
     </message>
@@ -5749,7 +5979,12 @@ Continue anyway WITHOUT data protection?
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+419" />
+      <location line="+15" />
+      <source>Apply aborted: the protective backup could not be created (not enough disk space), and you chose not to continue without data protection. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+480" />
       <source>Backing up device...</source>
       <translation type="unfinished" />
     </message>
@@ -5784,13 +6019,18 @@ Continue anyway WITHOUT data protection?
       <translation>Сохранение базы данных PosterBoard...</translation>
     </message>
     <message>
-      <location line="-244" />
+      <location line="+1548" />
+      <source>Reset finished, but some items were skipped:</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="-1792" />
       <location line="+249" />
       <source>PosterBoard database backed up successfully.</source>
       <translation>База данных PosterBoard успешно сохранена.</translation>
     </message>
     <message>
-      <location line="+6" />
+      <location line="+4" />
       <source>Warning: could not back up PosterBoard database — device is locked. Please unlock your device and try again.</source>
       <translation>Внимание: не удалось сохранить базу данных PosterBoard — устройство заблокировано. Разблокируйте устройство и попробуйте снова.</translation>
     </message>
@@ -5800,79 +6040,28 @@ Continue anyway WITHOUT data protection?
       <translation>Внимание: не удалось автоматически сохранить базу данных PosterBoard.</translation>
     </message>
     <message>
-      <location line="+42" />
-      <source>Liquid Glass Disable (Beta 1): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+24" />
-      <location line="+129" />
+      <location line="+68" />
       <source>Reading the device's .GlobalPreferences.plist...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-106" />
-      <source>Liquid Glass Disable (Beta 1): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+23" />
-      <source>Liquid Glass Disable (Beta 1): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+53" />
-      <source>Squair Protocol (Test): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+46" />
-      <source>Squair Protocol (Test): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+16" />
-      <source>Squair Protocol (Test): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+65" />
+      <location line="+234" />
       <source>Restoring full backup... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+36" />
-      <source>Liquid Glass Disable (Beta 1): the verification gate failed, so the apply was cancelled and nothing was written:
-</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+46" />
-      <source>Liquid Glass Disable (Beta 1): no saved original .GlobalPreferences.plist for this device, so there is nothing safe to roll back to. The original is saved automatically before the first G1 apply.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+10" />
-      <source>Liquid Glass Disable (Beta 1): the saved original .GlobalPreferences.plist is unreadable, so it was NOT written back.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+30" />
-      <source>Squair Protocol (Test): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location line="+37" />
+      <location line="+173" />
       <source>Liquid Glass Disable (Beta 1): unknown rollback route.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+422" />
+      <location line="-1439" />
+      <location line="+1828" />
       <source>Skipped HotLoad-flagged tweaks: </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+208" />
+      <location line="+209" />
       <source>Backup encryption is enabled on your iPhone.
 
 WorkSlop Desktop needs to temporarily disable it to apply tweaks safely.
@@ -5885,17 +6074,122 @@ Tip: Option 1 is simpler if you don't know your backup password.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="-182" />
+      <location line="-183" />
       <source>Skipped (needs BookRestore, not supported by this fork): </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+31" />
+      <location line="-2709" />
+      <source>while sending %1 file(s) to the device</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+2" />
+      <source>during the restore</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+3" />
+      <source>The connection to the device was terminated </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+2" />
+      <source>. The device may have disconnected or stalled. Check the USB cable, keep the device unlocked, and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+8" />
+      <source>Could not start the service "%1" on the device.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>Unlock the device, make sure it is trusted, and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+5" />
+      <source>Device not found: %1</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1" />
+      <source>The device disconnected or never appeared. Check the USB cable and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+58" />
+      <source>Could not read the device's iOS version during %1 — the device may have disconnected. Reconnect the device, keep it unlocked, and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+1777" />
+      <source>Lock Screen Keys (Test): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+39" />
+      <source>Lock Screen Keys (Test): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+16" />
+      <source>Lock Screen Keys (Test): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+55" />
+      <source>Liquid Glass (Latest): no device is connected, so the device's own preference files cannot be read. Connect the device and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+30" />
+      <source>Reading the device's preference files...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+12" />
+      <source>Liquid Glass (Latest): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+5" />
+      <source>Liquid Glass (Latest): the device's own .GlobalPreferences.plist could not be read, and it is a required merge base. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+14" />
+      <source>Liquid Glass (Latest): the %1 read from the device could not be parsed (%2), so it was NOT written. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+22" />
+      <source>Liquid Glass (Latest): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+131" />
+      <source>Lock Screen Keys (Test): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+51" />
+      <source>Liquid Glass (Latest): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+11" />
+      <source>Liquid Glass (Latest): the %1 read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+497" />
       <source>Note: MobileGestalt tweaks were skipped (not supported on this iOS version).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+135" />
+      <location line="+136" />
       <source>Backup encryption is enabled. We'll use it for the restore.</source>
       <translation>Шифрование резервных копий включено. Мы будем использовать его для восстановления.</translation>
     </message>
@@ -5905,25 +6199,25 @@ Tip: Option 1 is simpler if you don't know your backup password.</source>
       <translation>Введите пароль резервной копии iTunes/Finder:</translation>
     </message>
     <message>
-      <location line="-1195" />
-      <location line="+1199" />
+      <location line="-1185" />
+      <location line="+1189" />
       <source>Backup Encryption Password</source>
       <translation>Пароль шифрования резервной копии</translation>
     </message>
     <message>
-      <location line="-1973" />
+      <location line="-2150" />
       <source>MobileGestalt tweaks are not supported on this device.
 
 </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+1783" />
+      <location line="+1959" />
       <source>Skipped unsupported/removed tweaks: </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+191" />
+      <location line="+192" />
       <source>Enter your iTunes/Finder backup password (required for encrypted restore):</source>
       <translation>Введите пароль резервной копии iTunes/Finder (требуется для зашифрованного восстановления):</translation>
     </message>
@@ -5960,9 +6254,9 @@ GoldenNugget нужно временно отключить его, чтобы �
 Совет: вариант 1 проще, если вы не знаете пароль резервной копии.</translation>
     </message>
     <message>
-      <location line="-794" />
-      <location line="+72" />
-      <location line="+919" />
+      <location line="-776" />
+      <location line="+47" />
+      <location line="+897" />
       <source>No device connected.</source>
       <translation>Устройство не подключено.</translation>
     </message>
@@ -5971,11 +6265,10 @@ GoldenNugget нужно временно отключить его, чтобы �
       <translation type="vanished">Сохранение исходных plist-файлов...</translation>
     </message>
     <message>
-      <location line="-2056" />
+      <location line="-2118" />
       <location line="+32" />
-      <location line="+1179" />
-      <location line="+42" />
-      <location line="+707" />
+      <location line="+1226" />
+      <location line="+75" />
       <source>Your device will now restart.
 
 Remember to turn Find My back on!</source>
@@ -5984,37 +6277,34 @@ Remember to turn Find My back on!</source>
 Не забудьте снова включить функцию «Найти iPhone»!</translation>
     </message>
     <message>
-      <location line="-1958" />
+      <location line="-1331" />
       <location line="+32" />
-      <location line="+1181" />
-      <location line="+42" />
-      <location line="+707" />
+      <location line="+1228" />
+      <location line="+75" />
       <source>Please restart your device to see changes.</source>
       <translation>Пожалуйста, перезагрузите устройство, чтобы увидеть изменения.</translation>
     </message>
     <message>
-      <location line="-1961" />
+      <location line="-1334" />
       <location line="+32" />
-      <location line="+1182" />
-      <location line="+42" />
-      <location line="+707" />
+      <location line="+1229" />
+      <location line="+75" />
       <source>All done! </source>
       <translation>Все готово! </translation>
     </message>
     <message>
-      <location line="-1963" />
+      <location line="-1336" />
       <location line="+32" />
-      <location line="+186" />
-      <location line="+997" />
-      <location line="+42" />
-      <location line="+12" />
-      <location line="+695" />
-      <location line="+362" />
+      <location line="+223" />
+      <location line="+1007" />
+      <location line="+75" />
+      <location line="+28" />
+      <location line="+1075" />
       <source>Success!</source>
       <translation>Успешно!</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="-151" />
+      <location filename="../../gui/ios/home.py" line="-150" />
       <location filename="../../gui/pages/main/home.py" line="+19" />
       <source>Supported!</source>
       <translation>Поддерживается!</translation>
@@ -6035,12 +6325,12 @@ Remember to turn Find My back on!</source>
       <translation type="vanished">Неправильный тип файла</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="+74" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="+77" />
       <source>Warning</source>
       <translation>Предупреждение</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="+37" />
+      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="+43" />
       <source>Error</source>
       <translation>Ошибка</translation>
     </message>
@@ -6050,8 +6340,18 @@ Remember to turn Find My back on!</source>
       <translation>Не получилось загрузить шаблон</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="-2638" />
-      <location filename="../../gui/ios/home.py" line="-65" />
+      <location line="+84" />
+      <source>Skipped corrupt template: {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+5" />
+      <source>Skipped corrupt template(s): {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="-2839" />
+      <location filename="../../gui/ios/home.py" line="-72" />
       <location line="+2" />
       <source>No Device</source>
       <translation>Нет устройств</translation>
@@ -6065,7 +6365,7 @@ GoldenNugget only supports iOS 26.2 and newer. Please use the original Nugget fo
 GoldenNugget поддерживает только iOS 26.2 и новее. Для iOS 26.1 и старше используйте оригинальный Nugget.</translation>
     </message>
     <message>
-      <location line="+355" />
+      <location line="+442" />
       <source>Restoring to device...{0}{1}</source>
       <translation>Восстановление на устройстве…{0}{1}</translation>
     </message>
@@ -6075,7 +6375,7 @@ GoldenNugget поддерживает только iOS 26.2 и новее. Дл�
       <translation>Резервное копирование устройства... ({0:.1f}%)</translation>
     </message>
     <message>
-      <location line="+26" />
+      <location line="+36" />
       <source>Applying changes to files...</source>
       <translation>Применяется изменение файлов…</translation>
     </message>
@@ -6110,17 +6410,17 @@ GoldenNugget поддерживает только iOS 26.2 и новее. Дл�
       <translation>Добавляем другие твики…</translation>
     </message>
     <message>
-      <location filename="../../controllers/video_handler.py" line="+89" />
+      <location filename="../../controllers/video_handler.py" line="+113" />
       <source>Creating {0}...</source>
       <translation>Создаем {0}…</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="+1654" />
+      <location filename="../../devicemanagement/device_manager.py" line="+1735" />
       <source>Generating backup...</source>
       <translation>Создание резервной копии...</translation>
     </message>
     <message>
-      <location line="-1766" />
+      <location line="-1857" />
       <location line="+36" />
       <source>DO NOT UNPLUG</source>
       <translation>НЕ ВЫТАСКИВАЙТЕ ПРОВОД</translation>
@@ -6132,7 +6432,7 @@ GoldenNugget поддерживает только iOS 26.2 и новее. Дл�
       <translation>Подготовка к восстановлению...</translation>
     </message>
     <message>
-      <location line="-649" />
+      <location line="-928" />
       <source>You must enable developer mode on your device. You can do it in the Settings app.</source>
       <translation>Вы должны включить режим разработчика на вашем устройстве. Вы можете сделать это в настройках телефона.</translation>
     </message>
@@ -6152,7 +6452,7 @@ GoldenNugget поддерживает только iOS 26.2 и новее. Дл�
       <translation>Выключить</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="+558" />
+      <location filename="../../gui/main_window_mixins.py" line="+576" />
       <source>Abort</source>
       <translation type="unfinished" />
     </message>
@@ -6162,12 +6462,17 @@ GoldenNugget поддерживает только iOS 26.2 и новее. Дл�
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+21" />
+      <location line="+26" />
+      <source>Reset finished — some items were skipped</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location line="+2" />
       <source>Reset complete!</source>
       <translation>Сброс завершён!</translation>
     </message>
     <message>
-      <location line="+0" />
+      <location line="+2" />
       <source>Apply complete!</source>
       <translation>Применение завершено!</translation>
     </message>
@@ -6315,13 +6620,13 @@ GoldenNugget будет перезапущен, чтобы применить и
 {0}</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="+479" />
+      <location filename="../../gui/main_window.py" line="+706" />
       <source>Background device operation</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/thread_workers/apply_worker.py" line="-386" />
-      <location filename="../../restore/restore.py" line="+248" />
+      <location filename="../../restore/restore.py" line="+177" />
       <source>Device stayed locked</source>
       <translation type="unfinished" />
     </message>
@@ -6336,7 +6641,7 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="-682" />
+      <location filename="../../restore/restore.py" line="-717" />
       <source>Device took too long to unlock</source>
       <translation type="unfinished" />
     </message>
@@ -6361,7 +6666,7 @@ Unlock it, enter the passcode, tap "Trust" if the computer trust prompt appears,
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+178" />
+      <location line="+183" />
       <source>The protective backup could not be restored to the iPhone.</source>
       <translation type="unfinished" />
     </message>
@@ -6369,7 +6674,7 @@ Unlock it, enter the passcode, tap "Trust" if the computer trust prompt appears,
       <location line="+2" />
       <source>The device dropped the connection during the data restore.
 
-Your data is not lost — the protective backup taken before the wipe is kept on this computer.
+Your data is not lost — the protective backup taken before the restore is kept on this computer.
 
 A common cause is Find My still being on: iOS refuses to restore a backup while Find My (iCloud ▸ Find My iPhone) is enabled. Turn Find My off (Settings ▸ [your name] ▸ Find My), keep the iPhone unlocked with the screen on, and apply again so the restore can complete.
 
@@ -6377,7 +6682,7 @@ Do not erase the phone or set it up as new — the protective backup on this com
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+376" />
+      <location line="+406" />
       <source>Device locked — cannot restore backup</source>
       <translation type="unfinished" />
     </message>
@@ -6400,7 +6705,7 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="+251" />
+      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="+361" />
       <source>Generating icon themes...</source>
       <translation type="unfinished" />
     </message>
@@ -6415,7 +6720,7 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="+160" />
+      <location filename="../../tweaks/tweak_classes.py" line="+315" />
       <source>Revert RDAR fix</source>
       <translation type="unfinished" />
     </message>
@@ -6435,7 +6740,7 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
       <translation type="unfinished" />
     </message>
     <message>
-      <location line="+137" />
+      <location line="+142" />
       <source>Failed to enable iPadOS:</source>
       <translation type="unfinished" />
     </message>
@@ -6473,8 +6778,8 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
   <context>
     <name>QtCore.QCoreApplication</name>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="-74" />
-      <location line="+92" />
+      <location filename="../../gui/ios/posterboard.py" line="-77" />
+      <location line="+95" />
       <source>Error!</source>
       <translation>Ошибка!</translation>
     </message>
@@ -6499,7 +6804,7 @@ This is for your safety. Please apply the rest separately.</source>
       <translation type="vanished">Текущее видео: {0}</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="+61" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="+64" />
       <source>Invalid config.json path in template.</source>
       <translation type="unfinished" />
     </message>
@@ -6519,14 +6824,14 @@ This is for your safety. Please apply the rest separately.</source>
       <translation>Этот config требует версию Nugget новее.</translation>
     </message>
     <message>
-      <location line="+11" />
+      <location line="+18" />
       <source>This template requires iOS {0}.
 Your iOS version (iOS {1}) is too outdated!</source>
       <translation>Этот шаблон требует iOS {0}.
 Ваша версия iOS (iOS{1}) слишком старая!</translation>
     </message>
     <message>
-      <location line="+4" />
+      <location line="+7" />
       <source>This template requires iOS {0}.
 Your iOS version (iOS {1}) is too new!</source>
       <translation>Этот шаблон требует iOS {0}.
@@ -6561,7 +6866,7 @@ No selected file for required option</source>
   <context>
     <name>ResetDialog</name>
     <message>
-      <location filename="../../gui/dialogs/reset_dialog.py" line="+19" />
+      <location filename="../../gui/dialogs/reset_dialog.py" line="+23" />
       <source>Reset Page Tweaks</source>
       <translation>Cбросить настройки страницы</translation>
     </message>
@@ -6574,7 +6879,7 @@ No selected file for required option</source>
   <context>
     <name>TextInputDialog</name>
     <message>
-      <location filename="../../gui/ios/components.py" line="-288" />
+      <location filename="../../gui/ios/components.py" line="-296" />
       <source>Enter value...</source>
       <translation>Введите значение...</translation>
     </message>
@@ -6582,7 +6887,7 @@ No selected file for required option</source>
   <context>
     <name>UpdateAppDialog</name>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="+247" />
+      <location filename="../../gui/dialogs/dialogs.py" line="+269" />
       <source>Update Available</source>
       <translation>Доступно обновление</translation>
     </message>

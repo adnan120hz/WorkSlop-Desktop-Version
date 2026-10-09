@@ -1,8 +1,11 @@
 import base64
 import json
+import logging
 import os
 import time
 from typing import Optional
+
+logger = logging.getLogger("WorkSlop.preset_manager")
 
 from PySide6.QtCore import QStandardPaths
 
@@ -11,7 +14,10 @@ from src.tweaks import tweak_loader
 from src.tweaks.tweaks import tweaks
 from src.tweaks.tweak_classes import (
     BasicPlistTweak, AdvancedPlistTweak,
+    MobileGestaltTweak, MobileGestaltPickerTweak,
 )
+from src.tweaks.posterboard.posterboard_tweak import PosterboardTweak
+from src.tweaks.posterboard.pb_config_item import PBConfigItem
 from src.tweaks.posterboard.template_options.templates_tweak import TemplatesTweak
 from src.tweaks.status_bar.status_bar_tweak import StatusBarTweak
 from src.tweaks.status_bar.status_setter import _deserialize_override, _serialize_override
@@ -26,6 +32,17 @@ from src.tweaks.capabilities import (
 PRESETS_DIR_NAME = "Presets"
 PRESET_VERSION = 2
 
+
+class UnsupportedPresetVersionError(ValueError):
+    """A preset file uses a schema version this build cannot read.
+
+    Raised by the load/import validation (Fix Audit 43) so callers get a
+    message that names the unsupported preset version instead of the old
+    silent acceptance of v1 / pre-metadata presets. ``load_preset`` catches
+    it, records it in ``last_error`` and returns False, so GUI callers show
+    their normal failure dialog instead of crashing."""
+
+
 class PresetManager:
     def __init__(self):
         base_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
@@ -37,6 +54,10 @@ class PresetManager:
         # Structured record of the tweaks the last load skipped (and why),
         # filled by _apply(); the UI can surface a concise summary from it.
         self.last_skipped: list[dict] = []
+        # Human-readable reason the last load/import failed (Fix Audit 43:
+        # names the unsupported preset version), for callers that only get
+        # a bool back from load_preset().
+        self.last_error: Optional[str] = None
 
     def get_preset_path(self, name: str) -> str:
         safe_name = self._sanitize_name(name)
@@ -163,19 +184,67 @@ class PresetManager:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"Failed to save preset: {e}")
+            logger.error("Failed to save preset: %s", e)
             return False
+
+    @staticmethod
+    def _data_preset_version(data) -> Optional[int]:
+        """Schema version recorded in *data*, or None when absent/invalid."""
+        if not isinstance(data, dict):
+            return None
+        meta = data.get("metadata")
+        if not isinstance(meta, dict):
+            return None
+        raw = meta.get("version")
+        if raw is None:
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _validate_preset_version(cls, data) -> None:
+        """Reject legacy preset schemas (Fix Audit 43).
+
+        v1 / pre-metadata presets (no ``metadata.version`` field) used to be
+        accepted silently; they must now fail loudly with the unsupported
+        version named, while the current format (PRESET_VERSION) passes."""
+        version = cls._data_preset_version(data)
+        if version is None:
+            raise UnsupportedPresetVersionError(
+                "Unsupported preset version: the preset has no version "
+                "field (missing metadata.version); this build only "
+                f"supports preset version {PRESET_VERSION}. Re-save the "
+                "preset with this version of WorkSlop Desktop.")
+        if version != PRESET_VERSION:
+            raise UnsupportedPresetVersionError(
+                f"Unsupported preset version {version}: this build only "
+                f"supports preset version {PRESET_VERSION}. Re-save the "
+                "preset with this version of WorkSlop Desktop.")
 
     def load_preset(self, name: str, device_build: str = "",
                     device_version: str = "", device_model: str = "") -> bool:
+        self.last_error = None
         file_path = self.get_preset_path(name)
         if not os.path.isfile(file_path):
+            self.last_error = f"Preset not found: {name}"
             return False
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
-            print(f"Failed to read preset: {e}")
+            self.last_error = str(e)
+            logger.error("Failed to read preset: %s", e)
+            return False
+        try:
+            self._validate_preset_version(data)
+        except UnsupportedPresetVersionError as e:
+            # Surface the version message to the caller via last_error and
+            # the log; returning False keeps every existing GUI caller on
+            # its normal failure dialog instead of crashing (Fix Audit 43).
+            self.last_error = str(e)
+            logger.error("Failed to load preset: %s", e)
             return False
         return self._apply(data, device_build=device_build,
                            device_version=device_version,
@@ -188,7 +257,7 @@ class PresetManager:
                 os.remove(file_path)
                 return True
         except Exception as e:
-            print(f"Failed to delete preset: {e}")
+            logger.error("Failed to delete preset: %s", e)
         return False
 
     ## EXPORT / IMPORT
@@ -217,7 +286,7 @@ class PresetManager:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"Failed to export preset: {e}")
+            logger.error("Failed to export preset: %s", e)
             return False
 
     def build_export_data(self, include: Optional[list] = None) -> Optional[dict]:
@@ -229,6 +298,11 @@ class PresetManager:
         data = self._serialize_subset(include)
         if data is None:
             return None
+        # Stamp the current schema version so an export built from live
+        # state is loadable again (Fix Audit 43 rejects version-less files).
+        metadata = data.setdefault("metadata", {})
+        if isinstance(metadata, dict):
+            metadata["version"] = PRESET_VERSION
         data["exported"] = True
         data["exported_at"] = int(time.time())
         return data
@@ -252,6 +326,10 @@ class PresetManager:
 
     def _serialize_subset(self, include: Optional[list] = None) -> Optional[dict]:
         """Serialize the current tweaks filtered to ``include`` (TweakIDs/names)."""
+        # Audit 29: same Risky registration as _serialize(), so a partial
+        # export that names DisableOTAFile/CustomResolution (or a full
+        # export with include=None) cannot silently drop them.
+        tweak_loader.load_risky()
         if include is None:
             include = list(tweaks.keys())
         include_names = set()
@@ -262,12 +340,10 @@ class PresetManager:
         for key, tweak in tweaks.items():
             if key.name not in include_names:
                 continue
-            if key == TweakID.PosterBoard:
-                continue
             try:
                 tweak_data[key.name] = self._serialize_tweak(tweak)
             except Exception as e:
-                print(f"Failed to serialize tweak {key}: {e}")
+                logger.error("Failed to serialize tweak %s: %s", key, e)
 
         if not tweak_data:
             return None
@@ -284,7 +360,13 @@ class PresetManager:
             # Validate structure
             if "tweaks" not in data and "metadata" not in data:
                 return False, "Invalid preset format"
-            
+            # Fix Audit 43: legacy (v1 / pre-metadata) files are rejected
+            # with the unsupported version named, never imported silently.
+            try:
+                self._validate_preset_version(data)
+            except UnsupportedPresetVersionError as e:
+                return False, str(e)
+
             # Determine name
             if new_name is None:
                 meta = data.get("metadata", {})
@@ -316,21 +398,29 @@ class PresetManager:
             
             return True, name
         except Exception as e:
-            print(f"Failed to import preset: {e}")
+            logger.error("Failed to import preset: %s", e)
             return False, str(e)
 
     ## SERIALIZATION
     def _serialize(self) -> dict:
+        # Audit 29: ensure the Risky family exists before serializing, on
+        # the same basis the GUI loads it (load_risky() in
+        # RiskySection.refresh()). Without this, a save/AutoSave/CLI save
+        # from a session that never opened the Risky page omits
+        # DisableOTAFile/CustomResolution entirely, so they can never
+        # round-trip. This only registers the instances; it does not
+        # enable anything or bypass any deliverability gate.
+        tweak_loader.load_risky()
         tweak_data = {}
         for key, tweak in tweaks.items():
-            # PosterBoard is excluded from presets: wallpapers are
-            # device-specific and heavy, so they must not travel with a preset.
-            if key == TweakID.PosterBoard:
-                continue
+            # Fix Audit 36/18: PosterBoard (selected tendies/templates/video)
+            # and the MobileGestalt picker choices ride the same preset
+            # serializer as every other tweak — only file *paths* are
+            # stored, so presets stay light and device-independent.
             try:
                 tweak_data[key.name] = self._serialize_tweak(tweak)
             except Exception as e:
-                print(f"Failed to serialize tweak {key}: {e}")
+                logger.error("Failed to serialize tweak %s: %s", key, e)
 
         return {
             "tweaks": tweak_data
@@ -342,6 +432,38 @@ class PresetManager:
             # Store only what the UI exposes / what would actually apply.
             data["value"] = tweak._filter_keys(tweak.value)
         elif isinstance(tweak, BasicPlistTweak):
+            data["value"] = tweak.value
+            # RdarFixTweak (a BasicPlistTweak) keeps its real choice in
+            # di_type, which follows the Dynamic Island picker (Audit 18).
+            if hasattr(tweak, "di_type"):
+                data["di_type"] = tweak.di_type
+        elif isinstance(tweak, PosterboardTweak):
+            # Fix Audit 36: the PosterBoard selection (tendies, video
+            # wallpaper, delivery mode, saved configuration IDs) persists
+            # through this same serializer. Paths only — the payload files
+            # themselves never travel with a preset.
+            data["tendies"] = [t.path for t in tweak.tendies]
+            data["video_thumbnail"] = tweak.videoThumbnail
+            data["video_file"] = tweak.videoFile
+            data["loop_video"] = bool(tweak.loop_video)
+            data["reverse_video"] = bool(tweak.reverse_video)
+            data["use_foreground"] = bool(tweak.use_foreground)
+            data["use_configs"] = bool(tweak.use_configs)
+            data["calculation_mode"] = tweak.calculationMode
+            data["disabled"] = bool(tweak.disabled)
+            data["saved_config_ids"] = [
+                {"uuid": item.uuid, "extension": item.extension,
+                 "set_selected": bool(getattr(item, "set_selected", False))}
+                for item in tweak.config_manager.saved_items
+            ]
+        elif isinstance(tweak, MobileGestaltPickerTweak):
+            # Fix Audit 18: a picker choice is an index into the tweak's
+            # value list; without it only "enabled" survived a restart and
+            # the dropdown silently fell back to the first option.
+            data["selected_option"] = int(tweak.selected_option)
+        elif isinstance(tweak, MobileGestaltTweak):
+            # Fix Audit 18: plain MobileGestalt tweaks (e.g. ModelName)
+            # keep their user value here; key/subkey are definitions.
             data["value"] = tweak.value
         elif isinstance(tweak, TemplatesTweak):
             data["templates"] = [t.path for t in tweak.templates]
@@ -370,6 +492,9 @@ class PresetManager:
     def _apply(self, data: dict, device_build: str = "",
                device_version: str = "", device_model: str = "") -> bool:
         try:
+            # Fix Audit 43: never apply a legacy-schema preset, even when
+            # _apply is reached without load_preset's validation.
+            self._validate_preset_version(data)
             self.last_skipped = []
             decision = mobilegestalt_decision(device_build, device_version)
             # make sure every tweak exists before applying
@@ -394,10 +519,6 @@ class PresetManager:
                     # below records them as REMOVED_TWEAK and never assigns
                     # their state.
                     key = canonical_tweak_id(raw_key)
-                    # PosterBoard is excluded from presets (see _serialize); skip
-                    # it on load too so old presets cannot restore wallpapers.
-                    if key == TweakID.PosterBoard:
-                        continue
                     if name in hidden_names or key.name in hidden_names:
                         self.last_skipped.append({
                             "tweak_id": key.name,
@@ -437,17 +558,27 @@ class PresetManager:
                     try:
                         self._apply_tweak(target, tweak_data, tweak_id=key)
                     except Exception as e:
-                        print(f"Failed to apply tweak {name}: {e}")
+                        logger.error("Failed to apply tweak %s: %s", name, e)
 
             return True
         except Exception as e:
-            print(f"Failed to apply preset: {e}")
+            logger.error("Failed to apply preset: %s", e)
             return False
 
     def _load_all_tweaks(self, decision=None):
         # idempotent: the loaders return early if the tweaks already exist
         tweak_loader.load_plist_tweaks()
         tweak_loader.load_daemons()
+        # Audit 29: the GUI registers the Risky family via load_risky()
+        # (RiskySection.refresh() and the apply summary do this
+        # unconditionally); the preset loader must do the same, otherwise
+        # DisableOTAFile/CustomResolution have no instance here, _apply
+        # finds target is None and silently drops them, and a later save
+        # rewrites the preset without them. Registration only creates the
+        # (disabled-by-default) instances — the Risky gate is untouched:
+        # _apply still runs tweak_deliverability + the HotLoad-hidden
+        # check before any state is assigned, exactly as before.
+        tweak_loader.load_risky()
         if decision is not None and decision.supported:
             tweak_loader.load_mobilegestalt(decision=decision)
         # Loads the non-gestalt eligibility tweaks on any device; the
@@ -456,6 +587,21 @@ class PresetManager:
         tweak_loader.load_eligibility(None, decision)
 
     def _apply_tweak(self, tweak, data: dict, tweak_id=None):
+        # Fix Audit 12: a preset that asks to disable Voice Control is
+        # neutralised here — _filter_keys() below already drops the
+        # blocked keys (never_enable), so they can never reach the tweak
+        # value or the apply payload; record the skip honestly instead
+        # of silently pretending the whole preset applied as stored.
+        if isinstance(tweak, AdvancedPlistTweak) and isinstance(data.get("value"), dict):
+            from src.tweaks.daemons_tweak import (
+                BLOCKED_DAEMON_KEYS, VOICE_CONTROL_BLOCK_REASON)
+            if any(data["value"].get(k) for k in BLOCKED_DAEMON_KEYS):
+                self.last_skipped.append({
+                    "tweak_id": tweak_id.name if tweak_id is not None else "Daemons",
+                    "requested_enabled": True,
+                    "reason_code": "VOICE_CONTROL_BLOCKED",
+                    "reason": VOICE_CONTROL_BLOCK_REASON,
+                })
         if "enabled" in data:
             enabled = bool(data["enabled"])
             if tweak_id is not None:
@@ -476,12 +622,71 @@ class PresetManager:
         elif isinstance(tweak, BasicPlistTweak):
             if "value" in data:
                 tweak.value = data["value"]
+            # RdarFixTweak: restore the picker-driven di_type (Audit 18).
+            if "di_type" in data and hasattr(tweak, "di_type"):
+                try:
+                    tweak.di_type = int(data["di_type"])
+                except (TypeError, ValueError):
+                    pass
+        elif isinstance(tweak, PosterboardTweak):
+            self._apply_posterboard(tweak, data)
+        elif isinstance(tweak, MobileGestaltPickerTweak):
+            # Fix Audit 18: restore the picker index through the tweak's own
+            # setter so enabled state and selection stay consistent.
+            if "selected_option" in data:
+                try:
+                    idx = int(data["selected_option"])
+                except (TypeError, ValueError):
+                    idx = 0
+                if tweak.value:
+                    idx = max(0, min(idx, len(tweak.value) - 1))
+                tweak.set_selected_option(
+                    idx, is_enabled=bool(data.get("enabled", tweak.enabled)))
+        elif isinstance(tweak, MobileGestaltTweak):
+            if "value" in data:
+                tweak.value = data["value"]
         elif isinstance(tweak, TemplatesTweak):
             self._apply_templates(tweak, data)
         elif isinstance(tweak, StatusBarTweak):
             self._apply_status_bar(tweak, data)
         elif isinstance(tweak, IconThemesTweak):
             self._apply_icon_themes(tweak, data)
+
+    def _apply_posterboard(self, tweak: PosterboardTweak, data: dict):
+        """Restore the PosterBoard selection saved by _serialize_tweak
+        (Fix Audit 36). Files that disappeared since the save are skipped,
+        never restored as dangling paths."""
+        if "tendies" in data:
+            tweak.tendies = []
+            for path in data.get("tendies") or []:
+                if path and os.path.isfile(path):
+                    try:
+                        tweak.add_tendie(path)
+                    except Exception as e:
+                        logger.error("Failed to restore tendie %s: %s", path, e)
+        for attr, key in (("videoThumbnail", "video_thumbnail"),
+                          ("videoFile", "video_file")):
+            if key in data:
+                path = data.get(key)
+                setattr(tweak, attr,
+                        path if path and os.path.isfile(path) else None)
+        for attr, key in (("loop_video", "loop_video"),
+                          ("reverse_video", "reverse_video"),
+                          ("use_foreground", "use_foreground"),
+                          ("use_configs", "use_configs"),
+                          ("disabled", "disabled")):
+            if key in data:
+                setattr(tweak, attr, bool(data.get(key)))
+        if data.get("calculation_mode") in ("linear", "discrete"):
+            tweak.calculationMode = data["calculation_mode"]
+        if "saved_config_ids" in data:
+            items = []
+            for entry in data.get("saved_config_ids") or []:
+                if isinstance(entry, dict) and entry.get("uuid"):
+                    items.append(PBConfigItem(
+                        entry["uuid"], entry.get("extension", ""),
+                        set_selected=bool(entry.get("set_selected", False))))
+            tweak.config_manager.saved_items = items
 
     def _apply_templates(self, tweak: TemplatesTweak, data: dict):
         if "templates" in data:
@@ -491,7 +696,7 @@ class PresetManager:
                     try:
                         tweak.add_template(path)
                     except Exception as e:
-                        print(f"Failed to add template: {e}")
+                        logger.error("Failed to add template: %s", e)
 
     def _apply_status_bar(self, tweak: StatusBarTweak, data: dict):
         tweak.set_enabled(bool(data.get("enabled", False)))
@@ -506,7 +711,7 @@ class PresetManager:
                 new_overrides = _deserialize_override(raw)
                 tweak.setter.apply_changes(new_overrides)
             except Exception as e:
-                print(f"Failed to restore status bar: {e}")
+                logger.error("Failed to restore status bar: %s", e)
 
     def _apply_icon_themes(self, tweak: IconThemesTweak, data: dict):
         tweak.themes = []

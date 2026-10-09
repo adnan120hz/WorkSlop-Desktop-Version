@@ -23,7 +23,9 @@ Use :func:`install_crash_handler` once at startup and
 :class:`CrashHandlerApp` instead of a bare ``QApplication``.
 """
 
+import re
 import sys
+import threading
 import time
 import traceback
 import logging
@@ -124,13 +126,57 @@ def _classify(exc_type, exc_value) -> dict:
     }
 
 
+# --- Report redaction (Audit 64) -------------------------------------------
+# Crash reports leave the machine (GitHub issue body / clipboard), so device
+# UDIDs and absolute local paths (which embed the OS username) must never go
+# out raw. Everything else — app version, severity, exception text, traceback
+# structure — is safe debug info and stays.
+
+_UDID_PATTERNS = (
+    # Labelled: "UDID: 00008101-…", "udid=abcd…"
+    re.compile(r"(?i)\budid\b\s*[:=]\s*[\"']?[0-9A-Za-z._-]+"),
+    # Modern dashed UDID: 8 hex, dash, 8+ hex (e.g. 00008101-001A2B3C…).
+    re.compile(r"\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{8,16}\b"),
+    # Legacy 40-hex UDID.
+    re.compile(r"\b[0-9A-Fa-f]{40}\b"),
+    # Bare 24–25 hex UDID.
+    re.compile(r"\b[0-9A-Fa-f]{24,25}\b"),
+)
+
+# Absolute paths: Windows drive paths, then Unix paths. The basename is kept
+# (it carries the useful debug signal: which file/line failed) while every
+# directory component — including the username — is dropped.
+_WIN_PATH_RE = re.compile(r"\b[A-Za-z]:[\\/][^\s\"'<>|]+")
+_UNIX_PATH_RE = re.compile(r"(?<![\w.:/])/(?:[^\s\"'<>:/]+/)+[^\s\"'<>]*")
+
+
+def _path_placeholder(match: "re.Match") -> str:
+    raw = match.group(0).rstrip(".,;:)]")
+    base = re.split(r"[/\\]", raw)[-1]
+    return f"<path>/{base}" if base else "<path>"
+
+
+def _redact_sensitive(text: str) -> str:
+    """Strip UDIDs and absolute local paths from outgoing report text."""
+    if not text:
+        return text
+    for pattern in _UDID_PATTERNS:
+        text = pattern.sub("<UDID>", text)
+    text = _WIN_PATH_RE.sub(_path_placeholder, text)
+    text = _UNIX_PATH_RE.sub(_path_placeholder, text)
+    return text
+
+
 def _log_tail_for_report() -> str:
     """Recent session log tail, bounded, with a header line."""
     try:
         tail = get_log_tail(64 * 1024).rstrip("\n")
         if not tail:
             return ""
-        return f"\n\n--- Recent session log ({get_log_path()}) ---\n{tail}"
+        # The log path itself is an absolute path (username included): only
+        # its basename is safe to publish.
+        log_name = os.path.basename(get_log_path() or "session log")
+        return f"\n\n--- Recent session log ({log_name}) ---\n{_redact_sensitive(tail)}"
     except Exception:
         return ""
 
@@ -151,6 +197,8 @@ def _build_issue_body(info: dict, summary: str, traceback_text: str,
         version = str(App_Version)
     except Exception:
         version = "unknown"
+    summary = _redact_sensitive(summary)
+    traceback_text = _redact_sensitive(traceback_text)
     body = (
         "## WorkSlop Desktop Error Report\n\n"
         f"**App version:** {version}\n"
@@ -337,7 +385,7 @@ def show_error_dialog(summary: str, traceback_text: str, info: Optional[dict] = 
     """
     app = QApplication.instance()
     if app is None:
-        print(f"ERROR: {summary}\n{traceback_text}", file=sys.stderr)
+        logger.error("ERROR: %s\n%s", summary, traceback_text)
         return
     dialog = CrashDialog(summary=summary, traceback_text=traceback_text,
                          info=info, backup_path=backup_path, on_restore=on_restore)
@@ -353,8 +401,8 @@ def _show_crash_dialog(summary: str, traceback_text: str, exc_type=None, exc_val
     app = QApplication.instance()
     info = _classify(exc_type, exc_value) if exc_type is not None else None
     if app is None:
-        # No application yet — fall back to printing so nothing is lost.
-        print(f"CRASH: {summary}\n{traceback_text}", file=sys.stderr)
+        # No application yet — fall back to the log so nothing is lost.
+        logger.error("CRASH: %s\n%s", summary, traceback_text)
         return False
     dialog = CrashDialog(summary=summary, traceback_text=traceback_text, info=info)
     dialog.exec()
@@ -403,7 +451,10 @@ def _restart_app():
         from src.utils.restart import restart_app
         restart_app()
     except Exception:
-        pass
+        # Fix Audit 84 (remainder): was a bare ``except: pass`` — a
+        # failed relaunch vanished. Behaviour unchanged (never raise
+        # from the crash path), but the failure is now on the record.
+        logger.warning("Crash handler: relaunch failed", exc_info=True)
 
 
 def _handle_crash(exc_type, exc_value, exc_tb):
@@ -414,7 +465,7 @@ def _handle_crash(exc_type, exc_value, exc_tb):
         restart_requested = _show_crash_dialog(summary, tb, exc_type, exc_value)
     except Exception:
         # Never let the crash handler itself crash the app.
-        print(f"CRASH: {summary}\n{tb}", file=sys.stderr)
+        logger.error("CRASH: %s\n%s", summary, tb)
         _restart_app()
         return
     # HONESTY-AUDIT FIX (#4): the old code relaunched unconditionally after
@@ -432,6 +483,35 @@ def _excepthook(exc_type, exc_value, exc_tb):
         sys.__excepthook__(exc_type, exc_value, exc_tb)
         return
     _handle_crash(exc_type, exc_value, exc_tb)
+
+
+def _thread_excepthook(args):
+    """``threading.excepthook``: worker-thread crashes (Fix Audit 84).
+
+    Threads that died used to print a traceback to stderr and vanish —
+    no session-log trace, no crash report. The crash now leaves a log
+    record naming the thread and is routed into the same safe crash
+    path as main-thread exceptions; ``sys.excepthook`` is untouched.
+    Never raises: a failing handler must not take the process down.
+    """
+    exc_type = args.exc_type
+    exc_value = args.exc_value
+    exc_tb = args.exc_traceback
+    if exc_type is not None and issubclass(exc_type, KeyboardInterrupt):
+        threading.__excepthook__(args)
+        return
+    thread_name = getattr(args.thread, "name", "?") if args.thread else "?"
+    try:
+        summary, tb = _format_error(exc_type, exc_value, exc_tb)
+        logger.error("Uncaught exception in thread %s: %s\n%s",
+                     thread_name, summary, tb)
+    except Exception:
+        pass
+    try:
+        _handle_crash(exc_type, exc_value, exc_tb)
+    except Exception:
+        logger.error("Crash handler: thread crash reporting failed",
+                     exc_info=True)
 
 
 class CrashHandlerApp(QApplication):
@@ -465,7 +545,7 @@ def _detect_desktop() -> str:
 
 
 def print_startup_banner() -> None:
-    """Print a startup info banner to the terminal."""
+    """Log a startup info banner (Fix Audit 85: log, not stdout)."""
     try:
         from src.version import App_Version, App_Build
         version_str = str(App_Version)
@@ -490,12 +570,13 @@ def print_startup_banner() -> None:
     off_build = "no" if os.environ.get("GITHUB_ACTIONS") else "yes"
 
     # REAUDIT FIX: console banner said "GoldenNugget" — user-visible.
-    print(f"WorkSlop Desktop {version_str}")
-    print(f"Running on: {sys.platform} ({run_env})")
-    print(f"Desktop: {desktop}")
-    print(f"IsRelease?: {is_release}")
-    print(f"IsBeta?: {is_beta}")
-    print(f"Off-Build?: {off_build}")
+    # Fix Audit 85: the banner goes to the session log, not stdout.
+    logger.info("WorkSlop Desktop %s", version_str)
+    logger.info("Running on: %s (%s)", sys.platform, run_env)
+    logger.info("Desktop: %s", desktop)
+    logger.info("IsRelease?: %s", is_release)
+    logger.info("IsBeta?: %s", is_beta)
+    logger.info("Off-Build?: %s", off_build)
 
 
 def _install_faulthandler():
@@ -509,7 +590,7 @@ def _install_faulthandler():
         dump_path = os.path.join(get_log_dir(), "nugget_crash_backtrace.log")
         dump_file = open(dump_path, "ab", buffering=0)
         faulthandler.enable(all_threads=True, file=dump_file)
-        print(f"[init] Native-crash backtraces -> {dump_path}", file=sys.stderr)
+        logger.info("[init] Native-crash backtraces -> %s", dump_path)
     except Exception:
         pass
 
@@ -519,8 +600,7 @@ _qt_last_message = ["", 0]
 
 def _qt_message_handler(msg_type, context, message):
     """Forward Qt framework messages (qWarning/qCritical/qFatal, including the
-    QFont diagnostics and any crash forewarning) into the session log and, for
-    warnings+, duplicate them on stderr exactly like Qt's default handler."""
+    QFont diagnostics and any crash forewarning) into the session log into the session log."""
     try:
         from PySide6.QtCore import QtMsgType
         level = {
@@ -539,8 +619,6 @@ def _qt_message_handler(msg_type, context, message):
         _qt_last_message[0] = message
         _qt_last_message[1] = 1
         logger.log(level, "[Qt] %s", message)
-        if level >= logging.WARNING:
-            print(message, file=sys.stderr)
     except Exception:
         pass
 
@@ -565,6 +643,10 @@ def install_crash_handler():
     _install_faulthandler()
     _install_qt_message_handler()
     sys.excepthook = _excepthook
+    # Fix Audit 84 (remainder): worker threads get the same treatment
+    # (log trace + safe crash-report path) instead of a bare stderr
+    # traceback. sys.excepthook above is deliberately unchanged.
+    threading.excepthook = _thread_excepthook
     # Sys.unraisablehook catches errors in __del__ / finalizers, which would
     # otherwise be reported to stderr and might quietly abort cleanup.
     try:
@@ -573,7 +655,7 @@ def install_crash_handler():
         def _unraisable(unraisable):
             summary = f"{unraisable.exc_type.__name__}: {unraisable.exc_value}"
             warnings.warn(
-                f"Unraisable exception in GoldenNugget: {summary}",
+                f"Unraisable exception in WorkSlop: {summary}",
                 RuntimeWarning,
                 stacklevel=2,
             )

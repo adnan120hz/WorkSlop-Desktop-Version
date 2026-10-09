@@ -6752,7 +6752,7 @@ class Ui_Nugget741(object):
 #if QT_CONFIG(tooltip)
         self.thermalmonitordChk.setToolTip(QCoreApplication.translate("Nugget", u"Disables temperature monitoring daemon to reduce system checks.\n"
 "\n"
-"Warning: Disabling will cause the battery to show \"Unknown Part\" or \"Unverified\" in Settings.", None))
+"Warning: Disabling will cause the battery to show \"Unknown Part\" in Settings.", None))
 #endif // QT_CONFIG(tooltip)
         self.thermalmonitordChk.setText(QCoreApplication.translate("Nugget", u"Disable thermalmonitord", None))
 #if QT_CONFIG(tooltip)

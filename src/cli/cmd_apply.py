@@ -90,7 +90,8 @@ def _apply_flag_tweaks(args):
 
 def run(args) -> int:
     from src.cli.common import (
-        bootstrap, make_device_manager, load_prefs, ensure_device, print_status,
+        bootstrap, make_device_manager, load_prefs, ensure_device,
+        ensure_not_killed, print_status,
         print_alert, describe_device, load_core_tweaks, load_default_preset)
 
     settings = bootstrap()
@@ -105,6 +106,9 @@ def run(args) -> int:
 
     device = ensure_device(dm, settings, args.udid)
     print("Device:", describe_device(device))
+    # HotLoad kill_app gate: same rule the GUI enforces at startup — refuse
+    # before any device work when this device/iOS is killed (Fix Audit 44).
+    ensure_not_killed(settings, device=device, dm=dm)
 
     load_core_tweaks()
     load_default_preset(args.preset, dm)
@@ -146,16 +150,26 @@ def run(args) -> int:
         print_alert(msg)
         _last_alert["msg"] = msg
 
-    dm.apply_changes(update_label=print_status,
-                     show_alert=_show_alert,
-                     prompt_password=prompt_password,
-                     prompt_choice=prompt_choice)
+    # Same honest-exit-code pattern as cmd_reset (Fix Audit 44): a
+    # raised backend error is exit 1, and so is any final alert that is
+    # not the success one (abort included — the backend now surfaces an
+    # explicit "Apply Aborted" alert, Fix Audit 54). No final alert at
+    # all means success was never reported, so that is not exit 0.
+    try:
+        dm.apply_changes(update_label=print_status,
+                         show_alert=_show_alert,
+                         prompt_password=prompt_password,
+                         prompt_choice=prompt_choice)
+    except Exception as e:
+        print(f"ERROR: apply failed: {e}", file=sys.stderr)
+        return 1
     if getattr(dm, "last_apply_journal_path", None):
         print(f"Apply journal: {dm.last_apply_journal_path}")
     final = _last_alert.get("msg")
-    failed = final is not None and getattr(final, "title", None) != "Success!"
+    failed = final is None or getattr(final, "title", None) != "Success!"
     if failed:
-        print("Apply FAILED (see the error above).", file=sys.stderr)
+        print("Apply FAILED or ABORTED (see the message above).",
+              file=sys.stderr)
         return 1
     print("Apply finished.")
     return 0

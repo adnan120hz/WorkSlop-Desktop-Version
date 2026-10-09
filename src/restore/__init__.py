@@ -1,5 +1,8 @@
+import logging
 import os
 from tempfile import TemporaryDirectory
+
+logger = logging.getLogger("WorkSlop.restore")
 from pathlib import Path
 
 from pymobiledevice3.lockdown import create_using_usbmux
@@ -13,12 +16,12 @@ from src.utils.stall_watchdog import run_with_stall_watchdog
 
 async def reboot_device(reboot: bool = False, lockdown_client: LockdownClient = None):
     if reboot and lockdown_client != None:
-        print("Success! Rebooting your device...")
+        logger.info("Success! Rebooting your device...")
         async with DiagnosticsService(lockdown_client) as diagnostics_service:
             await diagnostics_service.restart()
-        print("Remember to turn Find My back on!")
+        logger.info("Remember to turn Find My back on!")
 
-async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_client: LockdownClient = None, progress_callback = lambda x: None):
+async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_client: LockdownClient = None, progress_callback = lambda x: None, udid: str = None):
     own_lockdown = (lockdown_client is None)
     try:
         with TemporaryDirectory() as backup_dir:
@@ -31,10 +34,14 @@ async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_
                 keep = Path(os.environ.get("GOLDENNUGGET_LOG_FILE", "/tmp/gn_sparse_debug")).parent / "gn_sparse_debug"
                 shutil.rmtree(keep, ignore_errors=True)
                 shutil.copytree(backup_dir, keep)
-                print(f"[KEEP_SPARSE] sparse backup copy kept at: {keep}")
+                logger.info(f"[KEEP_SPARSE] sparse backup copy kept at: {keep}")
 
             if own_lockdown:
-                lockdown_client = await create_using_usbmux()
+                # Audit 72: when the caller knows which device this restore
+                # belongs to, connect to THAT device by UDID — a bare
+                # create_using_usbmux() attaches to the first usbmux device,
+                # which can be a different phone than the one being applied.
+                lockdown_client = await create_using_usbmux(serial=udid) if udid else await create_using_usbmux()
             async with Mobilebackup2Service(lockdown_client) as mb:
                 # PosterBoard (the only tweak using AppDomain-*) must be
                 # registered in Manifest.plist's Applications dict to avoid
@@ -55,8 +62,8 @@ async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_
             await reboot_device(reboot, lockdown_client)
     except PyMobileDevice3Exception as e:
         if "Find My" in str(e):
-            print("Find My must be disabled in order to use this tool.")
-            print("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again.")
+            logger.error("Find My must be disabled in order to use this tool.")
+            logger.error("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again.")
             raise e
         elif "crash_on_purpose" not in str(e):
             raise e

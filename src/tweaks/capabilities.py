@@ -17,7 +17,7 @@ five redundant duplicate IDs alias to their canonical writer.
 Wave 11 policy (user order 2026-10-03): the audit classification is kept as
 a record, but "research-only / not yet verified on-device" is no longer a
 delivery lock. Every tweak whose key/domain/value/delivery structure
-survived the audit is a normal, user-activatable tweak — an unverified
+survived the audit is a normal, user-activatable tweak — an untested
 tweak that cannot be switched on can never be device-tested at all. Only
 structurally dead entries stay hard-locked: the ``REMOVED_TWEAK_IDS``
 tombstones (wrong domain/storage model, dead FeatureFlags channel,
@@ -326,7 +326,7 @@ def clear_audit_research_only_state(device_version: str = "",
 
     User order 2026-10-03: a tweak that passed the structure audit is a
     normal activatable tweak; "not yet verified on-device" is no longer a
-    reason to clear, lock, or skip it (an unverified tweak that cannot be
+    reason to clear, lock, or skip it (an untested tweak that cannot be
     switched on can never be device-tested at all). This function
     therefore clears nothing and always returns []. It remains importable
     because the GUI rebuild path and the backend apply pass call it;

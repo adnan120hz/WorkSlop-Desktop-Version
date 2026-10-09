@@ -168,25 +168,67 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         self.refresh()
 
     # -- status ----------------------------------------------------------
-    def refresh(self):
-        """Re-read device + saved-original state (called on navigation)."""
+    def _device_gate_state(self):
+        """(udid, name, version, build, applicable) for the S8 route.
+
+        ``applicable`` is the backend's exact window (a connected device
+        on iOS 26.6.1 build 23G82 or 23G83); the switch lock itself is
+        applied where the switches are built (src.gui.ios.tweaks).
+        """
         dm = getattr(self.window, "device_manager", None)
-        udid = ""
-        name = ""
+        udid = name = version = build = ""
         try:
             udid = dm.get_current_device_udid() or ""
             name = dm.get_current_device_name() or ""
+            version = dm.get_current_device_version() or ""
+            build = dm.get_current_device_build() or ""
         except Exception:
             udid = ""
+        applicable = False
+        if udid:
+            try:
+                from src.restore.lgd_full import lgd_full_route_applicable
+                applicable = lgd_full_route_applicable(version, build)
+            except Exception:
+                applicable = False
+        return udid, name, version, build, applicable
+
+    def refresh(self):
+        """Re-read device + saved-original state (called on navigation)."""
+        udid, name, version, build, applicable = self._device_gate_state()
         if not udid:
             self._status_label.setText(_tr(
                 "No device connected. Connect your iPhone to apply or "
-                "roll back."))
+                "roll back. The switches above stay locked: this S8 "
+                "route is a full backup (all data) for iOS 26.6.1 "
+                "builds 23G82 and 23G83 only — separate from Partial "
+                "Restore (up to iOS 26) and the iOS 27 Full Backup "
+                "route."))
+            return
+        if not applicable:
+            self._status_label.setText(_tr(
+                "Device: %1 (iOS %2, build %3). The switches above are "
+                "locked: this S8 route is a full backup (all data) and "
+                "runs only on iOS 26.6.1 builds 23G82 and 23G83 — "
+                "separate from Partial Restore (up to iOS 26) and the "
+                "iOS 27 Full Backup route. Rollback reads your device's "
+                "current files and removes only each payload's own "
+                "keys.").replace("%1", name or udid).replace(
+                    "%2", version or "?").replace("%3", build or "?"))
             return
         self._status_label.setText(_tr(
-            "Device: %1. Rollback reads your device's current files and "
-            "removes only each payload's own keys.").replace(
-                "%1", name or udid))
+            "Device: %1 (iOS %2, build %3). This build can run the "
+            "S8 full backup (all data) route. Rollback reads your "
+            "device's current files and removes only each payload's "
+            "own keys.").replace("%1", name or udid).replace(
+                "%2", version or "?").replace("%3", build or "?"))
+
+    def rebuild(self):
+        # Device changes rebuild the switches (the S8 gate is evaluated
+        # at build time); refresh the status line to match the new gate.
+        super().rebuild()
+        if getattr(self, "_status_label", None) is not None:
+            self.refresh()
 
     # -- Home tile route focus -------------------------------------------
     def focus_route(self, route: str):

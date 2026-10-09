@@ -59,10 +59,31 @@ MEDIA_STATE_FILE = ".media_state.json"
 
 # Top-level Media trees moved to the AFC channel. Everything else under
 # /var/mobile/Media (notably PhotoData/) stays in the mobilebackup2 backup:
-# some of its subdirectories (PhotoData/UBF on iOS 27) are unlistable over the
-# media AFC service, and restoring the photo library DB via mobilebackup2
+# some of its subdirectories (PhotoData/UBF on iOS 27) are unlistable over
+# the media AFC service, and restoring the photo library DB via mobilebackup2
 # keeps the library consistent with the DCIM originals we push back over AFC.
 AFC_MEDIA_TREES = frozenset({"DCIM", "PhotoStreamsData"})
+
+# Audit 52: every individual AFC request on the apply/restore path is
+# bounded. pymobiledevice3's AFC receive loop only exits when the device
+# speaks, so a wedged AFC daemon / half-open socket used to hang an apply
+# forever on a single file. Each request (open, read/write chunk, stat,
+# list) must answer within this budget; files move chunk by chunk, so a
+# large video still takes as long as it needs — what is bounded is device
+# silence, not file size. Deliberately separate from the 300s
+# mobilebackup2 stall watchdog, which is unchanged.
+_AFC_FILE_TIMEOUT_SECONDS = 120.0
+
+
+async def _afc_timed(coro, what: str):
+    """Await one AFC request with a hard bound on device silence."""
+    try:
+        return await asyncio.wait_for(coro, timeout=_AFC_FILE_TIMEOUT_SECONDS)
+    except (asyncio.TimeoutError, TimeoutError) as e:
+        raise NuggetException(
+            f"AFC media: {what} produced no response for "
+            f"{_AFC_FILE_TIMEOUT_SECONDS:.0f}s — aborting this transfer "
+            f"instead of hanging forever") from e
 
 
 def afc_media_enabled(pref_enabled: bool = True) -> bool:
@@ -142,7 +163,7 @@ def media_store_verified(media_root: str) -> bool:
     store is allowed to be larger than the device.
 
     This is the gate that decides whether the media trees may be left out of the
-    backup. An unverified store (first run, interrupted pull, cancelled parallel
+    backup. An unconfirmed store (first run, interrupted pull, cancelled parallel
     task, missing marker) must keep the media rows in the manifest.
     """
     state = media_store_state(media_root)
@@ -162,7 +183,7 @@ def media_store_verified(media_root: str) -> bool:
                  f"{actual_bytes / (1024 * 1024):.1f} MB but the last verified "
                  f"pull recorded {marked_files} files / "
                  f"{marked_bytes / (1024 * 1024):.1f} MB — treating it as "
-                 f"UNVERIFIED so the backup keeps its own copy of the media")
+                 f"UNCONFIRMED so the backup keeps its own copy of the media")
         return False
     return True
 
@@ -194,7 +215,7 @@ def _write_media_state(media_root: str, files: int, bytes_: int,
         os.replace(tmp, os.path.join(media_root, MEDIA_STATE_FILE))
     except OSError as e:
         log_warn(f"AFC media: could not write the media store marker "
-                 f"({e}) — the store stays unverified")
+                 f"({e}) — the store stays unconfirmed")
 
 
 def _invalidate_media_state(media_root: str, reason: str) -> None:
@@ -213,7 +234,7 @@ def _invalidate_media_state(media_root: str, reason: str) -> None:
         pass
     if had_state:
         log_warn(f"AFC media: media store marker dropped ({reason}) — "
-                 f"{media_root} is now UNVERIFIED and must not be used as the "
+                 f"{media_root} is now UNCONFIRMED and must not be used as the "
                  f"only copy of the photos")
 
 
@@ -240,7 +261,7 @@ async def _pull_one(afc, src: str, dst: str, stat) -> int:
     """
     size = int(stat.get("st_size", 0))
     if size <= MAXIMUM_READ_SIZE:
-        data = await afc.get_file_contents(src)
+        data = await _afc_timed(afc.get_file_contents(src), f"read {src}")
         # ``size`` is 0 when the device did not report one; only a real
         # advertised size can be violated
         if size and len(data) != size:
@@ -251,13 +272,14 @@ async def _pull_one(afc, src: str, dst: str, stat) -> int:
         return len(data)
 
     tmp = dst + ".part"
-    handle = await afc.fopen(src)
+    handle = await _afc_timed(afc.fopen(src), f"open {src}")
     try:
         written = 0
         with open(tmp, "wb") as f:
             while written < size:
                 to_read = min(MAXIMUM_READ_SIZE, size - written)
-                chunk = await afc.fread(handle, to_read)
+                chunk = await _afc_timed(afc.fread(handle, to_read),
+                                         f"read {src}")
                 if not chunk:
                     # premature EOF: the file is incomplete, not finished
                     raise NuggetException(
@@ -273,7 +295,10 @@ async def _pull_one(afc, src: str, dst: str, stat) -> int:
             pass
         raise
     finally:
-        await afc.fclose(handle)
+        try:
+            await _afc_timed(afc.fclose(handle), f"close {src}")
+        except Exception:
+            pass  # cleanup only — never mask the transfer's own result
     os.replace(tmp, dst)
     return written
 
@@ -304,7 +329,7 @@ async def _list_afc_tree(afc, dirpath: str, entries: list,
     never fatal.
     """
     try:
-        children = await afc.listdir(dirpath)
+        children = await _afc_timed(afc.listdir(dirpath), f"list {dirpath}")
     except Exception as e:
         msg = f"AFC media: cannot list {dirpath or '/'}: {e}"
         if on_error == "warn":
@@ -317,7 +342,7 @@ async def _list_afc_tree(afc, dirpath: str, entries: list,
         src = posixpath.join(dirpath, name)
         rel = src.lstrip("/")
         try:
-            st = await afc.stat(src)
+            st = await _afc_timed(afc.stat(src), f"stat {src}")
             if _is_afc_link(st):
                 log_info(f"AFC media: skipping symlink {src}")
                 continue
@@ -386,7 +411,7 @@ async def _backup_media_tree(afc_lockdown_client, root: str, diff: bool,
     tally = {"files": 0, "bytes": 0, "skipped": 0}
     async with AfcService(afc_lockdown_client) as afc:
         entries: list = []
-        root_children = await afc.listdir("/")
+        root_children = await _afc_timed(afc.listdir("/"), "list /")
         for name in sorted(root_children):
             if name in (".", ".."):
                 continue
@@ -442,7 +467,7 @@ async def _backup_media_tree(afc_lockdown_client, root: str, diff: bool,
             # a store with holes in it is not a copy of the photos: leave it
             # unmarked so the apply refuses to treat it as the media carrier
             log_warn(f"AFC media pull: {len(failed)} files skipped on error "
-                     f"(e.g. {failed[:3]}) — media store left UNVERIFIED")
+                     f"(e.g. {failed[:3]}) — media store left UNCONFIRMED")
             tally["failed"] = failed
         else:
             _write_media_state(root, total_files, total_bytes, skipped)
@@ -454,19 +479,21 @@ async def _push_one(afc, src: str, remote_rel: str) -> int:
     size = os.path.getsize(src)
     if size <= MAXIMUM_READ_SIZE:
         with open(src, "rb") as f:
-            await afc.set_file_contents(remote_rel, f.read())
+            await _afc_timed(afc.set_file_contents(remote_rel, f.read()),
+                             f"write {remote_rel}")
         return size
-    handle = await afc.fopen(remote_rel, "w")
+    handle = await _afc_timed(afc.fopen(remote_rel, "w"), f"open {remote_rel}")
     try:
         with open(src, "rb") as f:
             while True:
                 chunk = f.read(MAXIMUM_READ_SIZE)
                 if not chunk:
                     break
-                await afc.fwrite(handle, chunk)
+                await _afc_timed(afc.fwrite(handle, chunk),
+                                 f"write {remote_rel}")
         # a streaming write is the one that can end up half-written on the
         # device, so confirm what actually landed before reporting success
-        st = await afc.stat(remote_rel)
+        st = await _afc_timed(afc.stat(remote_rel), f"stat {remote_rel}")
         got = st.get("st_size") if st else None
         if got != size:
             raise NuggetException(
@@ -474,7 +501,10 @@ async def _push_one(afc, src: str, remote_rel: str) -> int:
                 f"({got} of {size} bytes)")
         return size
     finally:
-        await afc.fclose(handle)
+        try:
+            await _afc_timed(afc.fclose(handle), f"close {remote_rel}")
+        except Exception:
+            pass  # cleanup only — never mask the transfer's own result
 
 
 # Phase 5 runs right after a reboot, and lockdownd answers StartService with
@@ -630,8 +660,8 @@ async def restore_media_via_afc(lockdown_client, media_root: str,
                 # restore on the second file of every folder
                 if rdir and rdir != "/" and rdir not in made_dirs:
                     made_dirs.add(rdir)
-                    if not await afc.exists(rdir):
-                        await afc.makedirs(rdir)
+                    if not await _afc_timed(afc.exists(rdir), f"stat {rdir}"):
+                        await _afc_timed(afc.makedirs(rdir), f"mkdir {rdir}")
                 n = await _push_one(afc, src, remote)
             except Exception as e:
                 msg = f"AFC media: failed to restore {remote}: {e}"

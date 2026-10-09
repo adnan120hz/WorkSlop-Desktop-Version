@@ -7,6 +7,11 @@ it, and the final ``load_status_bar()`` reflects the live overrides.
 That works unchanged because this app's ``StatusBarTweak`` still
 carries upstream's full override API (set_time/unset_time,
 show_raw_wifi_signal, set_item_override, toggle_silly_mode, ...).
+
+Audit 26 (2026-10-09): the vendored ``load_status_bar()`` never loaded
+back the master switch, the date override, or the item-visibility
+radio groups, so active state looked OFF. Those loads are completed
+below (marked inline); the wiring above is untouched.
 """
 
 from src.gui.pages.page import Page
@@ -293,7 +298,22 @@ class NuggetStatusBarPage(Page):
 
         
     ## LOADING STATUS BAR
+    def _load_item_radios(self, item: StatusBarItem, default_rdo, show_rdo, hide_rdo):
+        # Audit 26: reflect the live item override — Default when the
+        # item is not overridden, Force Show/Hide per its stored value.
+        if not self.status_manager.is_item_overridden(item):
+            chosen = default_rdo
+        elif self.status_manager.get_item_override(item):
+            chosen = show_rdo
+        else:
+            chosen = hide_rdo
+        for rdo in (default_rdo, show_rdo, hide_rdo):
+            rdo.setChecked(rdo is chosen)
+
     def load_status_bar(self):
+        # Audit 26: master switch + content gating were never loaded.
+        self.ui.statusBarEnabledChk.setChecked(self.status_manager.enabled)
+        self.ui.statusBarPageContent.setDisabled(not self.status_manager.enabled)
         # Load primary carrier settings
         if self.status_manager.is_cellular_service_overridden():
             if self.status_manager.get_cellular_service_override():
@@ -335,6 +355,9 @@ class NuggetStatusBarPage(Page):
         # Load misc text inputs
         self.ui.timeChk.setChecked(self.status_manager.is_time_overridden())
         self.ui.timeTxt.setText(self.status_manager.get_time_override())
+        # Audit 26: the date override was never loaded back.
+        self.ui.dateChk.setChecked(self.status_manager.is_date_overridden())
+        self.ui.dateTxt.setText(self.status_manager.get_date_override())
         self.ui.breadcrumbChk.setChecked(self.status_manager.is_crumb_overridden())
         self.ui.breadcrumbTxt.setText(self.status_manager.get_crumb_override())
         self.ui.batteryDetailChk.setChecked(self.status_manager.is_battery_detail_overridden())
@@ -353,6 +376,37 @@ class NuggetStatusBarPage(Page):
         # Load raw signal strength inputs
         self.ui.numericWifiChk.setChecked(self.status_manager.is_raw_wifi_signal_shown())
         self.ui.numericCellChk.setChecked(self.status_manager.is_raw_gsm_signal_shown())
+
+        # Audit 26: item-visibility radio groups were never loaded back.
+        ui = self.ui
+        self._load_item_radios(StatusBarItem.QuietModeStatusBarItem,
+                               ui.dndDefaultRdo, ui.dndShowRdo, ui.dndHideRdo)
+        self._load_item_radios(StatusBarItem.AirplaneModeStatusBarItem,
+                               ui.airplaneDefaultRdo, ui.airplaneShowRdo, ui.airplaneHideRdo)
+        self._load_item_radios(StatusBarItem.CellularDataNetworkStatusBarItem,
+                               ui.wifiDefaultRdo, ui.wifiShowRdo, ui.wifiHideRdo)
+        self._load_item_radios(StatusBarItem.MainBatteryStatusBarItem,
+                               ui.batteryDefaultRdo, ui.batteryShowRdo, ui.batteryHideRdo)
+        self._load_item_radios(StatusBarItem.BluetoothStatusBarItem,
+                               ui.bluetoothDefaultRdo, ui.bluetoothShowRdo, ui.bluetoothHideRdo)
+        self._load_item_radios(StatusBarItem.AlarmStatusBarItem,
+                               ui.alarmDefaultRdo, ui.alarmShowRdo, ui.alarmHideRdo)
+        self._load_item_radios(StatusBarItem.LocationStatusBarItem,
+                               ui.locationDefaultRdo, ui.locationShowRdo, ui.locationHideRdo)
+        self._load_item_radios(StatusBarItem.RotationLockStatusBarItem,
+                               ui.rotationDefaultRdo, ui.rotationShowRdo, ui.rotationHideRdo)
+        self._load_item_radios(StatusBarItem.AirPlayStatusBarItem,
+                               ui.airplayDefaultRdo, ui.airplayShowRdo, ui.airplayHideRdo)
+        self._load_item_radios(StatusBarItem.CarPlayStatusBarItem,
+                               ui.carplayDefaultRdo, ui.carplayShowRdo, ui.carplayHideRdo)
+        self._load_item_radios(StatusBarItem.VPNStatusBarItem,
+                               ui.vpnDefaultRdo, ui.vpnShowRdo, ui.vpnHideRdo)
+        self._load_item_radios(StatusBarItem.StudentStatusBarItem,
+                               ui.studentDefaultRdo, ui.studentShowRdo, ui.studentHideRdo)
+        self._load_item_radios(StatusBarItem.LiquidDetectionStatusBarItem,
+                               ui.waterDefaultRdo, ui.waterShowRdo, ui.waterHideRdo)
+        self._load_item_radios(StatusBarItem.VoiceControlStatusBarItem,
+                               ui.vcDefaultRdo, ui.vcShowRdo, ui.vcHideRdo)
 
         # Load hiding option inputs
         self.ui.sillyModeChk.setChecked(self.status_manager.is_silly_mode_enabled())

@@ -1,3 +1,8 @@
+> **HISTORICAL — superseded (2026-10-09).**
+> This roadmap describes the upstream GoldenNugget 9.3.3 → 9.4.2 plan.
+> It predates WorkSlop Desktop v14 and no longer reflects the direction
+> of this repository; kept only as a historical record.
+
 # Roadmap
 
 GoldenNugget's plan for the next versions, from 9.3.3 to 9.4.2. What each one means for you.

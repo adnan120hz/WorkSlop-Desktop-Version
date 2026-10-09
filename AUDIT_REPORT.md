@@ -1,3 +1,8 @@
+> **HISTORICAL — superseded (2026-10-09).**
+> Pinned to the 2026-09-30 codebase (`~/workspace/desk`). Most "critical"
+> items listed below were fixed in later builds; this file is a historical
+> record and does not describe the current state of the code.
+
 # AUDIT REPORT — WorkSlop Desktop (~/workspace/desk)
 
 **Tanggal:** 2026-09-30

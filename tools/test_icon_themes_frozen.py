@@ -51,6 +51,13 @@ ICON_DIRS = ("files/ios18_icons/Light", "files/ios18_icons/Dark")
 # SHA-256 manifest of the frozen files, paths relative to the repo
 # root. Regenerate ONLY on an explicit user order, in the same commit
 # as the change itself (see FROZEN_ICON_THEMES.md).
+#
+# Ordered exceptions on record: Fix Audit 4 + 88 (explicit fix order)
+# changed ONLY the zip-caller block of ``src/gui/ios/icon_themes.py``
+# and the download/import caller of
+# ``src/gui/dialogs/icon_pack_downloader.py``; their two hashes were
+# regenerated in the same change. The frozen tweak model and the icon
+# catalog are byte-identical to the original freeze.
 EXPECTED_SHA256 = {
     "files/ios18_icons/Dark/app-store.png": "045c187857ef476ecf26c92557841dd7ad3c4930c1964062c0f521ca1bd9f6fe",
     "files/ios18_icons/Dark/apple-sports.png": "7efc01408618b76f74f85f6bfdc9737ca7252b44bf4590671ccfd8dd3a155d66",
@@ -153,8 +160,8 @@ EXPECTED_SHA256 = {
     "files/ios18_icons/Light/wallet.png": "b298913f272555bb70218c10b1cc0ce0655f7413baf702a4f3e0f339247862a7",
     "files/ios18_icons/Light/watch.png": "c7bc40e969cef802ac51c4f0618ede887f55b0524b3e03307054eb341663780e",
     "files/ios18_icons/Light/weather.png": "f46be82e7592687241321a0cb7e043f0d147eb2819eec03d858bec125d4ab4a9",
-    "src/gui/dialogs/icon_pack_downloader.py": "fed1ecc9be5650f0987170b01ddbdc9075095780d2fd7034785e170f3f473d29",
-    "src/gui/ios/icon_themes.py": "70302959a7d072f14e11db4aa597aae80448607e5865278618adbf779920ef45",
+    "src/gui/dialogs/icon_pack_downloader.py": "0406c608892b97e3c21161e2617283d763aa09cab70d218c879f85e895d5acc8",
+    "src/gui/ios/icon_themes.py": "c64532ef4680c56704af2bb8b8d5c30d7909edd9532fa7a66ad2e874ef047109",
     "src/tweaks/icon_themes/icon_themes_tweak.py": "3f344d6336be0c7a44aab3eef3c012fc7e7391c7f2ce144584ee111ebe0a3860",
 }
 

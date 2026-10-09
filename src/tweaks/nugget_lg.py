@@ -19,6 +19,17 @@ semantics are Nugget's own — nothing is adapted to WorkSlop
 conventions; the only WorkSlop code here is the registry of the tweak
 objects and the row metadata the UI glue renders.
 
+Audit 16 (2026-10-09): the three Feature-Flag GROUP labels and the
+per-tweak titles in ``NUGGET_LG_TITLES`` are WorkSlop's honest
+rewording, NOT upstream's text. Upstream labels these switches
+"Disable …", promising an on-device effect; all this app proves is
+that it writes ``{'Enabled': False}`` records into
+FeatureFlags/Global.plist, so the labels now say exactly that
+("Write FeatureFlags: … — file write only, no device effect
+promised"). Group membership, categories, flag names, inverted
+semantics and every staged byte are unchanged (proven by
+tools/test_audit16_ff_honest_labels.py).
+
 Upstream class note: the constructors below call this repo's
 ``BasicPlistTweak`` / ``FeatureFlagTweak`` (src/tweaks/tweak_classes.py)
 whose payload logic is identical to upstream's (verified line-for-line
@@ -121,29 +132,38 @@ NUGGET_LG_PLIST_ROWS = [
     (TweakID.NuggetDisableSolariumHDR, "Disable Solarium HDR", True),
 ]
 
-# Feature-Flag group switches: upstream's three checkboxes and the
-# exact tweak groups their handlers toggle (featureflags.py).
+# Feature-Flag group switches: upstream's three groupings and the
+# exact tweak groups their handlers toggle (featureflags.py) — but
+# Audit 16: the labels are WorkSlop's honest rewording (see module
+# docstring). Each switch only writes {'Enabled': False} records for
+# its flags into FeatureFlags/Global.plist; no on-device effect is
+# promised, so no label may start with "Disable".
 NUGGET_LG_FF_GROUPS = [
-    ("Disable Solarium (Liquid Glass) (Feature Flag Method)",
+    ("Write FeatureFlags: Solarium off (SwiftUI, SpringBoard, IconServices)"
+     " — file write only, no device effect promised",
      [TweakID.NuggetSolariumFFSwiftUI,
       TweakID.NuggetSolariumFFSpringBoard,
       TweakID.NuggetSolariumFFIconServices]),
-    ("Disable Liquid Glass in Documents Camera",
+    ("Write FeatureFlags: glass flags off (DocumentCamera, Photos,"
+     " AppleMediaServices) — file write only, no device effect promised",
      [TweakID.NuggetSolariumFFDocumentCamera,
       TweakID.NuggetSolariumFFPhotos,
       TweakID.NuggetSolariumFFAppleMediaServices]),
-    ("Disable Liquid Glass in Share Sheet",
+    ("Write FeatureFlags: glass flags off (Sharing, Mail)"
+     " — file write only, no device effect promised",
      [TweakID.NuggetSolariumFFSharing,
       TweakID.NuggetSolariumFFMail]),
 ]
 
+# Per-tweak display titles (Audit 16 honest wording): each names the
+# exact FeatureFlags record the tweak writes when enabled.
 NUGGET_LG_TITLES = {
-    TweakID.NuggetSolariumFFSwiftUI: "Solarium (SwiftUI)",
-    TweakID.NuggetSolariumFFSpringBoard: "Solarium Elastic HUD (SpringBoard)",
-    TweakID.NuggetSolariumFFIconServices: "Enhanced Glass / Solarium Corner Radius (IconServices)",
-    TweakID.NuggetSolariumFFDocumentCamera: "Capture Liquid Glass (DocumentCamera)",
-    TweakID.NuggetSolariumFFPhotos: "Solarium Grid Magic Pocket (Photos)",
-    TweakID.NuggetSolariumFFAppleMediaServices: "Solarium (AppleMediaServices)",
-    TweakID.NuggetSolariumFFSharing: "Share Sheet Solarium (Sharing)",
-    TweakID.NuggetSolariumFFMail: "Solarium Search (Mail)",
+    TweakID.NuggetSolariumFFSwiftUI: "Write FeatureFlags: SwiftUI/Solarium = off",
+    TweakID.NuggetSolariumFFSpringBoard: "Write FeatureFlags: SpringBoard/SolariumElasticHUD = off",
+    TweakID.NuggetSolariumFFIconServices: "Write FeatureFlags: IconServices/EnhancedGlass + SolariumCornerRadius = off",
+    TweakID.NuggetSolariumFFDocumentCamera: "Write FeatureFlags: DocumentCamera/CaptureLiquidGlass = off",
+    TweakID.NuggetSolariumFFPhotos: "Write FeatureFlags: Photos/SolariumGridMagicPocket = off",
+    TweakID.NuggetSolariumFFAppleMediaServices: "Write FeatureFlags: AppleMediaServices/Solarium = off",
+    TweakID.NuggetSolariumFFSharing: "Write FeatureFlags: Sharing/ShareSheetSolarium = off",
+    TweakID.NuggetSolariumFFMail: "Write FeatureFlags: Mail/SolariumSearch = off",
 }

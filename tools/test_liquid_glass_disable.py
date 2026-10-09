@@ -318,7 +318,10 @@ def test_gui_smoke():
             return "iPhone17,1"
 
         def get_current_device_udid(self):
-            return None
+            # A connected stub device on the exact S8 window (23G83):
+            # the UI gate locks these switches with no device, so the
+            # toggle smoke below needs one present.
+            return "STUB-UDID"
 
         def get_current_device_name(self):
             return ""
@@ -350,8 +353,8 @@ def test_gui_smoke():
     check("removed G1/G2 switches are gone",
           TweakID.LGDisableG2 not in switches
           and TweakID.LGDisableG1 not in switches)
-    page.refresh()  # no device: status line, no crash
-    check("refresh with no device is safe", True)
+    page.refresh()  # stub device on 23G83: status line, no crash
+    check("refresh with a stub device is safe", True)
     sw = switches[TweakID.LGDisableLatest]
     sw.setChecked(True)
     check("toggling the Latest switch enables the registry tweak",

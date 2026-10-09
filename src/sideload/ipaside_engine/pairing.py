@@ -35,7 +35,11 @@ from . import apps, paths
 from .errors import EngineError
 
 #: Where usbmux keeps the pairing records this PC has for its devices.
-_APPLE_LOCKDOWN_DIR = Path(r"C:\ProgramData\Apple\Lockdown")
+#: Fix Audit 46: resolved per-OS by the single shared helper in
+#: :mod:`ipaside_engine.paths` (Windows keeps its ProgramData location);
+#: ``livecontainer`` resolves through the same helper so the two modules
+#: can never diverge again.
+_APPLE_LOCKDOWN_DIR = paths.apple_lockdown_dir()
 _LOCKDOWN_DIR = _APPLE_LOCKDOWN_DIR
 
 #: Keys iLoader adds so a Remote Pairing tunnel can start. ``alt_irk`` is useful

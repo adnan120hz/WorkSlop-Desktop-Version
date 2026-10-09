@@ -1,8 +1,35 @@
 """Shared error classification for device backup/restore operations."""
 import asyncio
+import errno
 import plistlib
+import ssl
 
 import pymobiledevice3.exceptions as pm3_exc
+
+# Errnos that mean the *network/device channel* failed, as opposed to a
+# local filesystem problem on this computer. A bare OSError is only a
+# connection error when it carries one of these (or is a ConnectionError
+# / TimeoutError subclass, handled by type below): a local
+# FileNotFoundError (ENOENT), PermissionError (EACCES) or ENOSPC must
+# never be retried as if the device had dropped (Audit 53b).
+_NETWORK_ERRNOS = frozenset({
+    errno.ECONNRESET,
+    errno.ECONNABORTED,
+    errno.ECONNREFUSED,
+    errno.ETIMEDOUT,
+    errno.EPIPE,
+    errno.EHOSTUNREACH,
+    errno.EHOSTDOWN,
+    errno.ENETUNREACH,
+    errno.ENETDOWN,
+    errno.ENOTCONN,
+    errno.ESHUTDOWN,
+})
+
+# Local-filesystem OSError subclasses: always fatal, never a device
+# connection problem, no matter what the message text says.
+_LOCAL_OS_ERRORS = (FileNotFoundError, PermissionError,
+                    IsADirectoryError, NotADirectoryError)
 
 
 def is_device_locked_error(exc: Exception) -> bool:
@@ -12,14 +39,36 @@ def is_device_locked_error(exc: Exception) -> bool:
 
 
 def is_connection_error(exc: Exception) -> bool:
-    """Check if an exception is a transient connection failure worth retrying."""
-    msg = str(exc).lower()
-    return isinstance(exc, (
+    """Check if an exception is a transient connection failure worth retrying.
+
+    Only genuine network/device-channel failures qualify (Audit 53b):
+    pymobiledevice3's ConnectionTerminatedError, ConnectionError
+    subclasses (reset/refused/aborted/broken pipe), timeouts, TLS drops,
+    and OSErrors carrying a network errno. Local filesystem errors on
+    this computer (missing file, permission denied, ...) and disk-full
+    are fatal, not connection errors. Disk-full in particular must
+    propagate immediately (Audit 53a): retrying it a dozen-plus times
+    without cleanup just burns time on an unrecoverable condition.
+    """
+    if isinstance(exc, pm3_exc.NotEnoughDiskSpaceError):
+        return False
+    if isinstance(exc, _LOCAL_OS_ERRORS):
+        return False
+    if isinstance(exc, (
         pm3_exc.ConnectionTerminatedError,
         ConnectionError,
-        OSError,
         asyncio.TimeoutError,
-    )) or "connection" in msg or "incomplete" in msg or "terminated" in msg
+        TimeoutError,
+    )):
+        return True
+    # ssl.SSLError subclasses OSError; a TLS drop on the device channel
+    # is a connection failure, not a local file problem.
+    if isinstance(exc, ssl.SSLError):
+        return True
+    if isinstance(exc, OSError):
+        return exc.errno in _NETWORK_ERRNOS
+    msg = str(exc).lower()
+    return "connection" in msg or "incomplete" in msg or "terminated" in msg
 
 
 def is_device_lock_required_error(exc: Exception) -> bool:
@@ -42,13 +91,20 @@ def is_transient_restore_error(error) -> bool:
     """True for Phase 3 errors that mean 'device still booting, try again'."""
     name = type(error).__name__
     msg = str(error)
-    # ssl.SSLError subclasses OSError, so this covers SSL drops too.
-    if isinstance(error, (pm3_exc.ConnectionTerminatedError, OSError)):
+    # Audit 53a: disk-full is fatal, not transient. This used to return
+    # True ("retry after cleanup"), so Phase 3 retried a full disk 18x
+    # with no cleanup ever happening. Propagate the original error.
+    if isinstance(error, pm3_exc.NotEnoughDiskSpaceError) \
+            or "NotEnoughDiskSpace" in name:
+        return False
+    # Connection-class failures only (Audit 53b): is_connection_error
+    # covers ConnectionTerminatedError, ConnectionError, timeouts and
+    # TLS drops (ssl.SSLError), while a local OSError on this computer
+    # (missing file, permission) stays fatal instead of burning retries.
+    if is_connection_error(error):
         return True
     if "InvalidService" in name:
         return True
-    if "NotEnoughDiskSpace" in str(error):
-        return True  # device-side purge request — retry after cleanup
     # MBErrorDomain/1: SpringBoard not ready for a restore yet.
     if "SpringBoard" in msg and "ready for a restore" in msg:
         return True

@@ -84,6 +84,15 @@ args = [
     '--hidden-import=main_app',
     # Runtime window icon (loaded by MainWindow from repo root).
     '--add-data=workslop_icon.png' + (';.' if os.name == 'nt' else ':.'),
+    # AGPL-3.0 license text (audit 69+80): ship the repo LICENSE at the
+    # bundle root of every platform build; the About dialog tells users
+    # the bundled LICENSE file holds the full text. The CI workflows
+    # upload the whole dist/WorkSlopDesktop tree, so no workflow change
+    # is needed for the file to reach the released artifacts.
+    '--add-data=LICENSE' + (';.' if os.name == 'nt' else ':.'),
+    # HotLoad seed rules (Fix Audit 13): first-run / offline builds load
+    # this bundled copy when no cache exists yet (sys._MEIPASS root).
+    '--add-data=hotload_rules.json' + (';.' if os.name == 'nt' else ':.'),
 ]
 
 if target_arch:

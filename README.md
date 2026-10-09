@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/platform-Windows-lightgrey.svg" alt="Platform: Windows">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg" alt="Platform: Windows | macOS | Linux">
   <a href="https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases/tag/v14"><img src="https://img.shields.io/badge/version-v14%20(pre--release)-brightgreen.svg" alt="Version v14 (pre-release)"></a>
   <a href="https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases"><img src="https://img.shields.io/badge/releases-GitHub-black.svg" alt="GitHub Releases"></a>
 </p>
@@ -20,9 +20,14 @@
 
 ## Download
 
-The current release is **v14 (pre-release)** for Windows:
+The current release is **v14 (pre-release)** for Windows, macOS (Intel/ARM)
+and Linux — CI builds one artifact per platform:
 
-- `WorkSlopDesktop-v14-Windows.zip`
+- `WorkSlopDesktop-Windows`
+- `WorkSlopDesktop-macOS-Intel`
+- `WorkSlopDesktop-macOS-ARM`
+- `WorkSlopDesktop-Linux`
+- `WorkSlopDesktop-Linux-ARM`
 
 Grab it from the [Releases page](https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases) — that page always carries the latest published build.
 

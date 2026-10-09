@@ -59,7 +59,7 @@ def _resolve_pages(args, dm) -> list:
 def run(args) -> int:
     from src.cli.common import (
         bootstrap, make_device_manager, load_prefs, ensure_device,
-        print_status, print_alert, describe_device)
+        ensure_not_killed, print_status, print_alert, describe_device)
 
     settings = bootstrap()
     dm = make_device_manager(settings)
@@ -71,14 +71,36 @@ def run(args) -> int:
 
     device = ensure_device(dm, settings, args.udid)
     print("Device:", describe_device(device))
+    # HotLoad kill_app gate: the GUI refuses to start on a killed
+    # device/iOS; the CLI must refuse before doing device work too.
+    ensure_not_killed(settings, device=device, dm=dm)
 
     pages = _resolve_pages(args, dm)
     print("Starting reset...")
-    dm.reset_tweaks(pages, settings,
-                    update_label=print_status,
-                    show_alert=print_alert)
+    # Honest exit code (Fix Audit 44): the backend reports failure through
+    # the final alert instead of raising (same contract as `Nugget apply`),
+    # so track the last alert and fail the process when it is not the
+    # success one. Previously this always returned 0, even on failure.
+    _last_alert = {}
+
+    def _show_alert(msg):
+        print_alert(msg)
+        _last_alert["msg"] = msg
+
+    try:
+        dm.reset_tweaks(pages, settings,
+                        update_label=print_status,
+                        show_alert=_show_alert)
+    except Exception as e:
+        print(f"ERROR: reset failed: {e}", file=sys.stderr)
+        return 1
     if getattr(dm, "last_apply_journal_path", None):
         print(f"Apply journal: {dm.last_apply_journal_path}")
+    final = _last_alert.get("msg")
+    failed = final is not None and getattr(final, "title", None) != "Success!"
+    if failed:
+        print("Reset FAILED (see the error above).", file=sys.stderr)
+        return 1
     print("Reset finished.")
     return 0
 

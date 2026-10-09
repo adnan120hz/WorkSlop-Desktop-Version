@@ -17,6 +17,7 @@ from src.gui.ios.components import (
 )
 from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID, set_tweak_enabled
+from src.tweaks.tweak_classes import _notify_tweak_change
 from src.tweaks.tweak_loader import load_mobilegestalt, load_rdar_fix
 from src.devicemanagement.constants import mobilegestalt_decision
 from src.tweaks.capabilities import clear_unsupported_mobilegestalt_state
@@ -36,7 +37,7 @@ _DI_LABELS = [
     "2868 (iPhone 16 Pro Max Dynamic Island)",
     # B15: the tweak's value list ends with 2736, so the dropdown needs a
     # matching 7th entry or that option can never be selected. No device name
-    # is claimed here (unverified) — just the raw value.
+    # is claimed here (not confirmed on a device) — just the raw value.
     "2736",
 ]
 
@@ -392,6 +393,12 @@ class _GestaltContent(QWidget):
                     tweaks[TweakID.DynamicIsland].value[tweaks[TweakID.DynamicIsland].get_selected_option()])
         self._update_rdar_label()
         self._sync_switches()
+        # Fix Audit 18: set_selected_option()/set_di_type() mutate state
+        # without the enabled-change notification, so the preset AutoSave
+        # never fired and the picker choice died on restart. Notify through
+        # the same tweak-change channel every other tweak uses — the preset
+        # serializer is the one persistence path, no parallel store.
+        _notify_tweak_change()
 
     # -- MobileGestalt file --------------------------------------------------
     def _update_mga_label(self):

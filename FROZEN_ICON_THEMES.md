@@ -16,7 +16,7 @@ Pinned by SHA-256 in `tools/test_icon_themes_frozen.py`
 
 | File(s) | What it is |
 |---|---|
-| `src/gui/ios/icon_themes.py` | The Icon Themes page: themes list, bundled iOS 18 table (per-row Add + Add All), "Import Icon Pack (.zip)..." |
+| `src/gui/ios/icon_themes.py` | The Icon Themes page: themes list, bundled iOS 18 two side-by-side tables (Light/Dark), each with per-row Add + its own Add All, "Import Icon Pack (.zip)..." |
 | `src/tweaks/icon_themes/icon_themes_tweak.py` | The model: `IconThemesTweak`, WebClip builder (`WorkSlop_<bundleID>,<displayName>` folders), hash-matched ZIP pack import (`import_pack_zip_matched`, `build_pack_hash_index`) |
 | `src/gui/dialogs/icon_pack_downloader.py` | The "Download Icon Packs" dialog the page opens and imports through |
 | `files/ios18_icons/Light/*.png` (51) | Bundled catwithabaloon catalog, Light artwork |

@@ -36,6 +36,53 @@ from src.tweaks.tweak_classes import set_tweak_change_callback
 from src.tweaks.tweaks import tweaks, TweakID
 
 
+def _worker_still_running(worker) -> bool:
+    """True when *worker* is a live QThread still executing (dead
+    shiboken wrappers report not-running instead of raising)."""
+    if worker is None:
+        return False
+    try:
+        from shiboken6 import isValid as _is_valid
+        if not _is_valid(worker):
+            return False
+    except Exception:
+        pass
+    try:
+        return bool(worker.isRunning())
+    except RuntimeError:
+        return False
+
+
+def device_operations_running(window) -> list:
+    """Labels of the device operations currently running on *window*.
+
+    Single source for every "do not kill the process now" guard:
+    ``MainWindow.closeEvent`` and the Load Preset restart (Fix Audit
+    73 — Load Preset used to restart with no check at all, and the
+    close guard did not cover Gestalt apply or full restore).
+    """
+    ops = []
+    if getattr(window, "apply_in_progress", False):
+        ops.append("apply/reset")
+    if getattr(window, "_cache_restore_in_progress", False):
+        ops.append("data restore")
+    if getattr(window, "_gestalt_apply_in_progress", False) or \
+            _worker_still_running(getattr(window, "_gestalt_apply_thread", None)):
+        ops.append("MobileGestalt apply")
+    if getattr(window, "_full_restore_in_progress", False) or \
+            _worker_still_running(getattr(window, "_full_restore_thread", None)):
+        ops.append("full restore")
+    page_objs = getattr(window, "_ios_page_objs", None) or {}
+    pt_worker = getattr(page_objs.get("ios_passthemes"), "_worker", None)
+    if _worker_still_running(pt_worker):
+        ops.append("passcode theme write")
+    pairing_worker = getattr(page_objs.get("ios_settings"),
+                             "_reset_pairing_thread", None)
+    if _worker_still_running(pairing_worker):
+        ops.append("pairing reset")
+    return ops
+
+
 class DeviceBarMixin:
     """Device refresh, selection and per-device interface updates."""
 
@@ -86,7 +133,9 @@ class DeviceBarMixin:
         """
         hidden = _hidden_feature_names()
         if hidden:
-            print(f"[HotLoad] Hiding feature pages: {', '.join(sorted(hidden))}")
+            get_logger("gui").info(
+                "[HotLoad] Hiding feature pages: %s",
+                ", ".join(sorted(hidden)))
         statusbar_hidden = "Status Bar" in hidden
         # Sidebar (classic shell) buttons
         btn_map = {
@@ -197,11 +246,26 @@ class DeviceBarMixin:
                 except Exception:
                     pass
 
+    def _refresh_ios_settings_if_built(self):
+        """Live-refresh an already-built Settings page (Audit 57).
+
+        Device state changes refreshed Home, the device panel and the
+        footer, but never a built Settings page, so an open Settings
+        kept its first-visit "This device" rows forever. An unbuilt
+        page stays unbuilt — it reads live state at construction.
+        """
+        page = getattr(self, "_ios_page_objs", {}).get("ios_settings")
+        if page is not None:
+            try:
+                page.refresh()
+            except Exception:
+                pass
+
     @QtCore.Slot(object)
     def _startup_device_alert(self, alert):
         """Inline sink for device-enumeration failures during startup.
 
-        Same console behaviour as alert_message, but no modal dialog:
+        Same logging behaviour as alert_message, but no modal dialog:
         the failure lands in the footer status and, when the alert
         carries a user-actionable hint (driver/usbmux guidance), in the
         Home detection guidance — the inline surfaces the finished
@@ -210,7 +274,7 @@ class DeviceBarMixin:
         if alert is None:
             return
         try:
-            print(alert.txt)
+            get_logger("gui").info("%s", alert.txt)
         except Exception:
             pass
         if hasattr(self, "footer_status_lbl"):
@@ -237,6 +301,8 @@ class DeviceBarMixin:
             self.ios_home.update_status()
         except Exception:
             pass
+        # An open Settings page must see the device right away too.
+        self._refresh_ios_settings_if_built()
         if hasattr(self, "device_panel"):
             try:
                 self.device_panel.refresh_devices()
@@ -390,6 +456,8 @@ class DeviceBarMixin:
         self.ios_home.refresh_device_combo()
         self.ios_home.update_device_info()
         self.ios_home.update_status()
+        # keep an already-built Settings page in sync too (Audit 57)
+        self._refresh_ios_settings_if_built()
         # keep the left device panel tree in sync too
         if hasattr(self, "device_panel"):
             try:
@@ -525,6 +593,8 @@ class DeviceBarMixin:
         self.updateInterfaceForNewDevice()
         self.ios_home.update_device_info()
         self.ios_home.update_status()
+        # a device switch must also land on an open Settings page
+        self._refresh_ios_settings_if_built()
         if index > -1:
             self.warn_for_dev_beta()
 
@@ -1603,6 +1673,11 @@ class ApplyMixin:
         return result[0]
 
 
+    def running_device_operations(self) -> list:
+        """Device operations running right now (shared close/restart
+        guard, Fix Audit 73). See :func:`device_operations_running`."""
+        return device_operations_running(self)
+
     def apply_changes(self, reset_pages: list=None):
         if self.apply_in_progress:
             # A second apply/reset used to vanish here with no feedback at
@@ -1662,7 +1737,7 @@ class ApplyMixin:
                 set_sudo_pwd(pwd)
             return
         if log_to_console:
-            print(alert.txt)
+            get_logger("gui").info("%s", alert.txt)
         # Backend messages that did not pick an explicit icon default to
         # the error renderer (QMessageBox.Critical).
         icon = alert.icon if alert.icon is not None else QtWidgets.QMessageBox.Critical
@@ -2063,9 +2138,18 @@ class ApplyMixin:
         # Show completion indicator on the iOS home page
         try:
             if success:
-                self.ios_home.show_process_status(
-                    QCoreApplication.tr("Reset complete!") if is_reset else QCoreApplication.tr("Apply complete!"),
-                    success=True)
+                # Fix Audit 6: "Reset complete!" only when the reset
+                # skipped nothing — device_manager records every skip
+                # in ``last_reset_skips`` and in the result alert.
+                reset_skips = (getattr(self.device_manager, "last_reset_skips", None)
+                               if is_reset else None)
+                if is_reset and reset_skips:
+                    status_txt = QCoreApplication.tr("Reset finished — some items were skipped")
+                elif is_reset:
+                    status_txt = QCoreApplication.tr("Reset complete!")
+                else:
+                    status_txt = QCoreApplication.tr("Apply complete!")
+                self.ios_home.show_process_status(status_txt, success=True)
             else:
                 self.ios_home.show_process_status(
                     QCoreApplication.tr("Operation failed"), success=False)
@@ -2163,4 +2247,24 @@ class ApplyMixin:
                 self._pending_apply_busy = disabled
         if disabled or not self.refresh_in_progress:
             self.ui.refreshBtn.setDisabled(disabled)
+        # Audit 72: the device picker stays locked for the whole apply —
+        # switching devices mid-apply would retarget the running restore
+        # (and its retries) at a different phone than the one snapshotted
+        # when the apply started.
+        self._set_device_pickers_locked(disabled)
+
+    def _set_device_pickers_locked(self, locked: bool):
+        """Enable/disable every device picker (sidebar, Home, legacy UI)."""
+        pickers = []
+        for picker in (
+                getattr(getattr(self, "ui", None), "devicePicker", None),
+                getattr(getattr(self, "device_panel", None), "device_combo", None),
+                getattr(getattr(self, "ios_home", None), "device_combo", None)):
+            if picker is not None:
+                pickers.append(picker)
+        for picker in pickers:
+            try:
+                picker.setEnabled(not locked)
+            except Exception:
+                pass
 

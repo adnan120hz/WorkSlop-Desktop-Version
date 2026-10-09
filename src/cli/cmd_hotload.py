@@ -121,7 +121,13 @@ def _run_refresh(args):
     settings = _settings()
     hotload = _hotload(settings)
     if not hotload.is_enabled():
-        print("Kill switch is OFF — rules are ignored; enabling fetch anyway.")
+        # Honest no-op (Fix Audit 44): with the kill switch off, update()
+        # fetches nothing by design. Say so instead of implying a fetch
+        # happened ("enabling fetch anyway" / a fake fetch failure).
+        # Exit 0: the command ran fine — it is the fetch that is disabled,
+        # not a fetch that failed (real failures return 1 below).
+        print("HotLoad is off — nothing fetched.")
+        return 0
     ok = hotload.update(args.url)
     if ok:
         summary = _rules_summary(hotload)

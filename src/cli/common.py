@@ -110,6 +110,44 @@ def describe_device(device) -> str:
             f"{getattr(device, 'udid', '?')}")
 
 
+def ensure_not_killed(settings: Settings, device=None, dm=None):
+    """Enforce the HotLoad ``kill_app`` rule before any device work starts.
+
+    This is the same gate the GUI enforces at startup (``main_app`` checks
+    ``HotLoad.kill_rule`` for the current device/iOS and refuses to launch).
+    The CLI used to skip it entirely, so a device/iOS the GUI would refuse
+    could still be applied/reset/backed up from the command line (Fix
+    Audit 44). The rule logic itself lives in :class:`HotLoad` — this only
+    asks it and exits non-zero when a kill rule matches, before the caller
+    touches the device.
+    """
+    from src.controllers.hotload import HotLoad
+    hotload = HotLoad(settings)
+    version = model = None
+    if dm is not None:
+        try:
+            version = dm.get_current_device_version() or None
+            model = dm.get_current_device_model() or None
+        except Exception:
+            version = model = None
+    if device is not None:
+        if version is None:
+            version = getattr(device, "version", None) or None
+        if model is None:
+            model = getattr(device, "model", None) or None
+    try:
+        kill = hotload.kill_rule(version, model)
+    except Exception:
+        # Mirror the GUI: a broken rules lookup must not invent a block.
+        kill = None
+    if kill:
+        reason = str(kill.get("reason")
+                     or "This version of iOS is currently not supported.")
+        print(f"ERROR: WorkSlop Desktop disabled by HotLoad safety rules: "
+              f"{reason}", file=sys.stderr)
+        raise SystemExit(1)
+
+
 def load_core_tweaks():
     """Idempotently load the registry tweaks + daemons (like the GUI pages)."""
     from src.tweaks.tweak_loader import load_plist_tweaks, load_daemons

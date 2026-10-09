@@ -298,35 +298,50 @@ class IconPackDownloaderDialog(QDialog):
                 "Nugget", "Download failed for \"{0}\".").format(theme.name if theme else ""))
             return
         try:
-            added, skipped = self._import_zip_bytes(data, theme)
+            outcome = self._import_zip_bytes(data, theme)
         except Exception as e:
             self.status_lbl.setText(QCoreApplication.translate(
                 "Nugget", "Could not import \"{0}\": {1}").format(
                     theme.name if theme else "", e))
             return
+        added = outcome.added
+        skipped = outcome.skipped
         self.added_bundle_ids.extend([theme.name] * added)
-        msg = QCoreApplication.translate(
-            "Nugget", "Imported {0} icons from \"{1}\".").format(added, theme.name if theme else "")
+        if added == 0 and outcome.already_present:
+            msg = QCoreApplication.translate(
+                "Nugget",
+                "All icons from \"{0}\" are already in Icon Themes.").format(
+                    theme.name if theme else "")
+        else:
+            msg = QCoreApplication.translate(
+                "Nugget", "Imported {0} icons from \"{1}\".").format(added, theme.name if theme else "")
+        # Fix Audit 88: the result text states what was actually
+        # verified — SHA-256 against the bundled catalog, or name-only.
+        msg += " " + outcome.verification_note
         if skipped:
             msg += " " + QCoreApplication.translate(
                 "Nugget", "({0} bundles skipped — missing icon files).").format(len(skipped))
         self.status_lbl.setText(msg)
 
     def _import_zip_bytes(self, data: bytes, theme):
-        """Write the zip to a temp file and let the tweak import it."""
+        """Import one downloaded pack through the guarded caller path.
+
+        Fix Audit 88 (caller side; the frozen tweak importers are
+        untouched): packs matching the bundled catalog are verified via
+        the SHA-256 hash-matched importer; other packs must be shaped
+        like an icon pack (bundle-ID icon names) and are reported as
+        name-only. Fix Audit 4: size limit + encryption probe run
+        before any extraction, with readable errors.
+        """
+        from src.controllers.icon_pack_import import import_downloaded_pack
+        from src.gui.ios.icon_themes import ios18_pack_hash_index
         tweak = tweaks[TweakID.IconThemes]
-        fd, path = tempfile.mkstemp(prefix="icontheme_dl_", suffix=".zip")
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(data)
-            added, skipped = tweak.import_pack_zip(path, theme_name=theme.name if theme else None)
-            if added:
-                tweak.set_enabled(True)
-        finally:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-        if added == 0:
-            raise RuntimeError("no icons found in archive")
-        return added, skipped
+        outcome = import_downloaded_pack(
+            tweak, data, theme.name if theme else None,
+            ios18_pack_hash_index())
+        if outcome.added:
+            tweak.set_enabled(True)
+        if outcome.added == 0 and not outcome.already_present:
+            from src.controllers.icon_pack_import import IconPackImportError
+            raise IconPackImportError("no icons found in archive")
+        return outcome

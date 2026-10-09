@@ -250,7 +250,7 @@ class PBConfigManager:
                 if sort_keys is None or len(sort_keys) == 0:
                     final_saved_items.append(item)
             except Exception:
-                print("Error executing database sequence, ignoring.")
+                log_warn("Error executing database sequence, ignoring.")
         self.saved_items = final_saved_items
         # it is correct format, update database
         db_connection.close()

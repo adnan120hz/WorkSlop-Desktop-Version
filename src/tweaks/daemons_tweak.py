@@ -163,16 +163,24 @@ class Daemon(Enum):
 # daemons in this set can never be marked disabled, even if they somehow
 # reach the tweak values.
 #
-# HONESTY-AUDIT NOTE (#9): this set is INTENTIONALLY empty, not "to be
-# filled". The Daemon enum only contains Nugget-blessed non-critical
-# daemons (nothing like backboardd/SpringBoard/launchd exists in it), and
-# the real enforcement is `allowed_keys` below: keys outside
-# INTERFACE_KEYS are stripped from presets and the apply pass, so a
-# non-UI daemon can never be written to disabled.plist in the first place.
-# `never_enable` remains as defense-in-depth plumbing; do not populate
-# this set with names that are not in the Daemon enum (they would never
-# match and the "protection" would be theater).
-DANGEROUS_DAEMONS: set["Daemon"] = set()
+# Fix Audit 12 (user order 2026-10-09): Voice Control is hard-blocked.
+# A "blocked" claim used to be theater — the Daemons page switch could
+# still be flipped on, and the state flowed through presets and the CLI
+# into disabled.plist. Now the block is real at every entry point:
+# `never_enable` strips its keys from the tweak value, preset loads and
+# the apply payload; the Daemons page refuses the toggle with the honest
+# reason below; the preset manager records the skip in ``last_skipped``;
+# and the CLI daemon/apply paths exit non-zero. Only the gate changes —
+# the disabled.plist payload for every other daemon is untouched.
+VOICE_CONTROL_BLOCK_REASON = (
+    "Voice Control is blocked in WorkSlop Desktop: disabling the "
+    "assistant_service, assistantd and voiced daemons can break Siri / "
+    "Voice Control and risks a bootloop, so this daemon can never be "
+    "disabled here."
+)
+BLOCKED_DAEMONS: frozenset["Daemon"] = frozenset({Daemon.VoiceControl})
+BLOCKED_DAEMON_KEYS = frozenset(k for d in BLOCKED_DAEMONS for k in d.value)
+DANGEROUS_DAEMONS: set["Daemon"] = set(BLOCKED_DAEMONS)
 DANGEROUS_KEYS = frozenset(k for d in DANGEROUS_DAEMONS for k in d.value)
 
 # Safe one-tap analytics/telemetry disable set — the "Recommended" switch in

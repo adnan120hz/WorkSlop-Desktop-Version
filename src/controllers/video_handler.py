@@ -1,15 +1,32 @@
+import logging
 import os
 from tempfile import mkdtemp
 from shutil import rmtree
 
+logger = logging.getLogger("WorkSlop.video_handler")
+
+# cv2/ffmpeg are heavy native dependencies used only by the PosterBoard
+# video features below. They are imported lazily on first use (Audit 86):
+# importing this module — which the Settings page and the main window do
+# just for set_ignore_frame_limit — must not drag them into startup.
+cv2 = None
+ffmpeg = None
 cv2_successful = False
-try:
-    import cv2
-    import ffmpeg
+
+def _load_video_libs() -> bool:
+    """Import cv2/ffmpeg on first use; True when both are available."""
+    global cv2, ffmpeg, cv2_successful
+    if cv2 is not None and ffmpeg is not None:
+        return True
+    try:
+        import cv2 as _cv2
+        import ffmpeg as _ffmpeg
+    except Exception:
+        cv2_successful = False
+        return False
+    cv2, ffmpeg = _cv2, _ffmpeg
     cv2_successful = True
-except:
-    print("failed to include cv2!")
-    cv2_successful = False
+    return True
 
 from src.exceptions.posterboard_exceptions import VideoLengthException
 from src.controllers.files_handler import get_bundle_files
@@ -22,7 +39,13 @@ def set_ignore_frame_limit(value: bool):
     global ignore_pb_frame_limit
     ignore_pb_frame_limit = value
 
+def _require_video_libs() -> None:
+    if not _load_video_libs():
+        raise RuntimeError(
+            "Video support is unavailable: failed to import cv2/ffmpeg.")
+
 def convert_to_mov(input_file: str, output_file: str = None):
+    _require_video_libs()
     # if there is no output file specified, create a temp file then return contents
     if output_file == None:
         tmpdir = mkdtemp()
@@ -40,6 +63,7 @@ def convert_to_mov(input_file: str, output_file: str = None):
     ffmpeg.run(out)
 
 def create_caml(video_path: str, output_file: str, auto_reverses: bool, calculationMode: str, update_label=lambda x: None):
+    _require_video_libs()
     cam = cv2.VideoCapture(video_path)
     assets_path = os.path.join(output_file, "assets")
     frame_count = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -87,7 +111,7 @@ def create_caml(video_path: str, output_file: str, auto_reverses: bool, calculat
                 name = 'assets/' + str(currentframe) + '.jpg'
                 if update_label:
                     update_label(QCoreApplication.tr('Creating {0}...').format(name))
-                print('Creating...' + name)
+                logger.debug('Creating...%s', name)
         
                 # writing the extracted images
                 cv2.imwrite(os.path.join(output_file.removeprefix(u"\\\\?\\"), name), frame)

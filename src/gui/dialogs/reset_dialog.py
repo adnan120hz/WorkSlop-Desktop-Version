@@ -1,6 +1,10 @@
+import logging
+
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QCheckBox, QVBoxLayout, QSizePolicy
 
 from src.gui.pages.pages_list import Page, get_resettable_pages
+
+logger = logging.getLogger("WorkSlop.reset_dialog")
 
 class ResetDialog(QDialog):
     def __init__(self, device_manager, apply_reset=lambda x: None, parent=None):
@@ -39,7 +43,7 @@ class ResetDialog(QDialog):
             try:
                 self.selected_pages.remove(page)
             except Exception:
-                print("Page not found in list, ignoring error.")
+                logger.debug("Page not found in list, ignoring error.")
 
     def accept(self):
         super().accept()

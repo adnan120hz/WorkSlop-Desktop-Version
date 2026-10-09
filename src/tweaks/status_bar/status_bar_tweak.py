@@ -19,6 +19,22 @@ FULL_SIGNAL_FILE = "HomeDomain/Library/SpringBoard/statusBarOverrides"
 FULL_SIGNAL_FEATURE_ID = "statusbar.full_signal_bars_no_sim"
 FULL_SIGNAL_FEATURE_NAME = "Full Signal Bars (No SIM Visual)"
 
+# Display names for the raw dataNetworkType values, indexed exactly as
+# Cowabunga Lite's NetworkTypes array and the vendored Nugget dropdown
+# (src/qt/nugget741_ui.py pTypeDrp/sTypeDrp) write them: the GUI writes
+# the raw index, the struct stores the raw index; only the label is new
+# (fake-5G research 2026-10-09: 11="5G", 12="5G+", 13="5GUW",
+# 14="5GUC"). Values outside the named range keep a neutral "Type N".
+DATA_NETWORK_TYPE_LABELS = {
+    0: "GPRS", 1: "EDGE", 2: "3G", 3: "4G", 4: "LTE", 5: "Wi-Fi",
+    6: "Personal Hotspot", 7: "1x", 8: "5Gᴇ", 9: "LTE-A", 10: "LTE+",
+    11: "5G", 12: "5G+", 13: "5GUW", 14: "5GUC",
+}
+
+def data_network_type_label(value: int) -> str:
+    """Human label for a raw dataNetworkType value ("Type N" if unnamed)."""
+    return DATA_NETWORK_TYPE_LABELS.get(value, f"Type {value}")
+
 def _truncate_utf8(text: str, max_bytes: int) -> bytes:
     """Encode *text* as UTF-8, cutting at a character boundary so the result
     is at most *max_bytes* bytes.
@@ -158,6 +174,12 @@ class StatusBarTweak(Tweak):
         return self._get_int("dataNetworkType")
     def set_data_network_type(self, id: int) -> None:
         self._set_flag("overrideDataNetworkType", "dataNetworkType", id)
+        # The type glyph is only drawn when the cellular data network
+        # item itself is enabled in the override struct (item 9; this is
+        # how Cowabunga Lite / Nugget write it). Without this, a type
+        # chosen while the item is hidden would silently never render.
+        self.set_item_override(
+            StatusBarItem.CellularDataNetworkStatusBarItem, True)
     def unset_data_network_type(self) -> None:
         self._unset_flag("overrideDataNetworkType")
 

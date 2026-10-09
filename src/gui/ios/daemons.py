@@ -13,7 +13,9 @@ from src.gui.theme import ColorThemeManager
 from src.gui.theme.colors import NUGGET_DARK
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_daemons
-from src.tweaks.daemons_tweak import Daemon, RECOMMENDED_ANALYTICS
+from src.tweaks.daemons_tweak import (
+    Daemon, RECOMMENDED_ANALYTICS, BLOCKED_DAEMONS, VOICE_CONTROL_BLOCK_REASON,
+)
 from src.controllers.hotload import HotLoad, confirm_flagged
 
 # QWIDGETSIZE_MAX — PySide6 does not export the C macro, this is its value.
@@ -313,6 +315,15 @@ class IOSDaemonsContent(QWidget):
         )
         row_layout.addWidget(switch)
 
+        if daemon in BLOCKED_DAEMONS:
+            # Fix Audit 12: hard-blocked daemon (Voice Control). The switch
+            # can be flipped, but _on_daemon_toggled refuses it with the
+            # honest reason and snaps it back off; it is never stored.
+            note = QLabel(QCoreApplication.translate("Nugget", "blocked"))
+            note.setStyleSheet(f"color: {c.error}; font-size: 12px;")
+            self._forced_notes.append(note)
+            row_layout.addWidget(note)
+
         forced_name = getattr(daemon, "name", "")
         if forced_name in self._forced_daemons:
             # Safety rules force-disable this daemon: locked ON.
@@ -361,6 +372,17 @@ class IOSDaemonsContent(QWidget):
             self._set_switch(daemon, checked)
 
     def _on_daemon_toggled(self, daemon: Daemon, checked: bool):
+        if daemon in BLOCKED_DAEMONS:
+            # Fix Audit 12: Voice Control can never be turned on. Refuse
+            # with the honest reason and snap the switch back off, before
+            # any other confirmation or state change can run.
+            if checked:
+                QMessageBox.warning(
+                    self,
+                    QCoreApplication.translate("Nugget", "Voice Control Blocked"),
+                    QCoreApplication.translate("Nugget", VOICE_CONTROL_BLOCK_REASON))
+            self._set_switch(daemon, False)
+            return
         forced_name = getattr(daemon, "name", "")
         if not checked and forced_name in self._forced_daemons:
             # Safety rules force this daemon off — it cannot be re-enabled.
@@ -486,6 +508,8 @@ class IOSDaemonsContent(QWidget):
 
         for daemon, switch in self.daemon_switches:
             value = self.daemons_tweak.value.get(daemon.value[0], False) if self.daemons_tweak.value else False
+            if daemon in BLOCKED_DAEMONS:
+                value = False  # Fix Audit 12: blocked rows never show ON
             switch.blockSignals(True)
             switch.setChecked(value)
             switch.blockSignals(False)

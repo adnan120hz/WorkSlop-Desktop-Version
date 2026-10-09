@@ -70,6 +70,11 @@ class ApplyThread(QThread):
         self.success = False
         self._log = None
         self._error_msg: str = ""
+        # Fix Audit 54: the backend reports abort/failure through the
+        # final alert (it does not raise), so remember it — run() must
+        # never report success when the final alert is not the success
+        # one (a disk-space abort used to render "Apply complete!").
+        self._final_alert = None
 
     def prompt_password(self, title: str, label: str) -> Optional[str]:
         # Modal dialogs must be built on the main thread (macOS raises
@@ -111,6 +116,17 @@ class ApplyThread(QThread):
                         build=self.manager.get_current_device_build() or "unknown",
                         udid=self.manager.get_current_device_udid() or "unknown")
             self._do_work()
+            # Fix Audit 54: a non-success final alert (abort / failure)
+            # is not a success, even though _do_work() returned normally.
+            _final = self._final_alert
+            if _final is not None and getattr(_final, "title", None) != "Success!":
+                self.success = False
+                self._error_msg = str(
+                    getattr(_final, "txt", "") or "Operation did not complete.")
+                self._log.error("%s ended without success: %s",
+                                mode, self._error_msg)
+                self.finished_with_result.emit(False, self._error_msg)
+                return
             self.success = True
             self._error_msg = ""
             _journal_path = getattr(self.manager, "last_apply_journal_path", None)
@@ -142,6 +158,7 @@ class ApplyThread(QThread):
 
     def alert_window(self, msg: ApplyAlertMessage):
         if msg is not None:
+            self._final_alert = msg
             self._log.info("alert: %s | %s", getattr(msg, "title", ""), getattr(msg, "txt", ""))
         self.alert.emit(msg)
 

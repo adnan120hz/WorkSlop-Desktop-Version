@@ -4,8 +4,10 @@ device through the cross-platform AirLift driver (``src.airlift``).
 The page stages the theme images (``src.tweaks.passcode_theme``) into the
 exact file names the passcode keypad expects and pushes them into
 ``/var/mobile/Library/Caches/TelephonyUI-10`` (or the 9/8 variant for older
-iOS). AirLift can only create **new** files — existing names are reported as
-skipped, so re-applying the same theme over itself is a no-op.
+iOS). AirLift can only create **new** files — it cannot overwrite an
+existing name, so replacing a theme requires removing the old keypad cache
+first. The page reports exactly what ``write_files`` reports: a write the
+device rejects or drops is a failure (or partial), never a success.
 """
 
 from __future__ import annotations
@@ -60,7 +62,7 @@ class PasscodeThemeWriteThread(QThread):
 
     def __init__(self, udid: str, theme_path: str, key_digits: int,
                  locale: str, lang_opt: str, bold: str, target_opt: str,
-                 parent=None):
+                 parent=None, device_manager=None):
         super().__init__(parent)
         self.udid = udid
         self.theme_path = theme_path
@@ -69,6 +71,14 @@ class PasscodeThemeWriteThread(QThread):
         self.lang_opt = lang_opt
         self.bold = bold
         self.target_opt = target_opt
+        # Fix Audit 5: this write path bypassed the Apply Journal
+        # entirely. The thread now opens its own journal before touching
+        # the device and (when given the manager) surfaces the path the
+        # same way the tweak apply paths do.
+        self._device_manager = device_manager
+        self.journal_path: Optional[str] = None
+        self._journal = None
+        self._journal_entry = None
 
     def _emit(self, message: str):
         # Mirror every ATC/airlift line into the session log too — the status
@@ -79,6 +89,80 @@ class PasscodeThemeWriteThread(QThread):
         except Exception:
             pass
         self.progress.emit(message)
+
+    # -- Fix Audit 5: Apply Journal for the passcode write ---------------
+    def _journal_begin(self):
+        """Open the journal and record the request BEFORE any write."""
+        try:
+            from src.controllers.apply_journal import begin_journal
+            journal = begin_journal("apply", device={"udid": self.udid})
+            self._journal_entry = journal.add_entry({
+                "id": "passcode.theme",
+                "tweak_id": "PasscodeTheme",
+                "name": "Passcode Theme",
+                "family": "Passcode",
+                "kind": "special",
+                "requested": True,
+                "source": "passcode_page",
+                "compatibility": {"result": "compatible", "reason": None},
+                "hotload": {"result": "allowed", "reason": None},
+                "operation": {"theme_file": os.path.basename(self.theme_path)},
+            })
+            journal.write()
+            self._journal = journal
+            self.journal_path = journal.path
+        except Exception as error:  # journaling must never block a write
+            logging.getLogger("WorkSlop.passthme").warning(
+                "Passcode Apply Journal begin failed: %s", error)
+            self._journal = None
+            self._journal_entry = None
+
+    def _journal_stage(self, targets, staged):
+        """Attach the staged files and persist the staged state pre-write."""
+        journal, entry = self._journal, self._journal_entry
+        if journal is None or entry is None:
+            return
+        try:
+            from types import SimpleNamespace
+            from src.controllers.apply_journal import TW_STAGED
+            entry["operation"].update({
+                "targets": list(targets),
+                "staged_files": len(staged),
+                "locale": self.locale,
+                "bold": self.bold,
+            })
+            records = [
+                SimpleNamespace(
+                    domain="AirLift",
+                    restore_path=f"{target.lstrip('/')}/{name}",
+                    contents=data, owner=501, group=501)
+                for target in targets for name, data in staged
+            ]
+            keys = journal.attach_files(records)
+            entry["status"] = TW_STAGED
+            journal.associate(entry, keys)
+            journal.write()
+        except Exception as error:
+            logging.getLogger("WorkSlop.passthme").warning(
+                "Passcode Apply Journal staging failed: %s", error)
+
+    def _journal_finish(self, op_status, entry_status, error=None, note=None):
+        journal, entry = self._journal, self._journal_entry
+        if journal is None or entry is None:
+            return
+        try:
+            entry["status"] = entry_status
+            if note:
+                entry["note"] = note
+            if error:
+                entry["error"] = error
+            journal.finalize(op_status, error=error)
+            self.journal_path = journal.path
+            if self._device_manager is not None:
+                self._device_manager.last_apply_journal_path = journal.path
+        except Exception as exc:
+            logging.getLogger("WorkSlop.passthme").warning(
+                "Passcode Apply Journal finalize failed: %s", exc)
 
     def _targets(self) -> list[str]:
         if self.target_opt == "all":
@@ -95,20 +179,27 @@ class PasscodeThemeWriteThread(QThread):
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        # Fix Audit 5: journal opens BEFORE the device write (the parse /
+        # staging below is local preparation, the write is the apply).
+        self._journal_begin()
         try:
             self.progress.emit(_tr("Parsing theme…"))
             keys = parse_passthm(self.theme_path)
             staged = stage_files(
                 keys, locale=self.locale, langs=self._languages(), bold=self.bold)
             targets = self._targets()
+            self._journal_stage(targets, staged)
 
             self.progress.emit(
                 _tr("Staged {0} key files, {1} targets").format(len(staged), len(targets)))
 
             written: list[str] = []
             failures: list[str] = []
+            rejected = False
+            targets_ok = True
             try:
                 async def apply_all():
+                    nonlocal rejected, targets_ok
                     self.progress.emit(_tr(
                         "Step 1/3 — Trust check: opening a device session. If "
                         "this computer isn't trusted yet, unlock your iPhone "
@@ -130,9 +221,27 @@ class PasscodeThemeWriteThread(QThread):
                                 _tr("Writing {0} files to {1}…").format(len(staged), target))
                             result = await write_files(
                                 lockdown, target, staged, log_cb=self._emit)
-                            written.extend(result["written"])
-                            failures.extend(result["failures"])
-                        self.progress.emit(_tr("Step 3/3 — Done."))
+                            # Fix Audit 98: honor the per-target verdict.
+                            # write_files reports ok/rejected alongside the
+                            # written/failures lists; a rejected session or
+                            # ok=False must never read as success downstream.
+                            target_written = list(result.get("written") or [])
+                            target_failures = list(result.get("failures") or [])
+                            written.extend(target_written)
+                            failures.extend(target_failures)
+                            if result.get("rejected"):
+                                rejected = True
+                            reported_ok = result.get("ok")
+                            if reported_ok is None:
+                                reported_ok = not target_failures
+                            if not reported_ok or target_failures:
+                                targets_ok = False
+                            if rejected:
+                                # The device refused the session itself;
+                                # remaining targets would hit the same
+                                # refusal — fail fast (AirLift contract).
+                                break
+                        self.progress.emit(_tr("Step 3/3 — Finishing…"))
                 try:
                     loop.run_until_complete(apply_all())
                 except PasswordRequiredError:
@@ -154,19 +263,107 @@ class PasscodeThemeWriteThread(QThread):
             except (AirliftError, OSError, TimeoutError, ConnectionError) as error:
                 raise RuntimeError(f"{type(error).__name__}: {error}") from error
 
-            lines = [
-                _tr("Wrote {0} file(s) to the device.").format(len(written)),
-            ]
-            if failures:
-                lines.append(
-                    _tr("{0} file(s) skipped — they already exist (AirLift only "
-                        "writes new names). Remove the old keypad cache first to "
-                        "replace an existing theme.").format(len(failures)))
-            self.done.emit(True, "\n".join(lines))
+            # Fix Audit 98: report what write_files actually reported.
+            # Full success requires every target ok with zero failures;
+            # anything else is an honest failure or partial — never a
+            # green "success", and never a "skipped, already exists" claim
+            # (the AirLift result cannot confirm a file exists on the
+            # device; rejection, a dropped session and an existing name
+            # all surface as the same failure entry).
+            from src.controllers.apply_journal import (
+                OP_FAILED, OP_PARTIAL, OP_SUCCESS,
+                TW_DELIVERED, TW_NOT_DELIVERED)
+            expected = len(staged) * len(targets)
+            full_ok = (targets_ok and not rejected and not failures
+                       and len(written) >= expected)
+            if full_ok:
+                self._journal_finish(OP_SUCCESS, TW_DELIVERED)
+                self.done.emit(True, _tr(
+                    "Wrote {0} file(s) to the device.").format(len(written)))
+            elif not written:
+                if rejected:
+                    message = _tr(
+                        "Nothing was written: the device rejected the "
+                        "AirLift session. Unlock the iPhone, keep it awake, "
+                        "open Apple Books once, and try again.")
+                else:
+                    message = _tr(
+                        "Nothing was written: all {0} file write(s) failed. "
+                        "Reconnect the iPhone and try again. If this theme "
+                        "is already on the device, remove the old keypad "
+                        "cache first — AirLift cannot overwrite existing "
+                        "files.").format(expected)
+                self._journal_finish(OP_FAILED, TW_NOT_DELIVERED,
+                                     error=message)
+                self.done.emit(False, message)
+            else:
+                names = ", ".join(failures[:8])
+                if len(failures) > 8:
+                    names += ", …"
+                failed_note = _tr(" ({0})").format(names) if names else ""
+                failed_count = max(len(failures), expected - len(written))
+                message = _tr(
+                    "Partially written: {0} of {1} file(s) reached the "
+                    "device; {2} could not be written{3}. A file that "
+                    "already exists on the device cannot be overwritten "
+                    "by AirLift, and a dropped or rejected session fails "
+                    "the same way — remove the old keypad cache to replace "
+                    "an existing theme, or reconnect and retry.").format(
+                        len(written), expected, failed_count, failed_note)
+                self._journal_finish(
+                    OP_PARTIAL, TW_DELIVERED,
+                    note=f"{failed_count} of {expected} file write(s) did "
+                         "not complete; see the status message.")
+                self.done.emit(False, message)
         except Exception as error:
             logging.getLogger("WorkSlop.passthme").error(
                 "Passcode theme write failed: %s\n%s", error, traceback.format_exc())
+            from src.controllers.apply_journal import (
+                OP_FAILED, TW_FAILED, TW_NOT_DELIVERED)
+            _entry = self._journal_entry or {}
+            self._journal_finish(
+                OP_FAILED,
+                TW_NOT_DELIVERED if _entry.get("status") == "staged"
+                else TW_FAILED,
+                error=f"{type(error).__name__}: {error}")
             self.done.emit(False, f"{type(error).__name__}: {error}")
+        finally:
+            loop.close()
+
+
+class PasscodeTrustProbeThread(QThread):
+    """Live trust probe for the device line (Fix Audit 28).
+
+    Opens a real lockdown session with ``autopair=False`` (the same
+    ``lockdown_session`` + ``paired`` check the write path uses) so the
+    label reflects the device's CURRENT trust state instead of the
+    enumeration-time cache, which can be stale in both directions: a
+    device trusted since enumeration was still labelled untrusted, and
+    a device whose trust was revoked was still labelled trusted.
+    ``autopair=False`` keeps merely *showing* the page from popping a
+    "Trust This Computer" dialog on the phone.
+    """
+
+    probed = Signal(bool, bool, str)  # reachable, trusted, detail
+
+    def __init__(self, udid: str, parent=None):
+        super().__init__(parent)
+        self.udid = udid
+
+    def run(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            async def probe():
+                async with lockdown_session(
+                        self.udid, autopair=False,
+                        pair_timeout=10.0) as lockdown:
+                    return bool(getattr(lockdown, "paired", False))
+
+            trusted = loop.run_until_complete(probe())
+            self.probed.emit(True, trusted, "")
+        except Exception as error:  # device unreachable / session refused
+            self.probed.emit(False, False, f"{type(error).__name__}: {error}")
         finally:
             loop.close()
 
@@ -185,6 +382,7 @@ class IOSPasscodeThemePage(QWidget):
         self._theme_path: Optional[str] = None
         self._key_digits = 0
         self._worker: Optional[PasscodeThemeWriteThread] = None
+        self._trust_probe: Optional[PasscodeTrustProbeThread] = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -436,14 +634,28 @@ class IOSPasscodeThemePage(QWidget):
         # the construction-time "No trusted iPhone connected" text.
         self._refresh_device_line()
 
-    def _refresh_device_line(self):
-        c = ColorThemeManager.instance().colors
-        dm = self.window.device_manager
-        device = None
+    def _cached_device(self):
         try:
-            device = dm.data_singleton.current_device
+            return self.window.device_manager.data_singleton.current_device
         except Exception:
-            pass
+            return None
+
+    def _device_identity_text(self, device) -> str:
+        version = getattr(device, "version", "")
+        build = getattr(device, "build", "")
+        model = getattr(device, "model", "")
+        return _tr("Device: {0} — iOS {1} ({2}).").format(
+            model or _tr("iPhone"), version or "?", build or "?")
+
+    def _refresh_device_line(self):
+        # Fix Audit 28: the trust label used to be read straight from
+        # the enumeration-time ``current_device`` cache, which goes
+        # stale in both directions. The cache now only identifies the
+        # device and serves as a clearly-labelled fallback; the trust
+        # claim itself comes from a live probe (see _start_trust_probe)
+        # every time the page is shown.
+        c = ColorThemeManager.instance().colors
+        device = self._cached_device()
         if device is None:
             self._device_lbl.setText(_tr(
                 "No trusted iPhone connected. Plug it in, unlock it, tap "
@@ -451,17 +663,77 @@ class IOSPasscodeThemePage(QWidget):
                 "to appear here."))
             self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
             return
-        version = getattr(device, "version", "")
-        build = getattr(device, "build", "")
-        model = getattr(device, "model", "")
-        self._device_lbl.setText(_tr(
-            "Device: {0} — iOS {1} ({2}). This computer is trusted by it, so "
-            "the write runs immediately — no \u201cTrust This Computer\u201d "
-            "pop-up will appear.").format(
-                model or _tr("iPhone"), version or "?", build or "?"))
+        self._device_lbl.setText(
+            self._device_identity_text(device) + " " + _tr(
+                "Checking whether this computer is trusted — live, on "
+                "the device…"))
         self._device_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
-        if not dm.data_singleton.device_available:
-            self._device_lbl.setText(_tr(
+        self._start_trust_probe()
+
+    def _start_trust_probe(self):
+        if self._trust_probe is not None and self._trust_probe.isRunning():
+            return
+        try:
+            udid = self.window.device_manager.get_current_device_udid()
+        except Exception:
+            udid = None
+        if not udid:
+            self._show_cached_trust_fallback()
+            return
+        self._trust_probe = PasscodeTrustProbeThread(udid, parent=self)
+        self._trust_probe.probed.connect(self._on_trust_probed)
+        self._trust_probe.finished.connect(self._trust_probe.deleteLater)
+        self._trust_probe.start()
+
+    def _show_cached_trust_fallback(self):
+        """Cache-based label, explicitly marked as a fallback.
+
+        Used only when no live probe can run (no UDID, or the device
+        could not be reached): the text never claims trust as a live
+        fact, it says the status is the cached one.
+        """
+        c = ColorThemeManager.instance().colors
+        device = self._cached_device()
+        if device is None:
+            return
+        self._device_lbl.setText(
+            self._device_identity_text(device) + " " + _tr(
+                "Trust status shown from the last device scan (cached) — "
+                "the device could not be reached for a live trust check, "
+                "so this may be out of date."))
+        self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
+
+    def _on_trust_probed(self, reachable: bool, trusted: bool, detail: str):
+        self._trust_probe = None
+        c = ColorThemeManager.instance().colors
+        device = self._cached_device()
+        if device is None:
+            self._refresh_device_line()
+            return
+        if not reachable:
+            self._show_cached_trust_fallback()
+            return
+        identity = self._device_identity_text(device)
+        if trusted:
+            self._device_lbl.setText(identity + " " + _tr(
+                "This computer is trusted by it (checked live just now), "
+                "so the write runs immediately — no \u201cTrust This "
+                "Computer\u201d pop-up will appear."))
+            self._device_lbl.setStyleSheet(
+                f"color: {c.text_secondary}; font-size: 13px;")
+        else:
+            self._device_lbl.setText(identity + " " + _tr(
+                "This computer is NOT trusted by it (checked live just "
+                "now). Unlock the iPhone and tap \u201cTrust This "
+                "Computer\u201d, then reopen this page."))
+            self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
+            return
+        try:
+            available = self.window.device_manager.data_singleton.device_available
+        except Exception:
+            available = True
+        if not available:
+            self._device_lbl.setText(identity + " " + _tr(
                 "Device present, but it is not supported for AirLift (needs an "
                 "iPhone on iOS 26.2+)."))
             self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
@@ -503,6 +775,7 @@ class IOSPasscodeThemePage(QWidget):
             lang_opt=self._lang_combo.currentData(),
             bold=self._bold_combo.currentData(),
             target_opt=self._target_combo.currentData(),
+            device_manager=self.window.device_manager,
         )
         self._worker.progress.connect(self._on_progress)
         self._worker.done.connect(self._on_done)

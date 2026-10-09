@@ -298,8 +298,13 @@ class IOSIconThemesPage(QWidget):
             table.setRowHeight(row, 56)
             table.setCellWidget(row, 0, self._icon_cell(slug, dark=dark))
             table.setItem(row, 1, QTableWidgetItem(name))
-            table.setItem(row, 2, QTableWidgetItem(
-                webclip_target(bundle_id, name, tweak)))
+            target_item = QTableWidgetItem(
+                webclip_target(bundle_id, name, tweak))
+            # Audit 75: two side-by-side tables leave this column
+            # narrow, so the target path is elided on screen; keep the
+            # full path one hover away.
+            target_item.setToolTip(target_item.text())
+            table.setItem(row, 2, target_item)
             table.setCellWidget(
                 row, 3, self._add_cell(name, bundle_id, slug, dark))
 
@@ -350,6 +355,14 @@ class IOSIconThemesPage(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         available = os.path.isfile(icon_asset_path(slug, dark))
         btn.setEnabled(available)
+        if not available:
+            # Audit 50: a disabled Add (e.g. no Dark artwork for
+            # Shortcuts in the pack) explained itself nowhere and still
+            # sat in the tab chain; say why and skip tab for it.
+            btn.setToolTip(_tr(
+                "No {0} version of this icon in the pack.").format(
+                    _tr("Dark") if dark else _tr("Light")))
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         if available:
             btn.clicked.connect(
                 lambda _=False, n=name, b=bundle_id, s=slug, d=dark:
@@ -632,6 +645,11 @@ class IOSIconThemesPage(QWidget):
         del_btn.setIconSize(QSize(18, 18))
         del_btn.setIcon(theme_icon(":/icon/trash.svg", c.text_secondary))
         del_btn.setCursor(Qt.PointingHandCursor)
+        # Audit 50: icon-only button — give it a tooltip and an
+        # accessible name so it is not a mystery control.
+        del_btn.setToolTip(QCoreApplication.translate(
+            "Nugget", "Remove {0}").format(theme.bundle_id))
+        del_btn.setAccessibleName(del_btn.toolTip())
         del_btn.setStyleSheet(
             f"QToolButton {{ background-color: {c.surface_hover}; color: {c.error}; "
             f"border: 1px solid {c.border}; border-radius: 12px; padding: 7px; }}"
@@ -693,8 +711,17 @@ class IOSIconThemesPage(QWidget):
         if not path:
             return
         tweak = tweaks[TweakID.IconThemes]
-        result = tweak.import_pack_zip_matched(
-            path, ios18_pack_hash_index())
+        # Fix Audit 4 (caller side; the frozen importer is untouched):
+        # size limit + encryption probe before extraction, with any
+        # escaping zip error converted to a readable message.
+        from src.controllers.icon_pack_import import (
+            IconPackImportError, import_local_pack_zip)
+        try:
+            result = import_local_pack_zip(
+                tweak, path, ios18_pack_hash_index())
+        except IconPackImportError as error:
+            QMessageBox.warning(self.window, _tr("Warning"), str(error))
+            return
         if not result["archive_ok"]:
             QMessageBox.warning(
                 self.window,

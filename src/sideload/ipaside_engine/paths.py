@@ -146,3 +146,29 @@ def downloads_dir() -> Path:
 def autorefresh_log() -> Path:
     """Log written by the scheduled background auto-refresh runs."""
     return data_dir() / "autorefresh.log"
+
+
+def apple_lockdown_dir(system: str | None = None) -> Path:
+    """Where usbmux keeps this PC's pairing records, per operating system.
+
+    Single shared owner (Fix Audit 46): ``pairing`` and ``livecontainer``
+    used to hardcode the Windows location ``C:\\ProgramData\\Apple\\Lockdown``
+    independently, so on macOS/Linux both looked in a folder that can never
+    exist there. The per-OS locations:
+
+    * Windows: ``C:\\ProgramData\\Apple\\Lockdown`` (unchanged);
+    * macOS: ``~/Library/Lockdown`` (where usbmuxd writes the records);
+    * Linux: ``Path.home()`` — there is no standardised libimobiledevice
+      lockdown folder on Linux (``~/.local/share/libimobiledevice`` is a
+      convention, not a standard), so the home directory is the documented
+      fallback rather than an invented standard path.
+
+    ``system`` defaults to ``sys.platform`` and exists so tests can pin
+    each OS branch without running on that OS.
+    """
+    platform_name = system if system is not None else sys.platform
+    if platform_name == "win32":
+        return Path(r"C:\ProgramData\Apple\Lockdown")
+    if platform_name == "darwin":
+        return Path.home() / "Library" / "Lockdown"
+    return Path.home()

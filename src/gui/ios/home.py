@@ -218,11 +218,11 @@ class IOSHomePage(QWidget):
         cards_row = [self._make_card(
             "Tweaks", "Customize system settings", 1),
             self._make_card(
-            "Liquid Glass", "Disable the glass look", 9),
+            "Liquid Glass", "Write glass-look keys — no on-screen effect promised", 9),
             self._make_card(
             "App Data", "Browse app containers", 15),
             self._make_card(
-            "MobileGestalt", "Device feature flags (iOS 26.1-)", 12),
+            "MobileGestalt", "Device feature flags (iOS 16.0 – 26.2 beta 1)", 12),
             self._make_card(
             "PosterBoard", "Animated wallpapers & templates", 2),
             self._make_card(
@@ -234,7 +234,7 @@ class IOSHomePage(QWidget):
             self._make_card(
             "Passcode Theme", "Custom keypad theme (.passthm)", 11),
             self._make_card(
-            "Liquid Glass iOS 26.6.1 RC S8", "Latest Keys (S8)", 16,
+            "Liquid Glass iOS 26.6.1 RC S8", "Experimental — Latest Keys (S8)", 16,
             route_id="latest")]
         (self.tweaks_card, self.liquidglass_card, self.appdata_card,
          self.mobilegestalt_card, self.posterboard_card, self.daemons_card,
@@ -362,6 +362,13 @@ class IOSHomePage(QWidget):
     @Slot()
     def open_settings(self):
         self.window.ios_pages.setCurrentIndex(4)
+        # Audit 57: setCurrentIndex alone never re-read device state —
+        # it emits nothing when Settings is already current, and the
+        # page otherwise kept its first-visit rows. Refresh the built
+        # page explicitly, like on_settingsPageBtn_clicked does.
+        page = getattr(self.window, "_ios_page_objs", {}).get("ios_settings")
+        if page is not None:
+            page.refresh()
 
     def open_presets_section(self):
         self.window.open_presets_section()
@@ -485,7 +492,7 @@ class IOSHomePage(QWidget):
             self.mobilegestalt_card.setGraphicsEffect(None)
             self.mobilegestalt_card.setCursor(Qt.PointingHandCursor)
             self.mobilegestalt_card.setToolTip(
-                QCoreApplication.translate("Nugget", "Device feature flags (iOS 26.1-)"))
+                QCoreApplication.translate("Nugget", "Device feature flags (iOS 16.0 – 26.2 beta 1)"))
 
     def set_statusbar_locked(self, locked: bool):
         """Lock the Status Bar tile on iOS 27 builds.

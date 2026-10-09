@@ -11,6 +11,14 @@ ACCURATE / OUTDATED / MISSING verdict per claim.
 > `inject.py` / `protective_cache.py`, and the classic designer stack was
 > parked. Treat line numbers as pointers to the feature, not the exact line;
 > the structural verdicts in the final section remain valid.
+>
+> **Further staleness noted 2026-10-09:** the Controllers table below
+> still cites `Nugget_Repo = "awesomenull-dev/GoldenNugget/..."` as the
+> update source. That is no longer true — the current update checker
+> (`src/controllers/web_request_handler.py`) points at
+> `adnan120hz/WorkSlop-Desktop-Version`. Section 9 audits a repo-level
+> `AGENTS.md` that was removed from the repository on 2026-10-09, so its
+> discrepancies are historical.
 
 ---
 

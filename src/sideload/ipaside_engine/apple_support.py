@@ -234,7 +234,8 @@ def download_itunes(
     # Written straight to its final name rather than to a staging file, because the
     # verification below is what publishes it: this function returns the path only
     # after the signature check passes, and deletes the file on every other path,
-    # so an unverified download is never something a caller can be handed.
+    # so a download that has not passed the signature check is never
+    # something a caller can be handed.
     progress("download", 0, "Contacting Apple\u2026")
     written, total = _stream_to_file(destination, progress)
 

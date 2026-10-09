@@ -101,7 +101,7 @@ class TweakID(Enum):
     AnnounceAllPastes = auto()
 
     # liquid glass — Round 6 (2026-10-02, per user order): 71 audited candidates
-    # added for pre-beta developer release. All unverified on device.
+    # added for pre-beta developer release. None device-tested yet.
     # See ~/workspace/riset/AUDIT-KANDIDAT-BARU.md for audit details.
     SolariumForceFallback = auto()
     # Deprecated alias for backward compat with old presets (pre-4.0)
@@ -142,7 +142,7 @@ class TweakID(Enum):
     # Blurr Motion (2026-10-03): the single candidate from the DesignLibrary
     # dossier whose key string is attested in the 23G83 binary
     # (~/workspace/riset/wave11/DOSSIER-BLURR-MOTION.md). Normal tweak, no
-    # badge: unverified status lives in its description, not a lock.
+    # badge: its untested status lives in its description, not a lock.
     BlurrMotion = auto()
     # status bar visual (non-glass)
     StatusBarOverrides = auto()

@@ -256,7 +256,12 @@ class IOSSectionHeader(QLabel):
         _auto_retheme(self)
 
     def _retheme(self):
-        self.setStyleSheet(t("section_header"))
+        # Audit 91: skip the call when the sheet is already identical —
+        # re-setting it re-polishes the widget for nothing (page
+        # rethemes run on every Settings show).
+        sheet = t("section_header")
+        if self.styleSheet() != sheet:
+            self.setStyleSheet(sheet)
 
 
 class IOSCard(QFrame):
@@ -269,7 +274,10 @@ class IOSCard(QFrame):
         # Don't create a default layout - let the caller decide
 
     def _retheme(self):
-        self.setStyleSheet(t("card"))
+        # Audit 91: same skip-if-identical as IOSSectionHeader.
+        sheet = t("card")
+        if self.styleSheet() != sheet:
+            self.setStyleSheet(sheet)
 
 
 class IOSCollapsibleSection(QWidget):
@@ -592,11 +600,14 @@ def apply_full_nugget_chrome(root, enabled: bool):
     """
     for card in root.findChildren(IOSCard):
         if enabled:
-            card.setStyleSheet(NUGGET_CARD_QSS)
+            # Audit 91: skip-if-identical (see IOSCard._retheme).
+            if card.styleSheet() != NUGGET_CARD_QSS:
+                card.setStyleSheet(NUGGET_CARD_QSS)
         else:
             card._retheme()
     for header in root.findChildren(IOSSectionHeader):
         if enabled:
-            header.setStyleSheet(NUGGET_SECTION_HEADER_QSS)
+            if header.styleSheet() != NUGGET_SECTION_HEADER_QSS:
+                header.setStyleSheet(NUGGET_SECTION_HEADER_QSS)
         else:
             header._retheme()

@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Optional, Callable
 
@@ -19,6 +20,138 @@ def _notify_tweak_change():
             _on_tweak_change()
         except Exception:
             pass  # Never let callback errors break tweak changes
+
+
+def merge_disabled_plist(existing, incoming: dict) -> dict:
+    """Single deterministic owner for the launchd disabled.plist merge.
+
+    Audit 38: ``com.apple.thermalmonitord`` had two writers — the
+    registry ``Disable Thermal`` BasicPlistTweak and the Daemons
+    AdvancedPlistTweak (``Daemon.thermalmonitord``). Both wrote the
+    same key into ``FileLocation.disabledDaemons`` with plain
+    last-write-wins assignment / ``dict.update``, so the staged
+    result depended on apply order (a ``False`` from Daemons applied
+    last silently re-enabled a daemon that Disable Thermal had
+    asked to disable, and vice-versa).
+
+    This helper is now the ONLY code path that merges values into
+    a staged ``disabled.plist`` dict. Both plist tweak classes route
+    their ``disabledDaemons`` writes through it. Bool values combine
+    with logical OR — a daemon ends up disabled if EITHER writer
+    requests it — so the final dict (and its plist bytes) is
+    identical regardless of apply order. To re-enable a daemon the
+    user must turn off both toggles that can request it.
+    """
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    for key, value in incoming.items():
+        if key in merged and isinstance(merged[key], bool) and isinstance(value, bool):
+            merged[key] = merged[key] or value
+        else:
+            merged[key] = value
+    return merged
+
+
+# ---------------------------------------------------------------------------
+# Fix Audit 30: deterministic owner for the shared resolution plist.
+#
+# ``FileLocation.resolution`` has two writers staging the SAME canvas keys
+# (``canvas_width`` / ``canvas_height``): Risky CustomResolution (an
+# ``AdvancedPlistTweak`` whose values the user typed explicitly) and
+# ``RdarFixTweak`` (model-derived dimensions for the Dynamic Island status
+# bar fix). Plain dict assignment made the winner depend on apply order —
+# whichever ran last silently won, and RdarFix's "Revert" popped the keys
+# even when they belonged to CustomResolution.
+#
+# Written priority rule (the ONLY rule; both writers route through the
+# helpers below, following the Audit 38/93 single-merge-owner pattern):
+#
+#   1. CustomResolution wins over RdarFix for every shared canvas key —
+#      an explicit user-entered dimension outranks a derived fix value,
+#      regardless of which tweak applies first.
+#   2. Within one writer, the later value wins (only reachable when the
+#      same tweak stages twice in one pass).
+#   3. RdarFix "Revert" (``di_type == -1``) removes only canvas keys
+#      RdarFix itself staged; CustomResolution's keys survive a revert.
+#   4. Every collision is logged with key, location, both writers and
+#      the declared winner — never resolved silently.
+#
+# Provenance travels on the staged dict itself (``_ResolutionPlist`` is a
+# plain ``dict`` for plist purposes; the sources map is an attribute,
+# never a plist key), so the rule holds in either apply order.
+# ---------------------------------------------------------------------------
+_RESOLUTION_CANVAS_KEYS = ("canvas_width", "canvas_height")
+_RESOLUTION_WRITER_PRIORITY = {"CustomResolution": 2, "RdarFix": 1}
+
+_resolution_log = logging.getLogger("WorkSlop.apply.resolution")
+
+
+class _ResolutionPlist(dict):
+    """A staged resolution plist plus which writer staged each canvas key."""
+
+    _canvas_sources: dict
+
+
+def _as_resolution_plist(existing) -> _ResolutionPlist:
+    plist = _ResolutionPlist(existing) if isinstance(existing, dict) else _ResolutionPlist()
+    plist._canvas_sources = dict(getattr(existing, "_canvas_sources", {}) or {})
+    return plist
+
+
+def merge_resolution_canvas(existing, incoming: dict, *, source: str) -> _ResolutionPlist:
+    """Merge ``incoming`` into the shared resolution plist deterministically.
+
+    Implements the Fix Audit 30 priority rule above and logs every
+    shared-canvas-key collision with its declared winner.
+    """
+    plist = _as_resolution_plist(existing)
+    sources = plist._canvas_sources
+    for key, value in incoming.items():
+        if key in _RESOLUTION_CANVAS_KEYS and key in plist:
+            previous = sources.get(key, "unknown")
+            if _RESOLUTION_WRITER_PRIORITY.get(source, 0) >= \
+                    _RESOLUTION_WRITER_PRIORITY.get(previous, 0):
+                winner, loser = source, previous
+                plist[key] = value
+                sources[key] = source
+            else:
+                winner, loser = previous, source
+            _resolution_log.warning(
+                "[ApplyOrder] resolution canvas conflict: key=%r "
+                "location=%s writers=%s winner=%s (Fix Audit 30 priority: "
+                "CustomResolution > RdarFix, regardless of apply order)",
+                key, FileLocation.resolution.value,
+                sorted({previous, source}), winner)
+        else:
+            plist[key] = value
+            if key in _RESOLUTION_CANVAS_KEYS:
+                sources[key] = source
+    return plist
+
+
+def revert_resolution_canvas(existing) -> _ResolutionPlist:
+    """RdarFix revert: drop only the canvas keys RdarFix itself staged.
+
+    Keys staged by CustomResolution (higher priority, explicit user
+    values) survive, and keeping them is logged — the old behaviour
+    popped both keys blindly, silently deleting a CustomResolution the
+    user had enabled in the same pass.
+    """
+    plist = _as_resolution_plist(existing)
+    sources = plist._canvas_sources
+    for key in _RESOLUTION_CANVAS_KEYS:
+        if key not in plist:
+            continue
+        owner = sources.get(key)
+        if owner == "CustomResolution":
+            _resolution_log.warning(
+                "[ApplyOrder] RdarFix revert kept key=%r location=%s: "
+                "staged by CustomResolution, which outranks RdarFix "
+                "(Fix Audit 30 priority rule)",
+                key, FileLocation.resolution.value)
+            continue
+        plist.pop(key, None)
+        sources.pop(key, None)
+    return plist
 
 class Tweak:
     def __init__(
@@ -74,7 +207,14 @@ class BasicPlistTweak(Tweak):
     def apply_tweak(self, other_tweaks: dict) -> dict:
         if not self.enabled:
             return other_tweaks
-        if self.file_location in other_tweaks:
+        if self.file_location == FileLocation.disabledDaemons:
+            # Audit 38: route through the single disabled.plist owner
+            # so a shared key (com.apple.thermalmonitord) resolves by
+            # logical OR, never by apply order.
+            other_tweaks[self.file_location] = merge_disabled_plist(
+                other_tweaks.get(self.file_location),
+                {self.key: self.value})
+        elif self.file_location in other_tweaks:
             other_tweaks[self.file_location][self.key] = self.value
         else:
             other_tweaks[self.file_location] = {self.key: self.value}
@@ -122,10 +262,25 @@ class AdvancedPlistTweak(BasicPlistTweak):
         # "Disable Thermal" BasicPlistTweak writes one key into the same
         # launchd disabled.plist). Replacing the dict used to silently
         # erase the other writer's keys depending on apply order.
+        # Audit 38: for disabled.plist both writers go through the
+        # single merge_disabled_plist owner (logical OR for bools), so
+        # the shared thermalmonitord key is order-independent.
         existing = other_tweaks.get(self.file_location)
-        merged = dict(existing) if isinstance(existing, dict) else {}
-        merged.update(self._filter_keys(self.value))
-        other_tweaks[self.file_location] = merged
+        filtered = self._filter_keys(self.value)
+        if self.file_location == FileLocation.disabledDaemons:
+            other_tweaks[self.file_location] = merge_disabled_plist(existing, filtered)
+        elif self.file_location == FileLocation.resolution:
+            # Fix Audit 30: the resolution plist is shared with
+            # RdarFixTweak over the same canvas keys — route through
+            # the deterministic merge owner so CustomResolution's
+            # explicit values win in either apply order (and the
+            # collision is logged, never silent).
+            other_tweaks[self.file_location] = merge_resolution_canvas(
+                existing, filtered, source="CustomResolution")
+        else:
+            merged = dict(existing) if isinstance(existing, dict) else {}
+            merged.update(filtered)
+            other_tweaks[self.file_location] = merged
         return other_tweaks
 
 
@@ -179,23 +334,27 @@ class RdarFixTweak(BasicPlistTweak):
         # removes only the canvas keys this tweak owns, keeping anything else
         # in the file. NOTE: this intentionally deviates from the verbatim
         # Nugget port — Nugget's revert destroyed the file (HIGH bug B5).
-        # Known shared-key conflict: a CustomResolution applied in the same
-        # pass uses the same canvas keys, so "Revert RDAR fix" will also drop
-        # those. Don't enable both at once.
+        # Fix Audit 30: the shared canvas keys now resolve through the
+        # deterministic merge owner above — CustomResolution (explicit
+        # user values) outranks RdarFix in either apply order, every
+        # collision is logged with its winner, and a revert drops only
+        # the keys RdarFix itself staged.
         existing = other_tweaks.get(self.file_location)
-        plist = dict(existing) if isinstance(existing, dict) else {}
         if self.di_type == -1:
             # revert the fix: drop our keys, keep the rest of the file
-            plist.pop("canvas_height", None)
-            plist.pop("canvas_width", None)
-        elif self.mode == 1:
+            other_tweaks[self.file_location] = revert_resolution_canvas(existing)
+            return other_tweaks
+        plist = _as_resolution_plist(existing)
+        if self.mode == 1:
             # iPhone XR, XS, and 11
-            plist["canvas_height"] = 1791
-            plist["canvas_width"] = 828
+            plist = merge_resolution_canvas(
+                plist, {"canvas_height": 1791, "canvas_width": 828},
+                source="RdarFix")
         elif self.mode == 3:
             # iPhone SEs
-            plist["canvas_height"] = 1779
-            plist["canvas_width"] = 1000
+            plist = merge_resolution_canvas(
+                plist, {"canvas_height": 1779, "canvas_width": 1000},
+                source="RdarFix")
         elif self.mode == 2:
             # Status bar fix (iPhone 12+)
             width = 2868
@@ -215,8 +374,9 @@ class RdarFixTweak(BasicPlistTweak):
             elif self.di_type == 2736:
                 width = 1260
                 height = 2736
-            plist["canvas_height"] = height
-            plist["canvas_width"] = width
+            plist = merge_resolution_canvas(
+                plist, {"canvas_height": height, "canvas_width": width},
+                source="RdarFix")
         other_tweaks[self.file_location] = plist
         return other_tweaks
 

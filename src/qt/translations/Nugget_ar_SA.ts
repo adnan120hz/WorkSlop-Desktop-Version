@@ -18,7 +18,17 @@
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="126" />
+      <location filename="../../gui/dialogs/dialogs.py" line="128" />
+      <source>License</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/dialogs/dialogs.py" line="133" />
+      <source>WorkSlop Desktop is free software, released under the GNU Affero General Public License, version 3 (AGPL-3.0). You may use, study, share, and modify it under the terms of that license, and the source code is available from the GitHub link below. The complete license text is bundled with this application as the LICENSE file in the WorkSlopDesktop program folder (on macOS, inside the WorkSlopDesktop.app bundle); it is also published at https://www.gnu.org/licenses/agpl-3.0.html</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/dialogs/dialogs.py" line="147" />
       <source>Credits</source>
       <translation type="unfinished" />
     </message>
@@ -26,27 +36,27 @@
   <context>
     <name>ApplyMixin</name>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1577" />
+      <location filename="../../gui/main_window_mixins.py" line="1762" />
       <source>Restore data from backup</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1984" />
+      <location filename="../../gui/main_window_mixins.py" line="2178" />
       <source>Enjoying WorkSlop Desktop?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1985" />
+      <location filename="../../gui/main_window_mixins.py" line="2179" />
       <source>If you like WorkSlop Desktop, please consider giving it a star on GitHub!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1986" />
+      <location filename="../../gui/main_window_mixins.py" line="2180" />
       <source>Star on GitHub</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1987" />
+      <location filename="../../gui/main_window_mixins.py" line="2181" />
       <source>Not now</source>
       <translation type="unfinished" />
     </message>
@@ -66,17 +76,22 @@ Use at your own risk!</source>
 استخدمه على مسؤوليتك الخاصة!</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="135" />
+      <location filename="../../gui/main_window_mixins.py" line="200" />
       <source>Searching for devices…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="193" />
+      <location filename="../../gui/main_window_mixins.py" line="283" />
+      <source>No device connected</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="313" />
       <source>Device found…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="234" />
+      <location filename="../../gui/main_window_mixins.py" line="354" />
       <source>Warning: You are on iOS %1 beta.
 
 This has been known to cause problems and potentially lead to bootloops.
@@ -85,7 +100,7 @@ Use at your own risk!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="246" />
+      <location filename="../../gui/main_window_mixins.py" line="366" />
       <source>Warning</source>
       <translation type="unfinished">تحذير</translation>
     </message>
@@ -102,12 +117,12 @@ Are you sure you want to use this one?</source>
   <context>
     <name>IOSSummaryDialog</name>
     <message>
-      <location filename="../../gui/ios/components.py" line="191" />
+      <location filename="../../gui/ios/components.py" line="232" />
       <source>Cancel</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/components.py" line="197" />
+      <location filename="../../gui/ios/components.py" line="238" />
       <source>Confirm</source>
       <translation type="unfinished" />
     </message>
@@ -127,10 +142,8 @@ Use at your own risk!</source>
 استخدمه على مسؤوليتك الخاصة!</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="787" />
-      <location filename="../../gui/ios/settings.py" line="555" />
-      <location filename="../../gui/ios/settings.py" line="596" />
-      <location filename="../../gui/main_window.py" line="175" />
+      <location filename="../../gui/ios/posterboard.py" line="802" />
+      <location filename="../../gui/main_window.py" line="235" />
       <source>None</source>
       <translation>لا يوجد</translation>
     </message>
@@ -665,8 +678,8 @@ Please be careful!</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="24" />
-      <location filename="../../gui/main_window.py" line="302" />
-      <location filename="../../gui/main_window_mixins.py" line="1296" />
+      <location filename="../../gui/main_window.py" line="336" />
+      <location filename="../../gui/main_window_mixins.py" line="1463" />
       <source>Status Bar</source>
       <translation>شريط الحالة</translation>
     </message>
@@ -683,7 +696,7 @@ Please be careful!</source>
     <message>
       <source>Partial Export</source>
       <translation type="unfinished" />
-      <location filename="../../gui/ios/settings.py" line="639" />
+      <location filename="../../gui/ios/settings.py" line="662" />
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="75" />
@@ -698,7 +711,7 @@ Please be careful!</source>
     <message>
       <source>Export</source>
       <translation type="unfinished" />
-      <location filename="../../gui/ios/settings.py" line="638" />
+      <location filename="../../gui/ios/settings.py" line="661" />
     </message>
     <message>
       <source>Modify</source>
@@ -709,11 +722,13 @@ Please be careful!</source>
       <translation type="vanished">الشريحة الأساسية</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="491" />
-      <location filename="../../gui/ios/statusbar.py" line="525" />
-      <location filename="../../gui/ios/statusbar.py" line="533" />
-      <location filename="../../gui/ios/statusbar.py" line="547" />
-      <location filename="../../gui/ios/statusbar.py" line="572" />
+      <location filename="../../gui/ios/statusbar.py" line="490" />
+      <location filename="../../gui/ios/statusbar.py" line="524" />
+      <location filename="../../gui/ios/statusbar.py" line="532" />
+      <location filename="../../gui/ios/statusbar.py" line="546" />
+      <location filename="../../gui/ios/statusbar.py" line="571" />
+      <location filename="../../gui/ios/statusbar.py" line="596" />
+      <location filename="../../gui/ios/statusbar.py" line="621" />
       <source>Default</source>
       <translation>الرئيسي</translation>
     </message>
@@ -726,7 +741,7 @@ Please be careful!</source>
       <translation type="vanished">إجبار على الإخفاء</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="114" />
+      <location filename="../../gui/ios/statusbar.py" line="115" />
       <source>Change Carrier Text</source>
       <translation>تغيير نص شركة الاتصال</translation>
     </message>
@@ -735,7 +750,7 @@ Please be careful!</source>
       <translation type="vanished">نص شركة الاتصال</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="122" />
+      <location filename="../../gui/ios/statusbar.py" line="123" />
       <source>Change Service Badge Text</source>
       <translation>تغيير نص شارة الخدمة</translation>
     </message>
@@ -744,7 +759,7 @@ Please be careful!</source>
       <translation type="vanished">نص شارة الخدمة</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="179" />
+      <location filename="../../gui/ios/statusbar.py" line="180" />
       <source>Change Data Network Type</source>
       <translation>تغيير نوع شبكة البيانات</translation>
     </message>
@@ -809,7 +824,7 @@ Please be careful!</source>
       <translation type="vanished">5GUC</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="147" />
+      <location filename="../../gui/ios/statusbar.py" line="148" />
       <source>Change Signal Strength</source>
       <translation>تغيير قوة الإشارة</translation>
     </message>
@@ -822,7 +837,7 @@ Please be careful!</source>
       <translation type="vanished">الشريحة الثانية</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="86" />
+      <location filename="../../gui/ios/statusbar.py" line="87" />
       <source>Change Status Bar Time Text*</source>
       <translation>تغيير نص الوقت في شريط الحالة</translation>
     </message>
@@ -831,7 +846,7 @@ Please be careful!</source>
       <translation type="vanished">نص الوقت في شريط الحالة</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="100" />
+      <location filename="../../gui/ios/statusbar.py" line="101" />
       <source>Change Breadcrumb Text</source>
       <translation>تغيير نص المسار</translation>
     </message>
@@ -840,7 +855,7 @@ Please be careful!</source>
       <translation type="vanished">نص المسار</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="107" />
+      <location filename="../../gui/ios/statusbar.py" line="108" />
       <source>Change Battery Detail Text</source>
       <translation>تغيير نص تفاصيل البطارية</translation>
     </message>
@@ -849,7 +864,7 @@ Please be careful!</source>
       <translation type="vanished">نص تفاصيل البطارية</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="171" />
+      <location filename="../../gui/ios/statusbar.py" line="172" />
       <source>Change Battery Icon Capacity</source>
       <translation>تغيير سعة أيقونة البطارية</translation>
     </message>
@@ -858,58 +873,58 @@ Please be careful!</source>
       <translation type="vanished">0%</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="51" />
+      <location filename="../../gui/ios/statusbar.py" line="52" />
       <source>Status Bar Overrides</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="53" />
+      <location filename="../../gui/ios/statusbar.py" line="54" />
       <source>Enable Status Bar Modifications</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="64" />
+      <location filename="../../gui/ios/statusbar.py" line="65" />
       <source>Signal</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="66" />
-      <location filename="../../gui/main_window_mixins.py" line="1292" />
+      <location filename="../../gui/ios/statusbar.py" line="67" />
+      <location filename="../../gui/main_window_mixins.py" line="1459" />
       <source>Full Signal Bars (No SIM Visual)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="70" />
+      <location filename="../../gui/ios/statusbar.py" line="71" />
       <source>Visual only. Shows filled cellular bars when no SIM is detected; it does not restore cellular service.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="84" />
+      <location filename="../../gui/ios/statusbar.py" line="85" />
       <source>Text</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="129" />
+      <location filename="../../gui/ios/statusbar.py" line="130" />
       <source>Secondary Carrier Name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="137" />
+      <location filename="../../gui/ios/statusbar.py" line="138" />
       <source>Secondary Service Badge</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="145" />
+      <location filename="../../gui/ios/statusbar.py" line="146" />
       <source>Levels</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="155" />
+      <location filename="../../gui/ios/statusbar.py" line="156" />
       <source>Secondary Cellular Signal Bars</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="163" />
+      <location filename="../../gui/ios/statusbar.py" line="164" />
       <source>Change Wi-Fi Signal Strength</source>
       <translation>تغيير قوة إشارة الواي فاي</translation>
     </message>
@@ -919,107 +934,107 @@ Please be careful!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="196" />
+      <location filename="../../gui/ios/statusbar.py" line="195" />
       <source>Raw Signal Strength</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="203" />
+      <location filename="../../gui/ios/statusbar.py" line="202" />
       <source>Show Numeric Wi-Fi Strength</source>
       <translation>عرض قوة الواي فاي الرقمية</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="209" />
+      <location filename="../../gui/ios/statusbar.py" line="208" />
       <source>Items</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="212" />
+      <location filename="../../gui/ios/statusbar.py" line="211" />
       <source>Disable Focus Mode icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="213" />
+      <location filename="../../gui/ios/statusbar.py" line="212" />
       <source>Disable Airplane Mode icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="214" />
+      <location filename="../../gui/ios/statusbar.py" line="213" />
       <source>Disable Cellular Service icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="215" />
+      <location filename="../../gui/ios/statusbar.py" line="214" />
       <source>Disable Wi-Fi icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="216" />
+      <location filename="../../gui/ios/statusbar.py" line="215" />
       <source>Disable Battery icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="217" />
+      <location filename="../../gui/ios/statusbar.py" line="216" />
       <source>Disable Bluetooth icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="218" />
+      <location filename="../../gui/ios/statusbar.py" line="217" />
       <source>Disable Alarm icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="219" />
+      <location filename="../../gui/ios/statusbar.py" line="218" />
       <source>Disable Location icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="220" />
+      <location filename="../../gui/ios/statusbar.py" line="219" />
       <source>Disable Rotation Lock icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="221" />
+      <location filename="../../gui/ios/statusbar.py" line="220" />
       <source>Disable AirPlay icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="222" />
+      <location filename="../../gui/ios/statusbar.py" line="221" />
       <source>Disable CarPlay icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="223" />
+      <location filename="../../gui/ios/statusbar.py" line="222" />
       <source>Disable VPN icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="224" />
+      <location filename="../../gui/ios/statusbar.py" line="223" />
       <source>Disable Voice Control icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="225" />
+      <location filename="../../gui/ios/statusbar.py" line="224" />
       <source>Disable Liquid Detection Warning icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="236" />
+      <location filename="../../gui/ios/statusbar.py" line="235" />
       <source>Extras</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="246" />
-      <source>iOS 27 replaced the status bar override file, so only the carrier name can be changed here. The other options need iOS 26 or lower. Note: the iOS 27 carrier-name path is experimental and unverified on real devices — it may silently do nothing.</source>
+      <location filename="../../gui/ios/statusbar.py" line="245" />
+      <source>iOS 27 replaced the status bar override file, so only the carrier name can be changed here. The other options need iOS 26 or lower. Note: the iOS 27 carrier-name path is experimental and has not been tested on real devices — it may silently do nothing.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="340" />
+      <location filename="../../gui/ios/statusbar.py" line="339" />
       <source>Available on iOS 26.x with the classic status bar override file. iOS 27 is not supported yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="198" />
+      <location filename="../../gui/ios/statusbar.py" line="197" />
       <source>Show Numeric Cellular Strength</source>
       <translation>عرض قوة الشبكة الرقمية</translation>
     </message>
@@ -1080,7 +1095,7 @@ Please be careful!</source>
       <translation type="vanished">أيقونة CarPlay</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="232" />
+      <location filename="../../gui/ios/daemons.py" line="234" />
       <source>VPN Icon</source>
       <translation>أيقونة الـ VPN</translation>
     </message>
@@ -1101,7 +1116,7 @@ Please be careful!</source>
       <translation type="vanished">تفعيل كل شيء</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="238" />
+      <location filename="../../gui/ios/statusbar.py" line="237" />
       <source>Silly Mode</source>
       <translation>وضع السخافة</translation>
     </message>
@@ -1183,8 +1198,8 @@ Please be careful!</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="26" />
-      <location filename="../../gui/main_window.py" line="300" />
-      <location filename="../../gui/main_window_mixins.py" line="1303" />
+      <location filename="../../gui/main_window.py" line="334" />
+      <location filename="../../gui/main_window_mixins.py" line="1470" />
       <source>Daemons</source>
       <translation>العمليات الخلفية</translation>
     </message>
@@ -1198,7 +1213,7 @@ it enabled.</source>
       <translation type="vanished">يُوقف التحديثات عبر الهواء (OTA) لتجنّب التنزيلات التلقائية.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="227" />
+      <location filename="../../gui/ios/daemons.py" line="229" />
       <source>Disable OTA</source>
       <translation>تعطيل التحديث عبر الهواء (OTA)</translation>
     </message>
@@ -1207,7 +1222,7 @@ it enabled.</source>
       <translation type="vanished">يعطّل تتبّع الاستخدام من أجل تحسين الخصوصية.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="228" />
+      <location filename="../../gui/ios/daemons.py" line="230" />
       <source>Disable UsageTrackingAgent</source>
       <translation>تعطيل وكيل تتبّع الاستخدام (UsageTrackingAgent)</translation>
     </message>
@@ -1216,7 +1231,7 @@ it enabled.</source>
       <translation type="vanished">يعطّل ميزات مراقبة مدة استخدام الجهاز.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="278" />
+      <location filename="../../gui/ios/daemons.py" line="280" />
       <source>Disable Screen Time Agent</source>
       <translation>تعطيل وكيل مدة استخدام الجهاز</translation>
     </message>
@@ -1229,7 +1244,7 @@ To work properly, also disable the daemon using the toggle above.</source>
 لكي يعمل هذا الخيار بشكل صحيح، يجب أيضًا تعطيل الخدمة باستخدام الزر الموجود في الأعلى.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="285" />
+      <location filename="../../gui/ios/daemons.py" line="287" />
       <source>Clear ScreenTimeAgent.plist file</source>
       <translation>مسح ملف ScreenTimeAgent.plist</translation>
     </message>
@@ -1246,7 +1261,7 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="vanished">يعطل الإرسال إلى أجهزة Bluetooth في وضع السكون لتحسين عمر البطارية.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="230" />
+      <location filename="../../gui/ios/daemons.py" line="232" />
       <source>Disable ATWAKEUP</source>
       <translation>تعطيل ATWAKEUP</translation>
     </message>
@@ -1255,7 +1270,7 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="vanished">يعطّل خدمات Game Center في الخلفية.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="229" />
+      <location filename="../../gui/ios/daemons.py" line="231" />
       <source>Disable Game Center</source>
       <translation>إيقاف Game Center</translation>
     </message>
@@ -1264,7 +1279,7 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="vanished">يعطّل خدمة النصائح والإشعارات المتعلقة بها.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="231" />
+      <location filename="../../gui/ios/daemons.py" line="233" />
       <source>Disable Tips Services</source>
       <translation>تعطيل خدمات النصائح</translation>
     </message>
@@ -1281,7 +1296,7 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="vanished">يعطّل الخدمة المسؤولة عن التعامل مع أخطاء شبكات الواي فاي التي تحتوي على أحرف صينية في أسمائها.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="233" />
+      <location filename="../../gui/ios/daemons.py" line="235" />
       <source>Disable Chinese WLAN Service</source>
       <translation>تعطيل خدمة الشبكات اللاسلكية الصينية</translation>
     </message>
@@ -1290,179 +1305,190 @@ To work properly, also disable the daemon using the toggle above.</source>
       <translation type="vanished">يعطّل خدمات الصحة المرتبطة بتطبيق صحتي.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="165" />
+      <location filename="../../gui/ios/daemons.py" line="167" />
       <source>Daemons to Disable</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="172" />
+      <location filename="../../gui/ios/daemons.py" line="174" />
       <source>Enable Daemon Modifications</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="199" />
+      <location filename="../../gui/ios/daemons.py" line="201" />
       <source>Recommended (analytics, tracking &amp; logging)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="234" />
+      <location filename="../../gui/ios/daemons.py" line="236" />
       <source>Disable HealthKit</source>
       <translation>تعطيل خدمات الصحة (HealthKit)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="235" />
+      <location filename="../../gui/ios/daemons.py" line="237" />
       <source>Disable AirPrint</source>
       <translation>تعطيل الطباعة اللاسلكية (AirPrint)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="236" />
+      <location filename="../../gui/ios/daemons.py" line="238" />
       <source>Disable Assistive Touch</source>
       <translation>تعطيل اللمس المساعد</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="237" />
+      <location filename="../../gui/ios/daemons.py" line="239" />
       <source>Disable iCloud</source>
       <translation>تعطيل iCloud</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="238" />
+      <location filename="../../gui/ios/daemons.py" line="240" />
       <source>Disable Internet Tethering (Hotspot)</source>
       <translation>تعطيل الربط بالإنترنت (نقطة الاتصال الشخصية)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="239" />
+      <location filename="../../gui/ios/daemons.py" line="241" />
       <source>Disable Passbook</source>
       <translation>تعطيل تطبيق المحفظة</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="240" />
+      <location filename="../../gui/ios/daemons.py" line="242" />
       <source>Disable Spotlight</source>
       <translation>تعطيل البحث Spotlight</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="242" />
+      <location filename="../../gui/ios/daemons.py" line="244" />
       <source>Disable Voice Control</source>
       <translation>تعطيل التحكم الصوتي (Voice Control)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="243" />
+      <location filename="../../gui/ios/daemons.py" line="245" />
       <source>Follow Up</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="244" />
+      <location filename="../../gui/ios/daemons.py" line="246" />
       <source>Location Services</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="253" />
+      <location filename="../../gui/ios/daemons.py" line="255" />
       <source>Analytics, Data Tracking &amp; Logging</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="256" />
+      <location filename="../../gui/ios/daemons.py" line="258" />
       <source>Disable Wi-Fi Analytics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="257" />
+      <location filename="../../gui/ios/daemons.py" line="259" />
       <source>Disable System Analytics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="258" />
+      <location filename="../../gui/ios/daemons.py" line="260" />
       <source>Disable Call Analytics (RTC Reporting)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="259" />
+      <location filename="../../gui/ios/daemons.py" line="261" />
       <source>Disable CoreDuet (Battery/Usage Statistics)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="260" />
+      <location filename="../../gui/ios/daemons.py" line="262" />
       <source>Disable Insight</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="261" />
+      <location filename="../../gui/ios/daemons.py" line="263" />
       <source>Disable Metrics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="262" />
+      <location filename="../../gui/ios/daemons.py" line="264" />
       <source>Disable Media Experience Analytics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="263" />
+      <location filename="../../gui/ios/daemons.py" line="265" />
       <source>Disable Symptom Diagnostics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="264" />
+      <location filename="../../gui/ios/daemons.py" line="266" />
       <source>Disable Statistical Diagnostics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="265" />
+      <location filename="../../gui/ios/daemons.py" line="267" />
       <source>Disable Wireless Diagnostics</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="266" />
+      <location filename="../../gui/ios/daemons.py" line="268" />
       <source>Disable Duet Heuristic</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="267" />
+      <location filename="../../gui/ios/daemons.py" line="269" />
       <source>Disable Duet Expert</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="268" />
+      <location filename="../../gui/ios/daemons.py" line="270" />
       <source>Disable Decisiond</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="269" />
+      <location filename="../../gui/ios/daemons.py" line="271" />
       <source>Disable Triald (A/B Experiment Telemetry)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="270" />
+      <location filename="../../gui/ios/daemons.py" line="272" />
       <source>Disable Sociald</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/ios/daemons.py" line="322" />
+      <source>blocked</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/daemons.py" line="333" />
       <source>safety rules</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="370" />
+      <location filename="../../gui/ios/daemons.py" line="382" />
+      <source>Voice Control Blocked</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/daemons.py" line="392" />
       <source>Daemon Locked by Safety Rules</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="371" />
+      <location filename="../../gui/ios/daemons.py" line="393" />
       <source>WorkSlop Desktop safety rules force-disable this daemon on your setup, so it cannot be re-enabled.
 
 {0}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="438" />
+      <location filename="../../gui/ios/daemons.py" line="460" />
       <source>Hold Up</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="350" />
+      <location filename="../../controllers/hotload.py" line="566" />
       <source>This feature is currently flagged as dangerous or broken.</source>
+      <extracomment>Actions the matching code below actually consumes. A rule whose action is none of these (and which names no tweak) can never match anything, so the schema validator rejects it (Fix Audit 13/84b).</extracomment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="356" />
+      <location filename="../../controllers/hotload.py" line="572" />
       <source>WorkSlop Desktop safety rules have flagged “%1” as currently dangerous or broken.
 
 %2
@@ -1471,33 +1497,33 @@ It is recommended not to enable it. Do you still want to enable it?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="364" />
+      <location filename="../../controllers/hotload.py" line="580" />
       <source>Disabled Feature Warning</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="368" />
-      <location filename="../../gui/ios/daemons.py" line="441" />
+      <location filename="../../controllers/hotload.py" line="584" />
+      <location filename="../../gui/ios/daemons.py" line="463" />
       <source>Continue Anyway</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../controllers/hotload.py" line="371" />
+      <location filename="../../controllers/hotload.py" line="587" />
       <source>Cancel</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="444" />
+      <location filename="../../gui/ios/daemons.py" line="466" />
       <source>Stop</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="460" />
+      <location filename="../../gui/ios/daemons.py" line="482" />
       <source>Wallpaper Risk on iPhone 14</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="461" />
+      <location filename="../../gui/ios/daemons.py" line="483" />
       <source>Disabling Location Services has been reported to break wallpapers (PosterBoard) on iPhone 14. If your wallpaper disappears after applying, re-enable this daemon and apply again.</source>
       <translation type="unfinished" />
     </message>
@@ -1530,12 +1556,12 @@ It is recommended not to enable it. Do you still want to enable it?</source>
       <translation type="vanished">اختر ملف خلفية بصيغة ‎.tendies</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="465" />
+      <location filename="../../gui/ios/posterboard.py" line="469" />
       <source>  Import Files (.tendies)</source>
       <translation>اضافة ملفات (.tendies)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="483" />
+      <location filename="../../gui/ios/posterboard.py" line="487" />
       <source>  Import Templates (.batter)</source>
       <translation>اضافة قوالب (.batter)</translation>
     </message>
@@ -1546,176 +1572,181 @@ Will show up in Collections</source>
 سيظهر ضمن قسم المجموعات</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="56" />
-      <location filename="../../gui/ios/posterboard.py" line="981" />
+      <location filename="../../gui/ios/posterboard.py" line="60" />
+      <location filename="../../gui/ios/posterboard.py" line="1067" />
       <source>Reset PosterBoard</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="61" />
+      <location filename="../../gui/ios/posterboard.py" line="65" />
       <source>Recovery for when a wallpaper misbehaves: clears the delivered descriptors on the next apply and PosterBoard rebuilds itself. No database is restored, so this cannot corrupt the store.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="80" />
+      <location filename="../../gui/ios/posterboard.py" line="84" />
       <source>Descriptors (recommended)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="82" />
+      <location filename="../../gui/ios/posterboard.py" line="86" />
       <source>Configurations (database, advanced)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="92" />
+      <location filename="../../gui/ios/posterboard.py" line="96" />
       <source>Descriptors: wallpapers are delivered as files and PosterBoard loads them itself — the database is never touched, so a bad wallpaper can simply be removed or reset. Configurations: descriptors are also registered in the device database (fetched on apply); only needed for descriptor sets that refuse to appear otherwise.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="114" />
-      <location filename="../../gui/ios/posterboard.py" line="769" />
+      <location filename="../../gui/ios/posterboard.py" line="118" />
+      <location filename="../../gui/ios/posterboard.py" line="784" />
       <source>Database: none selected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="173" />
+      <location filename="../../gui/ios/posterboard.py" line="177" />
       <source>Tendies</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="175" />
-      <location filename="../../gui/ios/posterboard.py" line="555" />
+      <location filename="../../gui/ios/posterboard.py" line="179" />
+      <location filename="../../gui/ios/posterboard.py" line="561" />
       <source>Video</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="436" />
+      <location filename="../../gui/ios/posterboard.py" line="440" />
       <source>Browse and import wallpapers from Cowabunga and CaPlayground</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="488" />
+      <location filename="../../gui/ios/posterboard.py" line="492" />
       <source>No templates added yet</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="499" />
+      <location filename="../../gui/ios/posterboard.py" line="503" />
       <source>Select Nugget Template Files</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="545" />
+      <location filename="../../gui/ios/posterboard.py" line="551" />
       <source>Thumbnail</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="564" />
+      <location filename="../../gui/ios/posterboard.py" line="570" />
       <source>Options</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="565" />
+      <location filename="../../gui/ios/posterboard.py" line="571" />
       <source>Loop (use CoreAnimation method)</source>
       <translation>تكرار (استخدام طريقة CoreAnimation)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="570" />
+      <location filename="../../gui/ios/posterboard.py" line="576" />
       <source>Reverse on Loop</source>
       <translation>اعكس عند التكرار</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="575" />
+      <location filename="../../gui/ios/posterboard.py" line="581" />
       <source>Make Foreground (hides clock)</source>
       <translation>اجعل في المقدمة (يخفي الساعة)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="581" />
+      <location filename="../../gui/ios/posterboard.py" line="587" />
       <source>Calculation Mode</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="592" />
+      <location filename="../../gui/ios/posterboard.py" line="598" />
       <source>Export Video Loop (.tendies)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="597" />
+      <location filename="../../gui/ios/posterboard.py" line="603" />
       <source>Discover Wallpapers</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="599" />
+      <location filename="../../gui/ios/posterboard.py" line="605" />
       <source>Help</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="623" />
+      <location filename="../../gui/ios/posterboard.py" line="629" />
       <source>Select Image File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="635" />
+      <location filename="../../gui/ios/posterboard.py" line="642" />
       <source>Select Video File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="664" />
+      <location filename="../../gui/ios/posterboard.py" line="676" />
       <source>Select Directory</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="701" />
+      <location filename="../../gui/ios/posterboard.py" line="713" />
       <source>Select PosterBoard Files</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="778" />
+      <location filename="../../gui/ios/posterboard.py" line="793" />
       <source>Database: selected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="876" />
+      <location filename="../../gui/ios/posterboard.py" line="919" />
       <source>Lock screen preview</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1005" />
+      <location filename="../../gui/ios/posterboard.py" line="1002" />
+      <source>No Preview</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/posterboard.py" line="1091" />
       <source>If a wallpaper misbehaves after an apply, reset the items below and apply again — the descriptors are cleared and PosterBoard rebuilds its store itself. "Everything" clears the whole descriptor store.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1016" />
+      <location filename="../../gui/ios/posterboard.py" line="1102" />
       <source>Everything — all PosterBoard descriptors</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1044" />
+      <location filename="../../gui/ios/posterboard.py" line="1131" />
       <source>A full PosterBoard descriptor reset has been scheduled. All delivered wallpapers will be cleared on the next apply. Apply your tweaks to execute the reset.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1021" />
+      <location filename="../../gui/ios/posterboard.py" line="1107" />
       <source>Collections</source>
       <translation type="unfinished">التجميعات</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1025" />
+      <location filename="../../gui/ios/posterboard.py" line="1111" />
       <source>Suggested Photos</source>
       <translation type="unfinished">الصور المقترحه</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1029" />
+      <location filename="../../gui/ios/posterboard.py" line="1115" />
       <source>Gallery Cache</source>
       <translation type="unfinished">ذاكرة التخزين المؤقت للمعرض</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1043" />
-      <location filename="../../gui/ios/posterboard.py" line="1061" />
+      <location filename="../../gui/ios/posterboard.py" line="1130" />
+      <location filename="../../gui/ios/posterboard.py" line="1149" />
       <source>Reset Scheduled</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="1062" />
+      <location filename="../../gui/ios/posterboard.py" line="1150" />
       <source>PosterBoard reset has been scheduled. The selected items will be cleared on the next apply. Apply your tweaks to execute the reset.</source>
       <translation type="unfinished" />
     </message>
@@ -1724,8 +1755,8 @@ Will show up in Collections</source>
       <translation type="vanished">اختر صورة لتثبيتها كخلفية عند انتهاء تشغيل الفيديو (ملفات ‎.heic فقط)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="547" />
-      <location filename="../../gui/ios/posterboard.py" line="615" />
+      <location filename="../../gui/ios/posterboard.py" line="553" />
+      <location filename="../../gui/ios/posterboard.py" line="621" />
       <source>Choose Freeze Frame (.HEIC)</source>
       <translation>اختر إطار التجميد (.HEIC)</translation>
     </message>
@@ -1734,15 +1765,15 @@ Will show up in Collections</source>
       <translation type="vanished">اختر ملف فيديو للخلفية (.mov أو .mp4)</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="557" />
-      <location filename="../../gui/ios/posterboard.py" line="616" />
+      <location filename="../../gui/ios/posterboard.py" line="563" />
+      <location filename="../../gui/ios/posterboard.py" line="622" />
       <source>Choose Video</source>
       <translation>اختر فيديو</translation>
     </message>
     <message>
       <location filename="../../gui/dialogs/preset_partial_export.py" line="25" />
-      <location filename="../../gui/ios/posterboard.py" line="174" />
-      <location filename="../../gui/main_window_mixins.py" line="1283" />
+      <location filename="../../gui/ios/posterboard.py" line="178" />
+      <location filename="../../gui/main_window_mixins.py" line="1450" />
       <source>Templates</source>
       <translation>القوالب</translation>
     </message>
@@ -1782,7 +1813,7 @@ Warning: Disabling will cause the battery to show "Unknown Part" or "Unverified"
 تعطيل هذه الخدمة قد يؤدي إلى ظهور رسالة "قطعة غير معروفة" أو "غير موثوق بها" ضمن معلومات البطارية في الإعدادات.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="226" />
+      <location filename="../../gui/ios/daemons.py" line="228" />
       <source>Disable thermalmonitord</source>
       <translation>تعطيل خدمة مراقبة الحرارة (thermalmonitord)</translation>
     </message>
@@ -1821,24 +1852,24 @@ Warning: Disabling will cause the battery to show "Unknown Part" or "Unverified"
       <translation type="vanished">الواجهة الرئيسية (SpringBoard)</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="298" />
+      <location filename="../../gui/main_window.py" line="332" />
       <source>Tweaks</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="301" />
+      <location filename="../../gui/main_window.py" line="335" />
       <source>Settings</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="304" />
+      <location filename="../../gui/main_window.py" line="338" />
       <source>SpringBoard</source>
       <translation type="unfinished" />
     </message>
     <message>
       <source>Internal</source>
       <translation>الداخلية</translation>
-      <location filename="../../gui/ios/mobilegestalt.py" line="316" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="317" />
     </message>
     <message>
       <source>Icon Themes</source>
@@ -1853,7 +1884,7 @@ Warning: Disabling will cause the battery to show "Unknown Part" or "Unverified"
     <message>
       <source>MobileGestalt</source>
       <translation type="unfinished" />
-      <location filename="../../gui/ios/mobilegestalt.py" line="447" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="454" />
     </message>
     <message>
       <source>Backup</source>
@@ -1866,44 +1897,27 @@ Warning: Disabling will cause the battery to show "Unknown Part" or "Unverified"
       <location filename="../../gui/ios/themes_hub.py" line="65" />
     </message>
     <message>
+      <location filename="../../gui/main_window.py" line="346" />
       <source>App Data</source>
       <translation type="unfinished" />
-      <location filename="../../gui/ios/appdata.py" line="389" />
-      <location filename="../../gui/ios/appdata.py" line="395" />
-      <location filename="../../gui/ios/appdata.py" line="453" />
-      <location filename="../../gui/ios/appdata.py" line="505" />
-      <location filename="../../gui/ios/appdata.py" line="548" />
-      <location filename="../../gui/ios/appdata.py" line="557" />
-      <location filename="../../gui/ios/appdata.py" line="561" />
-      <location filename="../../gui/ios/appdata.py" line="576" />
-      <location filename="../../gui/ios/appdata.py" line="578" />
-      <location filename="../../gui/ios/appdata.py" line="586" />
-      <location filename="../../gui/ios/appdata.py" line="593" />
-      <location filename="../../gui/ios/appdata.py" line="595" />
-      <location filename="../../gui/ios/appdata.py" line="601" />
-      <location filename="../../gui/ios/appdata.py" line="616" />
-      <location filename="../../gui/ios/appdata.py" line="636" />
-      <location filename="../../gui/ios/appdata.py" line="644" />
-      <location filename="../../gui/ios/appdata.py" line="659" />
-      <location filename="../../gui/ios/appdata.py" line="673" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="313" />
+      <location filename="../../gui/main_window.py" line="347" />
       <source>Liquid Glass Disable (Beta 1)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="317" />
+      <location filename="../../gui/main_window.py" line="354" />
       <source>+ Add Icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="319" />
+      <location filename="../../gui/main_window.py" line="356" />
       <source>+ Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="786" />
+      <location filename="../../gui/main_window.py" line="1047" />
       <source>A device %1 is running. Closing now can interrupt it mid-write and leave the protective backup corrupted.
 
 Close anyway?</source>
@@ -1930,23 +1944,38 @@ Close anyway?</source>
       <translation type="unfinished" />
     </message>
     <message>
+      <location filename="../../gui/ios/tweaks.py" line="108" />
+      <source>no device connected. This full backup (all data) route needs an iPhone on iOS 26.6.1 (build 23G82 or 23G83).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/tweaks.py" line="120" />
+      <source>this device: iOS %1, build %2</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/tweaks.py" line="125" />
+      <source>this full backup (all data) route runs only on iOS 26.6.1 builds 23G82 and 23G83 (%1).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
       <source>Locked: </source>
       <translation type="unfinished" />
       <location filename="../../gui/ios/risky.py" line="108" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="358" />
+      <location filename="../../gui/ios/tweaks.py" line="414" />
       <source>Range: {0} – {1}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="419" />
+      <location filename="../../gui/ios/tweaks.py" line="475" />
       <source>Locked on iOS 27: Apple moved the feature-flag store to /var/preferences/FeatureFlags/Settings.plist, which this section does not write — these switches target the iOS 26 location (/var/preferences/FeatureFlags/Global.plist) that iOS 27 no longer reads, and no working delivery channel is known. Fully supported on iOS 26.1 and lower.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="453" />
-      <location filename="../../gui/main_window_mixins.py" line="1354" />
+      <location filename="../../gui/ios/tweaks.py" line="509" />
+      <location filename="../../gui/main_window_mixins.py" line="1521" />
       <source>Eligibility</source>
       <translation type="unfinished" />
     </message>
@@ -1956,8 +1985,8 @@ Close anyway?</source>
       <location filename="../../gui/ios/risky.py" line="149" />
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="303" />
-      <location filename="../../gui/main_window_mixins.py" line="1432" />
+      <location filename="../../gui/main_window.py" line="337" />
+      <location filename="../../gui/main_window_mixins.py" line="1599" />
       <source>Apply</source>
       <translation>تطبيق</translation>
     </message>
@@ -1992,7 +2021,7 @@ Close anyway?</source>
     <message>
       <source>Auto Reboot After Applying</source>
       <translation>إعادة التشغيل التلقائي بعد التطبيق</translation>
-      <location filename="../../gui/ios/settings.py" line="401" />
+      <location filename="../../gui/ios/settings.py" line="424" />
     </message>
     <message>
       <source>Show Risky Tweak Options</source>
@@ -2009,7 +2038,7 @@ Close anyway?</source>
     <message>
       <source>Ignore Posterboard Frame Limit</source>
       <translation>تجاهل حد إطارات Posterboard</translation>
-      <location filename="../../gui/ios/settings.py" line="410" />
+      <location filename="../../gui/ios/settings.py" line="433" />
     </message>
     <message>
       <source>Disables the tendies file limit of 2. There is still the descriptor limit.
@@ -2022,7 +2051,7 @@ DO NOT unplug your device during restores.</source>
     <message>
       <source>Disable Tendies Limit</source>
       <translation>تعطيل حد Tendies</translation>
-      <location filename="../../gui/ios/settings.py" line="418" />
+      <location filename="../../gui/ios/settings.py" line="441" />
     </message>
     <message>
       <source>Restores the SSL config that does something idk</source>
@@ -2035,18 +2064,18 @@ DO NOT unplug your device during restores.</source>
     <message>
       <source>Skip Setup * (non-exploit files only)</source>
       <translation>تجاوز اعدادات التجهيز * (الملفات غير المستغلة فقط)</translation>
-      <location filename="../../gui/ios/settings.py" line="450" />
+      <location filename="../../gui/ios/settings.py" line="473" />
     </message>
     <message>
       <source>Enable Supervision * (requires Skip Setup)</source>
       <translation>تفعيل الإشراف * (يتطلب تخطي الإعداد)</translation>
-      <location filename="../../gui/ios/settings.py" line="454" />
+      <location filename="../../gui/ios/settings.py" line="477" />
     </message>
     <message>
       <source>Enter Organization Name</source>
       <translation>أدخل اسم المؤسسة</translation>
-      <location filename="../../gui/ios/settings.py" line="593" />
-      <location filename="../../gui/ios/settings.py" line="607" />
+      <location filename="../../gui/ios/settings.py" line="616" />
+      <location filename="../../gui/ios/settings.py" line="630" />
     </message>
     <message>
       <source>* Note: Skip Setup may cause issues with configuration profiles. Turn it off if you need that.</source>
@@ -2055,7 +2084,7 @@ DO NOT unplug your device during restores.</source>
     <message>
       <source>Reset Device Pairing</source>
       <translation>إعادة تعيين ارتباط الجهاز</translation>
-      <location filename="../../gui/ios/settings.py" line="404" />
+      <location filename="../../gui/ios/settings.py" line="427" />
     </message>
     <message>
       <source>Pocket Poster Helper</source>
@@ -2075,7 +2104,7 @@ DO NOT unplug your device during restores.</source>
       <translation type="vanished">المترجمين</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/statusbar.py" line="93" />
+      <location filename="../../gui/ios/statusbar.py" line="94" />
       <source>Change Status Bar Date Text</source>
       <translation>تغيير نص التاريخ في شريط الحالة</translation>
     </message>
@@ -2166,7 +2195,7 @@ DO NOT unplug your device during restores.</source>
       <translation type="vanished">تعطيل تشخيص النظام</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/daemons.py" line="241" />
+      <location filename="../../gui/ios/daemons.py" line="243" />
       <source>Disable NanoTimeKit (Apple Watch Face Sync)</source>
       <translation>تعطيل خدمة مزامنة واجهات الساعة (NanoTimeKit) الخاصة بساعة Apple Watch</translation>
     </message>
@@ -2175,12 +2204,12 @@ DO NOT unplug your device during restores.</source>
       <translation type="vanished">وضع حساب الإطارات</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="584" />
+      <location filename="../../gui/ios/posterboard.py" line="590" />
       <source>Linear</source>
       <translation>خطي</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="585" />
+      <location filename="../../gui/ios/posterboard.py" line="591" />
       <source>Discrete</source>
       <translation>مجزأ</translation>
     </message>
@@ -2249,7 +2278,7 @@ DO NOT unplug your device during restores.</source>
       <translation type="vanished">وضع تصحيح تطبيق الملاحظات</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="306" />
+      <location filename="../../gui/main_window.py" line="340" />
       <source>Liquid Glass</source>
       <translation>الزجاج السائل</translation>
     </message>
@@ -2352,7 +2381,7 @@ It will be automatically found if this is left blank.</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/icon_pack_downloader.py" line="129" />
-      <location filename="../../gui/ios/icon_themes.py" line="62" />
+      <location filename="../../gui/ios/icon_themes.py" line="181" />
       <source>Download Icon Packs</source>
       <translation type="unfinished" />
     </message>
@@ -2414,12 +2443,17 @@ Author: {2}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/dialogs/icon_pack_downloader.py" line="308" />
+      <location filename="../../gui/dialogs/icon_pack_downloader.py" line="311" />
+      <source>All icons from "{0}" are already in Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/dialogs/icon_pack_downloader.py" line="316" />
       <source>Imported {0} icons from "{1}".</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/dialogs/icon_pack_downloader.py" line="311" />
+      <location filename="../../gui/dialogs/icon_pack_downloader.py" line="322" />
       <source>({0} bundles skipped — missing icon files).</source>
       <translation type="unfinished" />
     </message>
@@ -2485,7 +2519,7 @@ Author: {2}</source>
     </message>
     <message>
       <location filename="../../gui/dialogs/wallpaper_downloader.py" line="188" />
-      <location filename="../../gui/ios/posterboard.py" line="434" />
+      <location filename="../../gui/ios/posterboard.py" line="438" />
       <source>Download Wallpapers</source>
       <translation type="unfinished" />
     </message>
@@ -2593,209 +2627,239 @@ Author: {2}</source>
       <source>Choose your interface style</source>
       <translation type="unfinished" />
     </message>
-    <message>
+    <message numerus="yes">
       <location filename="../../gui/ios/backup.py" line="243" />
       <source>%n tweak(s) enabled — ready to apply.</source>
-      <translation type="unfinished" />
+      <translation type="unfinished">
+        <numerusform />
+        <numerusform />
+        <numerusform />
+        <numerusform />
+        <numerusform />
+        <numerusform />
+      </translation>
     </message>
     <message>
-      <location filename="../../gui/ios/components.py" line="323" />
+      <location filename="../../gui/ios/components.py" line="372" />
       <source>←  Back</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="165" />
-      <location filename="../../gui/ios/home.py" line="447" />
+      <location filename="../../gui/ios/home.py" line="164" />
+      <location filename="../../gui/ios/home.py" line="449" />
       <source>iPhone (iOS —)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="256" />
+      <location filename="../../gui/ios/home.py" line="251" />
       <source>Reset Tweaks</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="420" />
+      <location filename="../../gui/ios/home.py" line="422" />
       <source>Partially Supported</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="432" />
-      <location filename="../../gui/ios/home.py" line="435" />
+      <location filename="../../gui/ios/home.py" line="434" />
+      <location filename="../../gui/ios/home.py" line="437" />
       <source>Not connected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="445" />
+      <location filename="../../gui/ios/home.py" line="447" />
       <source>{0} (iOS {1} {2})</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="494" />
-      <source>Device feature flags (iOS 26.1-)</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/home.py" line="477" />
+      <location filename="../../gui/ios/home.py" line="478" />
       <source>MobileGestalt is supported on iOS 16.0 – 26.2 beta 1 only.
 
 This device is on iOS {ver}, so MobileGestalt is locked.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="488" />
+      <location filename="../../gui/ios/home.py" line="489" />
       <source>Requires iOS 16.0 – 26.2 beta 1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="504" />
+      <location filename="../../gui/ios/home.py" line="495" />
+      <source>Device feature flags (iOS 16.0 – 26.2 beta 1)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/home.py" line="505" />
       <source>Status Bar is locked on iOS 27.
 
 It is only open on iOS 26 and below.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="515" />
+      <location filename="../../gui/ios/home.py" line="516" />
       <source>Requires iOS 26 or below</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="521" />
+      <location filename="../../gui/ios/home.py" line="522" />
       <source>Customize the status bar</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="574" />
+      <location filename="../../gui/ios/home.py" line="575" />
       <source>Unavailable</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="42" />
+      <location filename="../../gui/ios/icon_themes.py" line="161" />
       <source>Theme a home screen icon with a custom image and label without jailbreaking. Tapping the icon still opens the real app. WebClips launch "Add to Home Screen" shortcuts, so existing icon shortcuts stay untouched — remove disabled apps before themes to avoid collisions. Applying icon themes restarts the iPhone so the new icons appear.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="54" />
-      <location filename="../../gui/ios/icon_themes.py" line="95" />
+      <location filename="../../gui/ios/icon_themes.py" line="173" />
+      <location filename="../../gui/ios/icon_themes.py" line="437" />
       <source>Reset Icon Themes</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="70" />
+      <location filename="../../gui/ios/icon_themes.py" line="189" />
+      <source>Import Icon Pack (.zip)…</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="197" />
       <source>Apps on iPhone</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="78" />
+      <location filename="../../gui/ios/icon_themes.py" line="205" />
       <source>No icon themes yet. Tap + Add Icon or download a pack.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="96" />
+      <location filename="../../gui/ios/icon_themes.py" line="438" />
       <source>Remove all icon themes from WorkSlop Desktop? The themed home-screen icons already on the device are not touched.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="204" />
+      <location filename="../../gui/ios/icon_themes.py" line="625" />
       <source>?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="216" />
+      <location filename="../../gui/ios/icon_themes.py" line="637" />
       <source>Hide label</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="265" />
-      <location filename="../../gui/ios/icon_themes.py" line="396" />
-      <location filename="../../gui/ios/icon_themes.py" line="402" />
+      <location filename="../../gui/ios/icon_themes.py" line="650" />
+      <source>Remove {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="691" />
+      <location filename="../../gui/ios/icon_themes.py" line="880" />
+      <location filename="../../gui/ios/icon_themes.py" line="886" />
       <source>Warning</source>
       <translation type="unfinished">تحذير</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="266" />
+      <location filename="../../gui/ios/icon_themes.py" line="692" />
       <source>Could not store the icon file in the persistent folder. The theme may not apply reliably.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="286" />
+      <location filename="../../gui/ios/icon_themes.py" line="770" />
       <source>Add Icon Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="298" />
+      <location filename="../../gui/ios/icon_themes.py" line="782" />
       <source>App Bundle ID</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="313" />
+      <location filename="../../gui/ios/icon_themes.py" line="797" />
       <source>Label</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="318" />
+      <location filename="../../gui/ios/icon_themes.py" line="802" />
       <source>Custom label (empty hides it)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="325" />
+      <location filename="../../gui/ios/icon_themes.py" line="809" />
       <source>The app bundle id is the same identifier the app icon uses under the hood (e.g. com.instagram.instagram).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="330" />
+      <location filename="../../gui/ios/icon_themes.py" line="814" />
       <source>Picked from your iPhone: {0}. Type a custom label or leave it empty to hide it.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="340" />
+      <location filename="../../gui/ios/icon_themes.py" line="824" />
       <source>Icon</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="343" />
+      <location filename="../../gui/ios/icon_themes.py" line="827" />
       <source>Choose Image (.png)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="385" />
+      <location filename="../../gui/ios/icon_themes.py" line="869" />
       <source>Select Icon Image</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="397" />
+      <location filename="../../gui/ios/icon_themes.py" line="881" />
       <source>Enter the app bundle id.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/icon_themes.py" line="403" />
+      <location filename="../../gui/ios/icon_themes.py" line="887" />
       <source>Choose an icon image first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="529" />
+      <location filename="../../gui/ios/settings.py" line="552" />
       <source>Enter value:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="757" />
-      <location filename="../../gui/ios/settings.py" line="786" />
+      <location filename="../../gui/ios/settings.py" line="578" />
+      <location filename="../../gui/ios/settings.py" line="619" />
+      <source>None</source>
+      <translation type="unfinished">لا يوجد</translation>
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="782" />
+      <location filename="../../gui/ios/settings.py" line="811" />
       <source>Pairing Reset</source>
       <translation type="unfinished">إعادة تعيين الارتباط</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="758" />
+      <location filename="../../gui/ios/settings.py" line="783" />
       <source>No device selected.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="791" />
+      <location filename="../../gui/ios/settings.py" line="816" />
       <source>Your device's pairing was successfully reset. Refresh the device list before applying.</source>
       <translation type="unfinished">تمت إعادة تعيين ارتباط جهازك بنجاح. يُرجى تحديث قائمة الأجهزة قبل المتابعة.</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="799" />
+      <location filename="../../gui/ios/settings.py" line="824" />
       <source>Failed to reset device pairing: %1</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="834" />
+      <source>Full Backup: a standard iPhone backup folder in iTunes/Finder format (Manifest.db/Manifest.plist + Info.plist).
+
+WorkSlop Backup: the selective protective backup this app keeps on this computer (only restorable from this app).</source>
       <translation type="unfinished" />
     </message>
     <message>
@@ -2804,7 +2868,7 @@ It is only open on iOS 26 and below.</source>
       <location filename="../../gui/ios/backup.py" line="334" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="817" />
+      <location filename="../../gui/ios/settings.py" line="844" />
       <source>WorkSlop Backup</source>
       <translation type="unfinished" />
     </message>
@@ -2818,7 +2882,7 @@ It is only open on iOS 26 and below.</source>
       <translation type="unfinished" />
       <location filename="../../gui/ios/backup.py" line="69" />
       <location filename="../../gui/ios/backup.py" line="309" />
-      <location filename="../../gui/ios/settings.py" line="444" />
+      <location filename="../../gui/ios/settings.py" line="467" />
     </message>
     <message>
       <source>This creates a COMPLETE backup of the iPhone, the way iTunes/Finder does.
@@ -2830,171 +2894,217 @@ Continue?</source>
       <location filename="../../gui/ios/backup.py" line="310" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="882" />
+      <location filename="../../gui/ios/settings.py" line="913" />
       <source>Where to save the full backup</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="956" />
+      <location filename="../../gui/ios/settings.py" line="925" />
+      <source>Enable Fast Backup Cache?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="926" />
+      <source>WARNING: The cached backup feature is experimental and, when it fails, can leave your device without wallpaper data or on the Setup screen.
+
+Enable the fast backup cache anyway?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="947" />
+      <source>Enable Encrypted Backups?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="948" />
+      <source>WARNING: Using encrypted backups with WorkSlop Desktop is experimental and may cause DATA LOSS or leave your device stuck on the Setup screen after applying tweaks.
+
+Make sure you know your backup password before continuing.
+
+Enable encrypted backups anyway?</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="970" />
+      <source>Fast Backup Cache is on</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="971" />
+      <source>The Fast Backup Cache also uses the AFC (parallel) media channel for photos, so this switch has no effect while the cache is on. Turn the cache off to use it on the standard backup path.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="993" />
       <source>Default (system drive)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="962" />
+      <location filename="../../gui/ios/settings.py" line="999" />
       <source>Choose Backup/Cache Location</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="755" />
+      <location filename="../../gui/ios/posterboard.py" line="770" />
       <source>Get Database</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="764" />
+      <location filename="../../gui/ios/posterboard.py" line="779" />
       <source>Select PBFPosterExtensionDataStoreSQLiteDatabase File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="775" />
+      <location filename="../../gui/ios/posterboard.py" line="790" />
       <source>The database is not of the correct format!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="794" />
+      <location filename="../../gui/ios/posterboard.py" line="831" />
       <source>Clear Saved IDs</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="795" />
+      <location filename="../../gui/ios/posterboard.py" line="832" />
       <source>Clear all saved configuration IDs?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="1035" />
+      <location filename="../../gui/ios/settings.py" line="1072" />
       <source>Load Preset</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="1036" />
+      <location filename="../../gui/ios/settings.py" line="1073" />
       <source>Select a preset to load first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1279" />
+      <location filename="../../gui/main_window_mixins.py" line="1446" />
       <source>PosterBoard</source>
       <extracomment>iOS-page index -&gt; Nugget stack key, for theme-switch landing.</extracomment>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1379" />
+      <location filename="../../gui/main_window_mixins.py" line="1546" />
       <source>%1 tweak(s) skipped — hidden by safety rules on this device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1401" />
+      <location filename="../../gui/main_window_mixins.py" line="1568" />
       <source>Nothing to apply</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1402" />
+      <location filename="../../gui/main_window_mixins.py" line="1569" />
       <source>No tweaks, daemons, wallpapers or templates are enabled. Enable something first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1423" />
+      <location filename="../../gui/main_window_mixins.py" line="1590" />
       <source>Your device reboots when it's done — remember to turn Find My back on afterwards. A protective backup runs first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1428" />
+      <location filename="../../gui/main_window_mixins.py" line="1595" />
       <source>Your device reboots when it's done — remember to turn Find My back on afterwards.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1433" />
-      <location filename="../../gui/main_window_mixins.py" line="1476" />
-      <location filename="../../gui/main_window_mixins.py" line="1486" />
+      <location filename="../../gui/main_window_mixins.py" line="1600" />
+      <location filename="../../gui/main_window_mixins.py" line="1643" />
+      <location filename="../../gui/main_window_mixins.py" line="1653" />
       <source>Update Cache</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1477" />
+      <location filename="../../gui/main_window_mixins.py" line="1644" />
       <source>No device is selected. Connect your device first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1483" />
+      <location filename="../../gui/main_window_mixins.py" line="1650" />
       <source>Updating backup cache...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1536" />
-      <source>Backup complete — file manager opened. Copy the backup somewhere safe, then the apply continues.</source>
+      <location filename="../../gui/main_window_mixins.py" line="1689" />
+      <source>Apply in Progress</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1541" />
-      <source>Backup complete (saved at {0}).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/main_window_mixins.py" line="1719" />
-      <source>Full Backup Complete</source>
+      <location filename="../../gui/main_window_mixins.py" line="1690" />
+      <source>WorkSlop Desktop is already applying changes. Wait for the current apply to finish, then try again — nothing was started.</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/main_window_mixins.py" line="1721" />
-      <source>Full backup complete.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/main_window_mixins.py" line="1724" />
-      <location filename="../../gui/main_window_mixins.py" line="1792" />
-      <source>Saved at: {0}</source>
+      <source>Backup complete — file manager opened. Copy the backup somewhere safe, then the apply continues.</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/main_window_mixins.py" line="1726" />
+      <source>Backup complete (saved at {0}).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="1904" />
+      <source>Full Backup Complete</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="1906" />
+      <source>Full backup complete.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="1909" />
+      <location filename="../../gui/main_window_mixins.py" line="1977" />
+      <source>Saved at: {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="1911" />
       <source>The file manager was opened with the backup selected.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1787" />
+      <location filename="../../gui/main_window_mixins.py" line="1972" />
       <source>Protective Backup Complete</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1789" />
+      <location filename="../../gui/main_window_mixins.py" line="1974" />
       <source>Protective backup complete.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1794" />
+      <location filename="../../gui/main_window_mixins.py" line="1979" />
       <source>This is a selective backup (photos, messages, contacts, settings, keychain) — not a full backup. For maximum safety, also run a Full Backup.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1860" />
+      <location filename="../../gui/main_window_mixins.py" line="2045" />
       <source>MobileGestalt applied.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1862" />
+      <location filename="../../gui/main_window_mixins.py" line="2047" />
       <source>MobileGestalt failed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1997" />
+      <location filename="../../gui/main_window_mixins.py" line="2191" />
       <source>Back up your device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1998" />
+      <location filename="../../gui/main_window_mixins.py" line="2192" />
       <source>Have you made a backup of your iPhone? Tweaks and daemon changes are risky — a bad tweak can bootloop the device or force a full restore, which erases everything. Create a backup in iTunes or Finder before using WorkSlop Desktop.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="2005" />
+      <location filename="../../gui/main_window_mixins.py" line="2199" />
       <source>Back up your iPhone before tweaking:
 • Windows: iTunes → your device → Back Up Now
 • Mac: Finder → your device → Back Up Now
@@ -3003,12 +3113,12 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="2033" />
+      <location filename="../../gui/main_window_mixins.py" line="2227" />
       <source>Got it, I'm backed up</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="2036" />
+      <location filename="../../gui/main_window_mixins.py" line="2230" />
       <source>I'll do it later</source>
       <translation type="unfinished" />
     </message>
@@ -3044,45 +3154,45 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="446" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="463" />
       <source>Restoring backup... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="500" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="517" />
       <source>Backup Password</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="501" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="518" />
       <source>This backup is encrypted. Enter its backup password:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="507" />
-      <location filename="../../gui/thread_workers/apply_worker.py" line="645" />
-      <location filename="../../gui/thread_workers/apply_worker.py" line="730" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="524" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="662" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="747" />
       <source>Connecting to device...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="516" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="533" />
       <source>Rebooting device...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="605" />
-      <location filename="../../gui/thread_workers/apply_worker.py" line="689" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="622" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="706" />
       <source>Backing up... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="648" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="665" />
       <source>Starting full backup...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="733" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="750" />
       <source>Backing up device...</source>
       <translation type="unfinished" />
     </message>
@@ -3092,230 +3202,225 @@ WorkSlop Desktop's own protected backup also runs automatically when you apply t
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/protective.py" line="820" />
+      <location filename="../../restore/protective.py" line="850" />
       <source>Could not back up photos/videos over AFC: {0}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="137" />
+      <location filename="../../tweaks/registry.py" line="132" />
       <source>Sets custom text shown at the bottom of the Lock Screen below the time. Long text is cut off — keep it short. Leave empty to remove.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="140" />
+      <location filename="../../tweaks/registry.py" line="135" />
       <source>Removes the minimum watchOS pairing check in NanoRegistry so you can pair an Apple Watch running any watchOS version with your iPhone.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="143" />
+      <location filename="../../tweaks/registry.py" line="138" />
       <source>Unlocks the hidden 'Everyone' AirDrop receiving option that would normally be limited to a 10-minute time window.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="146" />
+      <location filename="../../tweaks/registry.py" line="141" />
       <source>Prevents the screen from locking right after a respring — the phone won't ask for a passcode immediately after the UI reloads.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="149" />
+      <location filename="../../tweaks/registry.py" line="144" />
       <source>Stops the display from auto-dimming while the device is connected to a charger.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="152" />
+      <location filename="../../tweaks/registry.py" line="147" />
       <source>Suppresses the 'Low Battery — 20% / 10%' system alerts.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="155" />
+      <location filename="../../tweaks/registry.py" line="150" />
       <source>Hides the charging status from the Lock Screen while the device is plugged into AC power.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="158" />
+      <location filename="../../tweaks/registry.py" line="153" />
       <source>Disables the 'Return to &lt;App&gt;' breadcrumb button that appears in the status bar after opening a link from another app.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="161" />
+      <location filename="../../tweaks/registry.py" line="156" />
       <source>Shows the device-supervision text on the Lock Screen, like the '&lt;Device&gt; is supervised by &lt;org&gt;' label seen on MDM-managed devices.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="164" />
+      <location filename="../../tweaks/registry.py" line="159" />
       <source>Adds extended-display AirPlay support for Stage Manager so apps and external displays can use the feature more broadly.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="167" />
+      <location filename="../../tweaks/registry.py" line="162" />
       <source>Forces the Dynamic Island to appear in screenshots instead of being hidden or shrunk while the screenshot is taken.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="170" />
+      <location filename="../../tweaks/registry.py" line="165" />
       <source>Suppresses the Dynamic Island cutout completely so it is never drawn. Can make the screen look odd on devices with a pill cutout.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="173" />
+      <location filename="../../tweaks/registry.py" line="168" />
       <source>Shows a red/green authentication progress indicator on the Lock Screen while Face ID or passcode checks are running (engineering debug UI).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="180" />
+      <location filename="../../tweaks/registry.py" line="175" />
       <source>Uses the old fixed tab bar style instead of the floating tab bar on iPad. Enabled when the switch is OFF.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="183" />
+      <location filename="../../tweaks/registry.py" line="178" />
       <source>Stops Home Screen icons from shifting with the device tilt (the parallax effect). Pair with Disable Icon Page-Control Parallax for a fully static Home Screen.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="190" />
+      <location filename="../../tweaks/registry.py" line="185" />
       <source>Removes the search button below the icons on the Home Screen (the faint search bar/icon above the Dock). Enabled when the switch is ON.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="194" />
+      <location filename="../../tweaks/registry.py" line="189" />
       <source>Displays the iOS build number (e.g. 21A5284a) in the status bar next to the iOS version.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="196" />
+      <location filename="../../tweaks/registry.py" line="191" />
       <source>Forces a right-to-left layout for the entire system, mirroring the UI as if your primary language were RTL.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="199" />
+      <location filename="../../tweaks/registry.py" line="194" />
       <source>Forces a left-to-right layout across the whole system regardless of the RTL language setting.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="217" />
+      <location filename="../../tweaks/registry.py" line="213" />
       <source>Disables the thermalmonitord daemon via launchd's disabled list, so iOS stops applying thermal throttling. Reported working by users; also removes the device's thermal protection — the phone can run hotter under load. Re-enable by turning this off and applying again. A reboot is required.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="220" />
+      <location filename="../../tweaks/registry.py" line="216" />
       <source>Reveals hidden or disabled Home Screen icons, including internal placeholder icons that are normally not drawn.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="222" />
+      <location filename="../../tweaks/registry.py" line="218" />
       <source>Enables the iMessage engineering debug menu / diagnostics inside the Messages app.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="224" />
+      <location filename="../../tweaks/registry.py" line="220" />
       <source>Enables the Continuity engineering debug diagnostics in Settings (Apple ID and related sections).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="226" />
+      <location filename="../../tweaks/registry.py" line="222" />
       <source>Enables FaceTime / VoIP engineering debug diagnostics.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="228" />
+      <location filename="../../tweaks/registry.py" line="224" />
       <source>Adds a hidden Accessory Developer settings page to the Settings app for testing accessories.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="231" />
+      <location filename="../../tweaks/registry.py" line="227" />
       <source>Enables the iPad-style keyboard keyflicks on iPhones.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="233" />
+      <location filename="../../tweaks/registry.py" line="229" />
       <source>Stops the animated second hand on the Clock app's Home Screen icon.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="389" />
-      <source>Beta 1 — unproven. Writes SolariumForceFallback = true into the managed .GlobalPreferences.plist overlay (/var/Managed Preferences/mobile/). Whether iOS 26.6.1 reads this key from the managed overlay is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying). Roll back from the Liquid Glass Disable (Beta 1) page.</source>
+      <location filename="../../tweaks/registry.py" line="411" />
+      <source>Writes Apple's real firmware keys into the files their readers open: SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), SBDisallowGlassTime and SBDisallowGlassButtons = true merged into your own .GlobalPreferences.plist, and SBDisableSpecularEverywhereUsingLSSAssertion = true merged into your own com.apple.springboard.plist. Delivered through the full backup, modify, full restore route with fail-hard checks (100% of your existing keys must survive; nothing is claimed disabled). Whether the glass look actually changes on screen is for an isolated device test to judge (full backup first, Low Power Mode off, reboot after applying).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="394" />
-      <source>Beta 1 — unproven. Builds the payload at apply time from your device's own .GlobalPreferences.plist (HomeDomain), inserts SolariumForceFallback = true, and writes it back only if 100% of your original keys survive (automatic diff gate; the apply is cancelled otherwise). Your original file is saved before the first apply for rollback. Whether iOS 26.6.1 reads this key is not proven yet — judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../tweaks/registry.py" line="409" />
+      <location filename="../../tweaks/registry.py" line="395" />
       <source>Test-only — unproven. Surgically merges SBDisallowGlassTime = true and SBDisallowGlassButtons = true into your device's own .GlobalPreferences.plist and injects a FeatureFlags/Domain/SpringBoard.plist (SolariumElasticHUD disabled) through the full-backup route. Whether iOS 26.6.1 honors either write is not proven, and the Domain file is predicted to be skipped silently by the restore channel — its landing can never be claimed without a device read-back. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="235" />
+      <location filename="../../tweaks/registry.py" line="231" />
       <source>Shows the side button / action button hint labels in screenshots (engineering debug UI).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="237" />
+      <location filename="../../tweaks/registry.py" line="233" />
       <source>Enables the hidden debug gesture in the App Store app, used to dump store data and inspect the store backend.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="239" />
+      <location filename="../../tweaks/registry.py" line="235" />
       <source>Turns on the Notes app debug menu for engineering debugging.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="241" />
+      <location filename="../../tweaks/registry.py" line="237" />
       <source>Visually marks every touch point on the screen with debugging information as you touch. Great for diagnosing touch issues.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="243" />
+      <location filename="../../tweaks/registry.py" line="239" />
       <source>Hides the Apple logo animation during respring, showing a black screen instead until the UI comes back.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="245" />
+      <location filename="../../tweaks/registry.py" line="241" />
       <source>Plays a Taptic Engine vibration when the device wakes via the raise-to-wake gesture.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="247" />
+      <location filename="../../tweaks/registry.py" line="243" />
       <source>Plays a sound every time content is pasted anywhere on the device.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="249" />
+      <location filename="../../tweaks/registry.py" line="245" />
       <source>Shows a system notification whenever an app reads the pasteboard, acting as a privacy indicator for system-level pastes.</source>
       <translation type="unfinished" />
     </message>
     <message>
       <source>modifies resolution</source>
       <translation>يعدّل دقة الشاشة</translation>
-      <location filename="../../gui/ios/mobilegestalt.py" line="363" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="364" />
     </message>
     <message>
       <source>Error!</source>
       <translation>حصل خطا!</translation>
-      <location filename="../../gui/ios/mobilegestalt.py" line="437" />
-      <location filename="../../gui/ios/mobilegestalt.py" line="440" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="444" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="447" />
     </message>
     <message>
       <source>The gestalt file looks like it was made for a different device.
 Are you sure you want to use this one?</source>
       <translation>يبدو إن ملف Gestalt مخصص لجهاز ثاني.
  متأكد تبغى تستخدمه؟</translation>
-      <location filename="../../gui/ios/mobilegestalt.py" line="448" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="455" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="118" />
+      <location filename="../../gui/ios/posterboard.py" line="122" />
       <source>Get Database from Device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="122" />
+      <location filename="../../gui/ios/posterboard.py" line="126" />
       <source>Select Database File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="128" />
+      <location filename="../../gui/ios/posterboard.py" line="132" />
       <source>Saved Configuration IDs</source>
       <translation type="unfinished" />
     </message>
@@ -3325,203 +3430,203 @@ Are you sure you want to use this one?</source>
       <location filename="../../gui/ios/sideload.py" line="293" />
     </message>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="139" />
+      <location filename="../../gui/ios/posterboard.py" line="143" />
       <source>Remove Selected</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="372" />
+      <location filename="../../tweaks/registry.py" line="368" />
       <source>Android-style autocorrect bar.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="329" />
+      <location filename="../../tweaks/registry.py" line="325" />
       <source>Animation speed: &lt;1 faster, &gt;1 slower, 0 disables.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="326" />
+      <location filename="../../tweaks/registry.py" line="322" />
       <source>Custom Lock Screen date format. Device-proven (iOS 26.0-26.7).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="285" />
+      <location filename="../../tweaks/registry.py" line="281" />
       <source>Disable HDR tone-mapping. Value=False.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="267" />
+      <location filename="../../tweaks/registry.py" line="263" />
       <source>Disable Liquid Glass on Dock — solid style.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="301" />
+      <location filename="../../tweaks/registry.py" line="297" />
       <source>Disable Solarium compact chrome. Gate 27.0.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="259" />
+      <location filename="../../tweaks/registry.py" line="255" />
       <source>Disable Solarium for SwiftUI. Reader removed in 26.1 — likely non-functional.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="313" />
+      <location filename="../../tweaks/registry.py" line="309" />
       <source>Disable glass blur. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="303" />
+      <location filename="../../tweaks/registry.py" line="299" />
       <source>Disable glass on Dynamic Island. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="299" />
+      <location filename="../../tweaks/registry.py" line="295" />
       <source>Disable glass on Lock Screen. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="283" />
+      <location filename="../../tweaks/registry.py" line="279" />
       <source>Disable liquid bending at glass edges.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="263" />
+      <location filename="../../tweaks/registry.py" line="253" />
+      <source>Writes SolariumForceFallback = true into com.apple.SwiftUI.plist (its reader is confirmed in the iOS 26.6.1 firmware). Whether the glass look changes on screen has not been shown yet — judge it with an isolated device test.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../tweaks/registry.py" line="259" />
       <source>PLACEHOLDER: Specific Solarium flags not yet defined. Channel dead on 26.2+. WARNING: Can break Control Center.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="287" />
+      <location filename="../../tweaks/registry.py" line="283" />
       <source>Disable motion-based specular.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="317" />
+      <location filename="../../tweaks/registry.py" line="313" />
       <source>Disable refraction everywhere. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="265" />
+      <location filename="../../tweaks/registry.py" line="261" />
       <source>Disallow glass effect on Lock Screen clock.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="305" />
+      <location filename="../../tweaks/registry.py" line="301" />
       <source>Disallow glass on DI. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="315" />
+      <location filename="../../tweaks/registry.py" line="311" />
       <source>Disallow keyboard glass. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="376" />
+      <location filename="../../tweaks/registry.py" line="372" />
       <source>Flag for declined Siri setup.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="311" />
+      <location filename="../../tweaks/registry.py" line="307" />
       <source>Flat dock everywhere. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="269" />
+      <location filename="../../tweaks/registry.py" line="265" />
       <source>Force all icons flat, no 3D/glass effect.</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../tweaks/registry.py" line="257" />
-      <source>Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../tweaks/registry.py" line="261" />
       <source>Glass legibility value 2 = unobserved branch. 0=Clear, 1=Tinted (proven).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="291" />
-      <location filename="../../tweaks/registry.py" line="293" />
+      <location filename="../../tweaks/registry.py" line="287" />
+      <location filename="../../tweaks/registry.py" line="289" />
       <source>Predicted key — pattern hypothesis.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="319" />
+      <location filename="../../tweaks/registry.py" line="315" />
       <source>LGLPM MobileGestalt signal. BLOCKED on iOS 26.2+ (Apple locked MobileGestalt).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="323" />
+      <location filename="../../tweaks/registry.py" line="319" />
       <source>Research candidate for thicker frost blur on Liquid Glass surfaces: its key was found in the DesignLibrary material cluster in the iOS 23G83 binary, but the effect on a real device is not proven yet. Back up fully first, turn Low Power Mode OFF, apply it on its own, reboot, then judge each surface on its own (Dock, Control Center, notifications, folders, App Switcher, Lock Screen clock). Turning it off and applying again removes the key.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="370" />
+      <location filename="../../tweaks/registry.py" line="366" />
       <source>Re-show gesture keyboard introduction.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="307" />
+      <location filename="../../tweaks/registry.py" line="303" />
       <source>Remove DI specular. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="277" />
+      <location filename="../../tweaks/registry.py" line="273" />
       <source>Remove all Clear Glass shadows.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="309" />
+      <location filename="../../tweaks/registry.py" line="305" />
       <source>Remove all glass shadows. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="279" />
+      <location filename="../../tweaks/registry.py" line="275" />
       <source>Remove dock drop shadow.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="281" />
+      <location filename="../../tweaks/registry.py" line="277" />
       <source>Remove search field shadow.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="297" />
+      <location filename="../../tweaks/registry.py" line="293" />
       <source>Remove specular from LS clock. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="295" />
+      <location filename="../../tweaks/registry.py" line="291" />
       <source>Remove specular from Lock Screen. Predicted.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="289" />
+      <location filename="../../tweaks/registry.py" line="285" />
       <source>Remove specular from all CC tiles.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="273" />
+      <location filename="../../tweaks/registry.py" line="269" />
       <source>Remove specular highlight from dock.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="275" />
+      <location filename="../../tweaks/registry.py" line="271" />
       <source>Remove specular highlight from folders.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="271" />
+      <location filename="../../tweaks/registry.py" line="267" />
       <source>Remove specular highlight from widgets.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="374" />
+      <location filename="../../tweaks/registry.py" line="370" />
       <source>Route Siri voice through device speaker.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/registry.py" line="346" />
+      <location filename="../../tweaks/registry.py" line="342" />
       <source>Show/hide VPN/Location/Alarm icons.</source>
       <translation type="unfinished" />
     </message>
@@ -3562,105 +3667,118 @@ Are you sure you want to use this one?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="99" />
-      <source>Liquid Glass Disable (Beta 1): the full-backup route needs the device's own .GlobalPreferences.plist as the G1 merge base, and it could not be read. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="131" />
-      <source>Liquid Glass Disable (Beta 1): the saved managed overlay original is unreadable, so it was NOT written back. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="156" />
-      <source>Liquid Glass Disable (Beta 1): no saved original .GlobalPreferences.plist for this device, so there is nothing safe to roll back to.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="166" />
-      <source>Liquid Glass Disable (Beta 1): the saved original .GlobalPreferences.plist is unreadable, so it was NOT written back.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="173" />
-      <source>Liquid Glass Disable (Beta 1): unknown rollback route.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="198" />
-      <source>Liquid Glass Disable (Beta 1): the staged %1 payload could not be prepared for the full-backup route: %2</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="204" />
-      <source>Liquid Glass Disable (Beta 1): the staged %1 payload is missing, so the full-backup route was cancelled. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../restore/lgd_full.py" line="421" />
+      <location filename="../../restore/lgd_full.py" line="287" />
       <source>Liquid Glass Disable (Beta 1): the full-backup route was given nothing to deliver.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="434" />
+      <location filename="../../restore/lgd_full.py" line="300" />
       <source>Liquid Glass Disable: starting full backup of your device...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="445" />
+      <location filename="../../restore/lgd_full.py" line="311" />
       <source>Liquid Glass Disable (Beta 1): your device backup is encrypted, and the full-backup route cannot write into an encrypted backup safely. Turn off backup encryption (Finder/iTunes: uncheck 'Encrypt local backup'), then try again. Nothing was written; your device was not changed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="462" />
+      <location filename="../../restore/lgd_full.py" line="328" />
       <source>Liquid Glass Disable (Beta 1): the full backup did not produce a usable backup, so nothing was restored. Your device was not changed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="472" />
+      <location filename="../../restore/lgd_full.py" line="338" />
       <source>Liquid Glass Disable (Beta 1): your device backup is encrypted, and the full-backup route cannot write into an encrypted backup safely. Turn off backup encryption (Finder/iTunes: uncheck 'Encrypt local backup'), then try again. Nothing was restored; your device was not changed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="483" />
+      <location filename="../../restore/lgd_full.py" line="349" />
       <source>Liquid Glass Disable (Beta 1): the full backup is incomplete (%1 manifest file(s) have no data), so nothing was restored. Your device was not changed. The incomplete backup is kept on this computer for inspection.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="513" />
+      <location filename="../../restore/lgd_full.py" line="379" />
       <source>Liquid Glass Disable (Beta 1): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="530" />
+      <location filename="../../restore/lgd_full.py" line="396" />
       <source>Liquid Glass Disable (Beta 1): the device's own .GlobalPreferences.plist could not be read from the full backup, so the G1 payload cannot be verified. Nothing was restored; your device was not changed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="590" />
+      <location filename="../../restore/lgd_full.py" line="449" />
       <source>Liquid Glass Disable: writing the payload into the backup...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="596" />
+      <location filename="../../restore/lgd_full.py" line="455" />
       <source>Liquid Glass Disable (Beta 1): the payload could not be written into the backup (%1 of %2 file(s) failed), so nothing was restored. Your device was not changed.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="609" />
+      <location filename="../../restore/lgd_full.py" line="468" />
       <source>Liquid Glass Disable (Beta 1): the verification gate failed, so nothing was restored and your device was not changed:
 </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/lgd_full.py" line="617" />
+      <location filename="../../restore/lgd_full.py" line="476" />
       <source>Liquid Glass Disable: restoring the full backup...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="741" />
+      <location filename="../../restore/restore.py" line="746" />
       <source>{0} tweak file(s) could not be written into the protective backup (the backup may be encrypted), so the apply was cancelled before anything was restored.</source>
       <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../restore/restore.py" line="767" />
+      <source>The protective backup is incomplete: {0} file(s) it promises are missing on disk (e.g. {1}). The apply was cancelled before anything was restored — free up disk space and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../restore/restore.py" line="847" />
+      <source>The device rejected the tweak restore (the connection dropped with no restore progress on every attempt), so no tweaks were applied. Your data was not wiped. The protective backup is kept on this computer.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <source>Restore Backup</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="78" />
+      <location filename="../../gui/ios/backup.py" line="327" />
+      <location filename="../../gui/ios/settings.py" line="465" />
+    </message>
+    <message>
+      <source>Choose the backup format to restore:</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="328" />
+    </message>
+    <message>
+      <source>Restore Full Backup?</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="351" />
+    </message>
+    <message>
+      <source>This restores the selected backup to the connected iPhone, then reboots it.
+
+Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="352" />
+    </message>
+    <message>
+      <source>Restore Data From Backup?</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="362" />
+    </message>
+    <message>
+      <source>This restores photos, messages, contacts and settings from the last protective backup on this computer.
+
+Applied tweaks and wallpapers are KEPT.
+
+Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
+      <translation type="unfinished" />
+      <location filename="../../gui/ios/backup.py" line="363" />
     </message>
     <message>
       <location filename="../../../main_app.py" line="51" />
@@ -3711,93 +3829,61 @@ Are you sure you want to use this one?</source>
     </message>
     <message>
       <location filename="../../gui/ios/appdata.py" line="310" />
-      <location filename="../../gui/ios/appdata.py" line="503" />
+      <location filename="../../gui/ios/appdata.py" line="549" />
       <source>Select an app to browse its data</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="318" />
+      <location filename="../../gui/ios/appdata.py" line="327" />
+      <source>Read via device backup</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="335" />
       <source>Name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="318" />
+      <location filename="../../gui/ios/appdata.py" line="335" />
       <source>Type</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="334" />
+      <location filename="../../gui/ios/appdata.py" line="351" />
       <source>↑ Up</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="338" />
+      <location filename="../../gui/ios/appdata.py" line="355" />
       <source>Download</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="341" />
+      <location filename="../../gui/ios/appdata.py" line="358" />
       <source>Upload</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="345" />
-      <location filename="../../gui/ios/appdata.py" line="647" />
+      <location filename="../../gui/ios/appdata.py" line="362" />
+      <location filename="../../gui/ios/appdata.py" line="693" />
       <source>New Folder</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="349" />
-      <location filename="../../gui/ios/appdata.py" line="662" />
+      <location filename="../../gui/ios/appdata.py" line="366" />
+      <location filename="../../gui/ios/appdata.py" line="708" />
       <source>Rename</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="353" />
-      <location filename="../../gui/ios/appdata.py" line="677" />
-      <location filename="../../gui/ios/settings.py" line="636" />
+      <location filename="../../gui/ios/appdata.py" line="370" />
+      <location filename="../../gui/ios/appdata.py" line="723" />
+      <location filename="../../gui/ios/settings.py" line="659" />
       <source>Delete</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="389" />
-      <source>No device connected.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="392" />
-      <source>Loading apps...</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="409" />
-      <source>File Sharing enabled — Documents accessible</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="439" />
-      <source>Full container access</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="440" />
-      <source>Documents only (File Sharing)</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="444" />
-      <location filename="../../gui/ios/appdata.py" line="519" />
-      <source>Folder</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="444" />
-      <location filename="../../gui/ios/appdata.py" line="519" />
-      <source>File</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/appdata.py" line="454" />
+      <location filename="../../gui/ios/appdata.py" line="405" />
       <source>Cannot access %1 directly:
 %2
 
@@ -3809,100 +3895,137 @@ Only this app's data is backed up — nothing else is copied.
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="474" />
+      <location filename="../../gui/ios/appdata.py" line="436" />
+      <source>No device connected.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="441" />
+      <source>Loading apps...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="459" />
+      <source>File Sharing enabled — Documents accessible</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="491" />
+      <source>Full container access</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="492" />
+      <source>Documents only (File Sharing)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="496" />
+      <location filename="../../gui/ios/appdata.py" line="566" />
+      <source>Folder</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="496" />
+      <location filename="../../gui/ios/appdata.py" line="566" />
+      <source>File</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/appdata.py" line="520" />
       <source>Reading %1 via device backup...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="475" />
+      <location filename="../../gui/ios/appdata.py" line="521" />
       <source>Backing up app data only — keep the iPhone unlocked.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="505" />
+      <location filename="../../gui/ios/appdata.py" line="551" />
       <source>Backup read failed: %1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="512" />
+      <location filename="../../gui/ios/appdata.py" line="559" />
       <source>Via device backup (read-only, like iMazing)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="549" />
+      <location filename="../../gui/ios/appdata.py" line="595" />
       <source>This view is read-only (data comes from a device backup, like iMazing). Downloads work; modifying files does not.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="557" />
+      <location filename="../../gui/ios/appdata.py" line="603" />
       <source>Select a file first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="561" />
+      <location filename="../../gui/ios/appdata.py" line="607" />
       <source>Select a file, not a folder.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="563" />
+      <location filename="../../gui/ios/appdata.py" line="609" />
       <source>Save file</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="576" />
-      <location filename="../../gui/ios/appdata.py" line="593" />
+      <location filename="../../gui/ios/appdata.py" line="622" />
+      <location filename="../../gui/ios/appdata.py" line="639" />
       <source>Saved to %1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="586" />
+      <location filename="../../gui/ios/appdata.py" line="632" />
       <source>Backup data not available.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="595" />
+      <location filename="../../gui/ios/appdata.py" line="641" />
       <source>Could not save file: %1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="601" />
-      <location filename="../../gui/ios/appdata.py" line="644" />
+      <location filename="../../gui/ios/appdata.py" line="647" />
+      <location filename="../../gui/ios/appdata.py" line="690" />
       <source>Select an app first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="603" />
+      <location filename="../../gui/ios/appdata.py" line="649" />
       <source>Choose file to upload</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="647" />
+      <location filename="../../gui/ios/appdata.py" line="693" />
       <source>Folder name:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="659" />
-      <location filename="../../gui/ios/appdata.py" line="673" />
+      <location filename="../../gui/ios/appdata.py" line="705" />
+      <location filename="../../gui/ios/appdata.py" line="719" />
       <source>Select a file or folder first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="662" />
+      <location filename="../../gui/ios/appdata.py" line="708" />
       <source>New name:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="675" />
+      <location filename="../../gui/ios/appdata.py" line="721" />
       <source>folder</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="675" />
+      <location filename="../../gui/ios/appdata.py" line="721" />
       <source>file</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/appdata.py" line="678" />
+      <location filename="../../gui/ios/appdata.py" line="724" />
       <source>Delete %1 '%2' from the device?
 This cannot be undone.</source>
       <translation type="unfinished" />
@@ -3947,13 +4070,6 @@ This is NOT a full backup — app data and the rest of the iPhone are not includ
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/backup.py" line="78" />
-      <location filename="../../gui/ios/backup.py" line="327" />
-      <location filename="../../gui/ios/settings.py" line="442" />
-      <source>Restore Backup</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
       <location filename="../../gui/ios/backup.py" line="79" />
       <source>Restore a backup to the iPhone. Two formats are supported: a standard full-backup folder (iTunes/Finder format), or the protective backup this app keeps on this computer.</source>
       <translation type="unfinished" />
@@ -3992,41 +4108,10 @@ Continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/backup.py" line="328" />
-      <source>Choose the backup format to restore:</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
       <location filename="../../gui/ios/backup.py" line="330" />
       <source>Full Backup: a standard iPhone backup folder in iTunes/Finder format (Manifest.db/Manifest.plist + Info.plist).
 
 Protective Backup: the selective protective backup this app keeps on this computer (only restorable from this app).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/backup.py" line="351" />
-      <source>Restore Full Backup?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/backup.py" line="352" />
-      <source>This restores the selected backup to the connected iPhone, then reboots it.
-
-Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/backup.py" line="362" />
-      <source>Restore Data From Backup?</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/backup.py" line="363" />
-      <source>This restores photos, messages, contacts and settings from the last protective backup on this computer.
-
-Applied tweaks and wallpapers are KEPT.
-
-Make sure the iPhone is connected, unlocked and awake, then do you want to continue?</source>
       <translation type="unfinished" />
     </message>
     <message>
@@ -4070,93 +4155,93 @@ Make sure the iPhone is connected, unlocked and awake, then do you want to conti
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="103" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="104" />
       <source>MobileGestalt File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="107" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="108" />
       <source>Grab your device's own com.apple.MobileGestalt.plist with Nugget's “Save MobileGestalt” shortcut first. The file is remembered per device; pick it once.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="119" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="120" />
       <source>Choose File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="122" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="123" />
       <source>Forget Saved</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="135" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="136" />
       <source>Apply MobileGestalt Tweaks</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="176" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="177" />
       <source>Connect a device to use MobileGestalt tweaks.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="245" />
-      <location filename="../../gui/ios/mobilegestalt.py" line="247" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="246" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="248" />
       <source>Dynamic Island</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="278" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="279" />
       <source>Custom Model Name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="282" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="283" />
       <source>Model name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="294" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="295" />
       <source>Features</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="401" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="408" />
       <source>No file selected.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="403" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="410" />
       <source>Using the saved file for this device.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="413" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="420" />
       <source>This device ({ver}) is supported.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="414" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="421" />
       <source>This device ({ver}) is NOT supported — MobileGestalt is open on iOS 16.0 through iOS 26.2 beta 1 only.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="418" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="425" />
       <source>Supported: iOS 16.0 – 26.2 beta 1. </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="427" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="434" />
       <source>Select Mobile Gestalt File</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="437" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="444" />
       <source>Could not read that plist file.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/mobilegestalt.py" line="440" />
+      <location filename="../../gui/ios/mobilegestalt.py" line="447" />
       <source>The file is not a mobile gestalt file!</source>
       <translation type="unfinished" />
     </message>
@@ -4176,190 +4261,195 @@ Make sure the iPhone is connected, unlocked and awake, then do you want to conti
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="276" />
+      <location filename="../../gui/ios/risky.py" line="238" />
+      <source>Custom Resolution will be skipped: </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/settings.py" line="283" />
       <source>Model</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="277" />
+      <location filename="../../gui/ios/settings.py" line="284" />
       <source>iOS version</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="278" />
+      <location filename="../../gui/ios/settings.py" line="285" />
       <source>Build</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="280" />
+      <location filename="../../gui/ios/settings.py" line="287" />
       <source>No device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="281" />
+      <location filename="../../gui/ios/settings.py" line="288" />
       <source>Connect an iPhone over USB</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="337" />
+      <location filename="../../gui/ios/settings.py" line="360" />
       <source>Accent color</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="352" />
+      <location filename="../../gui/ios/settings.py" line="375" />
       <source>Interface</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="355" />
+      <location filename="../../gui/ios/settings.py" line="378" />
       <source>WorkSlop (Main)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="355" />
+      <location filename="../../gui/ios/settings.py" line="378" />
       <source>The WorkSlop interface</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="357" />
+      <location filename="../../gui/ios/settings.py" line="380" />
       <source>WorkSlop 2</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="357" />
+      <location filename="../../gui/ios/settings.py" line="380" />
       <source>Nugget layout with WorkSlop icons</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="359" />
+      <location filename="../../gui/ios/settings.py" line="382" />
       <source>Nugget</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="359" />
+      <location filename="../../gui/ios/settings.py" line="382" />
       <source>The original Nugget interface</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="382" />
+      <location filename="../../gui/ios/settings.py" line="405" />
       <source>Apply automatic safety rules (warns on dangerous features)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="389" />
+      <location filename="../../gui/ios/settings.py" line="412" />
       <source>Update channel</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="391" />
-      <location filename="../../gui/ios/settings.py" line="518" />
-      <location filename="../../gui/ios/settings.py" line="521" />
+      <location filename="../../gui/ios/settings.py" line="414" />
+      <location filename="../../gui/ios/settings.py" line="541" />
+      <location filename="../../gui/ios/settings.py" line="544" />
       <source>Check for Updates</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="422" />
+      <location filename="../../gui/ios/settings.py" line="445" />
       <source>Force PosterBoard Refresh</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="429" />
+      <location filename="../../gui/ios/settings.py" line="452" />
       <source>Use Fast Backup Cache (Experimental)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="434" />
+      <location filename="../../gui/ios/settings.py" line="457" />
       <source>Use Encrypted Backups (Experimental)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="438" />
+      <location filename="../../gui/ios/settings.py" line="461" />
       <source>Backup Photos Over AFC (Parallel)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="461" />
+      <location filename="../../gui/ios/settings.py" line="484" />
       <source>Save Tweaks Automatically</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="465" />
+      <location filename="../../gui/ios/settings.py" line="488" />
       <source>Saves your tweak selection to a built-in "AutoSave" preset and restores it on the next launch. Turn off to keep changes for this session only.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="474" />
+      <location filename="../../gui/ios/settings.py" line="497" />
       <source>About WorkSlop Desktop</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="486" />
+      <location filename="../../gui/ios/settings.py" line="509" />
       <source>Release</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="487" />
+      <location filename="../../gui/ios/settings.py" line="510" />
       <source>All releases</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="519" />
+      <location filename="../../gui/ios/settings.py" line="542" />
       <source>You are up to date.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="522" />
+      <location filename="../../gui/ios/settings.py" line="545" />
       <source>Couldn't check for updates. Please try again later.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="565" />
+      <location filename="../../gui/ios/settings.py" line="588" />
       <source>Backup/Cache Location</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="572" />
+      <location filename="../../gui/ios/settings.py" line="595" />
       <source>The protective backup cache, AFC media cache and temporary backup/restore files for iOS 27 are stored here. Useful when the system drive is small (e.g. C: 28 GB).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="578" />
+      <location filename="../../gui/ios/settings.py" line="601" />
       <source>Browse</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="613" />
+      <location filename="../../gui/ios/settings.py" line="636" />
       <source>Preset Manager</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="618" />
+      <location filename="../../gui/ios/settings.py" line="641" />
       <source>Preset name</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="621" />
+      <location filename="../../gui/ios/settings.py" line="644" />
       <source>Description (optional)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="625" />
+      <location filename="../../gui/ios/settings.py" line="648" />
       <source>Save Preset</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="635" />
+      <location filename="../../gui/ios/settings.py" line="658" />
       <source>Load</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="637" />
+      <location filename="../../gui/ios/settings.py" line="660" />
       <location filename="../../gui/ios/sideload.py" line="235" />
       <source>Refresh</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/settings.py" line="640" />
+      <location filename="../../gui/ios/settings.py" line="663" />
       <source>Import</source>
       <translation type="unfinished" />
     </message>
@@ -4928,7 +5018,7 @@ Reconnect the iPhone if it is not detected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/tweaks.py" line="499" />
+      <location filename="../../gui/ios/tweaks.py" line="555" />
       <source>Liquid Glass Tweaks (Nugget)</source>
       <translation type="unfinished" />
     </message>
@@ -4987,331 +5077,456 @@ Reconnect the iPhone if it is not detected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="87" />
-      <source>BETA 1 — unproven. This page writes one research candidate key, SolariumForceFallback = true, through two delivery routes. The key string exists in the iOS 26.6.1 system binaries, but it is NOT proven that iOS 26.6.1 reads it from either file — enabling a route does not claim to disable Liquid Glass. Test one route at a time: full backup first, Low Power Mode off, reboot after applying, then judge the result. Every apply is checked by an automatic verification gate (payload parses, value is a real bool, G1 keeps 100% of your original keys) and is cancelled if the check fails. On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers these routes through a full device backup and restore instead of a partial restore, because the partial route showed no effect in beta testing; the same checks run first, an encrypted backup is refused, and any failure cancels the apply before your device is changed.</source>
+      <location filename="../../gui/ios/icon_themes.py" line="218" />
+      <source>iOS 18 Icons</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="136" />
-      <source>Roll Back G2 (Restore Saved Overlay)</source>
+      <location filename="../../gui/ios/icon_themes.py" line="223" />
+      <source>Stock iOS 18 app icons from the catwithabaloon icon pack, in two tables: Light and Dark. Use Add on a row to add that artwork to Icon Themes, or a table's Add All to add every app of that artwork that is not in Icon Themes yet; it is delivered as a WebClip to the target shown, exactly like any other icon theme.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="140" />
-      <source>Roll Back G1 (Restore Saved Original)</source>
+      <location filename="../../gui/ios/icon_themes.py" line="264" />
+      <source>Icon artwork: iOS 18 App Icons by catwithabaloon (github.com/catwithabaloon/iOS-18-icon-pack).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="353" />
+      <location filename="../../gui/ios/icon_themes.py" line="283" />
+      <source>Add</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="414" />
+      <location filename="../../gui/ios/icon_themes.py" line="392" />
+      <location filename="../../gui/ios/icon_themes.py" line="364" />
+      <source>Dark</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="414" />
+      <location filename="../../gui/ios/icon_themes.py" line="392" />
+      <location filename="../../gui/ios/icon_themes.py" line="364" />
+      <source>Light</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="708" />
+      <source>Import Icon Pack (.zip)</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="757" />
+      <source>Icon Pack Import</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="282" />
+      <source>App</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="283" />
+      <source>Target on device</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="729" />
+      <source>That file could not be read as an icon pack (.zip).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="735" />
+      <source>Imported {0} icons from the pack.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="390" />
+      <source>Added {0} ({1}) to Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="249" />
+      <source>Add All {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="362" />
+      <source>No {0} version of this icon in the pack.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="416" />
+      <source>Added {0} iOS 18 icons ({1}) to Icon Themes; {2} could not be stored (those themes may not apply reliably).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="739" />
+      <source>{0} icons were already in Icon Themes and were left as they are.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="743" />
+      <source>{0} icons could not be stored in the persistent folder; those themes may not apply reliably.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="749" />
+      <source>{0} files in the pack did not match any icon in the built-in 51-app catalog, so they could not be identified per app and were skipped — no theme was created for them. They are listed in the details below.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="421" />
+      <source>Added {0} iOS 18 icons ({1}) to Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="425" />
+      <source>Nothing new was added, and {0} icons could not be stored (those themes may not apply reliably).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/icon_themes.py" line="430" />
+      <source>Every iOS 18 icon ({0}) is already in Icon Themes.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="85" />
+      <source>UNPROVEN on screen. This page writes Apple's real firmware keys through the full-backup route: Liquid Glass (Latest) puts SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), plus the two lock-screen keys into .GlobalPreferences.plist and the specular key into com.apple.springboard.plist; the Lock Screen Keys (Test) entry is a test-only experiment. Nothing on this page claims the glass look is disabled — judge it with an isolated device test: full backup first, Low Power Mode off, reboot after applying. Every apply is checked by an automatic verification gate (payload parses, value is a real bool, and 100% of your existing keys must survive) and is cancelled if the check fails. your original keys) and is cancelled if the check fails. On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers these routes through a full device backup and restore instead of a partial restore, because the partial route showed no effect in beta testing; the same checks run first, an encrypted backup is refused, and any failure cancels the apply before your device is changed.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="139" />
+      <source>Roll Back Lock-Screen Keys (Remove Its 2 Keys)</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/ios/liquid_glass_disable.py" line="144" />
-      <source>Roll Back Squair (Remove 2 Lock-Screen Keys)</source>
+      <source>Roll Back Latest (Remove Its 4 Keys)</source>
       <translation type="unfinished" />
     </message>
     <message>
       <location filename="../../gui/ios/liquid_glass_disable.py" line="150" />
-      <source>Enable a route above, then press Apply Tweaks on the Apply page. The rollback buttons write to the device immediately (G2 restores the device's managed overlay saved before your first apply — or an empty overlay when none was saved; G1 writes back the original .GlobalPreferences.plist saved before your first G1 apply).</source>
+      <source>Enable a payload above, then press Apply Tweaks on the Apply page. The rollback buttons write to the device immediately: each reads your device's current files and removes only that payload's own keys — your other settings stay.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="165" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="163" />
       <source>Open Apply Page</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="194" />
-      <source>A managed overlay original is also saved for G2 rollback.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="297" />
+      <source>Remove the four Liquid Glass (Latest) keys? Your device's three preference files are read fresh and only SolariumForceFallback (com.apple.SwiftUI.plist), SBDisallowGlassTime and SBDisallowGlassButtons (.GlobalPreferences.plist) and SBDisableSpecularEverywhereUsingLSSAssertion (com.apple.springboard.plist) are removed — your other settings stay. The device reboots if auto-reboot is on.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="196" />
-      <source>No managed overlay original saved yet for G2 rollback.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="278" />
-      <source>Restore the managed .GlobalPreferences.plist overlay saved before your first G1/G2 apply (or an empty overlay when none was saved)? This removes the SolariumForceFallback key (other WorkSlop GlobalPreferences tweaks re-apply on your next Apply). The device reboots if auto-reboot is on.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="124" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="127" />
       <source>Rollback</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="184" />
-      <source>No device connected. Connect your iPhone to apply or roll back.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="200" />
+      <source>No device connected. Connect your iPhone to apply or roll back. The switches above stay locked: this S8 route is a full backup (all data) for iOS 26.6.1 builds 23G82 and 23G83 only — separate from Partial Restore (up to iOS 26) and the iOS 27 Full Backup route.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="262" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="281" />
       <source>An apply or reset is already running. Wait for it to finish first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="275" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="294" />
       <source>No device connected. Connect your iPhone first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="286" />
-      <source>Remove the two Squair Protocol (Test) keys? The device's .GlobalPreferences.plist is read fresh and only SBDisallowGlassTime and SBDisallowGlassButtons are removed — your other settings stay. The FeatureFlags/Domain/SpringBoard.plist file, if it landed on the device, cannot be removed by a restore and is left in place. The device reboots if auto-reboot is on.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="308" />
+      <source>Remove the two Lock Screen Keys (Test) keys? The device's .GlobalPreferences.plist is read fresh and only SBDisallowGlassTime and SBDisallowGlassButtons are removed — your other settings stay. The FeatureFlags/Domain/SpringBoard.plist file, if it landed on the device, cannot be removed by a restore and is left in place. The device reboots if auto-reboot is on.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="300" />
-      <source>No saved original .GlobalPreferences.plist for this device yet, so there is nothing safe to roll back to. The original is saved automatically before your first G1 apply.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="334" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="341" />
       <source>The rollback did not complete: %1</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="335" />
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="342" />
       <source>unknown error</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="207" />
-      <source>Device: %1. No saved original yet — it is captured automatically before your first G1 apply. %2</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="219" />
+      <source>Device: %1 (iOS %2, build %3). This build can run the S8 full backup (all data) route. Rollback reads your device's current files and removes only each payload's own keys.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="305" />
-      <source>Write back the saved original .GlobalPreferences.plist (captured %1, iOS %2)? This replaces the device's current file with that exact copy. The device reboots if auto-reboot is on.</source>
+      <location filename="../../gui/ios/liquid_glass_disable.py" line="209" />
+      <source>Device: %1 (iOS %2, build %3). The switches above are locked: this S8 route is a full backup (all data) and runs only on iOS 26.6.1 builds 23G82 and 23G83 — separate from Partial Restore (up to iOS 26) and the iOS 27 Full Backup route. Rollback reads your device's current files and removes only each payload's own keys.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/liquid_glass_disable.py" line="198" />
-      <source>Device: %1. A pristine original .GlobalPreferences.plist is saved for rollback (captured %2, iOS %3, %4 keys). %5</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="203" />
+      <location filename="../../gui/ios/passcode_theme.py" line="401" />
       <source>Customize the Passcode keypad with a theme package (.passthm) — images, sub-labels and bold keys. Themes are written straight to the device over USB/Wi-Fi (no reboot).
 
 AirLift only creates NEW files on the device: re-applying the same theme is a no-op, and replacing an existing theme with different art requires removing the old keypad cache first.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="216" />
+      <location filename="../../gui/ios/passcode_theme.py" line="414" />
       <source>No theme selected yet.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="225" />
+      <location filename="../../gui/ios/passcode_theme.py" line="423" />
       <source>Choose .passthm…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="260" />
+      <location filename="../../gui/ios/passcode_theme.py" line="458" />
       <source>Write Theme to Device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="287" />
+      <location filename="../../gui/ios/passcode_theme.py" line="485" />
       <source>Device Language</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="288" />
+      <location filename="../../gui/ios/passcode_theme.py" line="486" />
       <source>All Languages</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="306" />
+      <location filename="../../gui/ios/passcode_theme.py" line="504" />
       <source>Both (Regular + Bold)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="307" />
+      <location filename="../../gui/ios/passcode_theme.py" line="505" />
       <source>Regular only</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="308" />
+      <location filename="../../gui/ios/passcode_theme.py" line="506" />
       <source>Bold only</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="317" />
+      <location filename="../../gui/ios/passcode_theme.py" line="515" />
       <source>All (8, 9, 10)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="356" />
+      <location filename="../../gui/ios/passcode_theme.py" line="554" />
       <source>Choose a Passcode Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="356" />
+      <location filename="../../gui/ios/passcode_theme.py" line="554" />
       <source>passthemes (*.passthm)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="406" />
+      <location filename="../../gui/ios/passcode_theme.py" line="604" />
       <source>, small keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="414" />
+      <location filename="../../gui/ios/passcode_theme.py" line="612" />
       <source>Remove</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="496" />
+      <location filename="../../gui/ios/passcode_theme.py" line="768" />
       <source>Starting…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="99" />
+      <location filename="../../gui/ios/passcode_theme.py" line="186" />
       <source>Parsing theme…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="214" />
+      <location filename="../../gui/ios/passcode_theme.py" line="412" />
       <source>Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="239" />
+      <location filename="../../gui/ios/passcode_theme.py" line="437" />
       <source>Keypad Language</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="243" />
+      <location filename="../../gui/ios/passcode_theme.py" line="441" />
       <source>Bold Keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="248" />
+      <location filename="../../gui/ios/passcode_theme.py" line="446" />
       <source>Target TelephonyUI</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="254" />
+      <location filename="../../gui/ios/passcode_theme.py" line="452" />
       <source>Write to device</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="408" />
+      <location filename="../../gui/ios/passcode_theme.py" line="606" />
       <source>, big keys</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="448" />
-      <source>No trusted iPhone connected. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, and wait for it to appear here.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="647" />
+      <source>Device: {0} — iOS {1} ({2}).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="464" />
-      <source>Device present, but it is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="473" />
-      <source>Choose a theme first.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="478" />
-      <source>No trusted iPhone is listed. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, then wait for it to appear.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="485" />
-      <source>This device is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="491" />
-      <source>A write is already running.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="362" />
-      <source>Invalid Theme</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="409" />
-      <source>{0} key images{1}</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="457" />
-      <source>Device: {0} — iOS {1} ({2}). This computer is trusted by it, so the write runs immediately — no “Trust This Computer” pop-up will appear.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="461" />
+      <location filename="../../gui/ios/passcode_theme.py" line="648" />
       <source>iPhone</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="528" />
+      <location filename="../../gui/ios/passcode_theme.py" line="660" />
+      <source>No trusted iPhone connected. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, and wait for it to appear here.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="667" />
+      <source>Checking whether this computer is trusted — live, on the device…</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="700" />
+      <source>Trust status shown from the last device scan (cached) — the device could not be reached for a live trust check, so this may be out of date.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="745" />
+      <source>Choose a theme first.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="750" />
+      <source>No trusted iPhone is listed. Plug it in, unlock it, tap “Trust This Computer” when iOS asks, then wait for it to appear.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="757" />
+      <source>This device is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="763" />
+      <source>A write is already running.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="560" />
+      <source>Invalid Theme</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="607" />
+      <source>{0} key images{1}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="718" />
+      <source>This computer is trusted by it (checked live just now), so the write runs immediately — no “Trust This Computer” pop-up will appear.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="725" />
+      <source>This computer is NOT trusted by it (checked live just now). Unlock the iPhone and tap “Trust This Computer”, then reopen this page.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="736" />
+      <source>Device present, but it is not supported for AirLift (needs an iPhone on iOS 26.2+).</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="801" />
       <source>Passcode Theme</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="106" />
+      <location filename="../../gui/ios/passcode_theme.py" line="194" />
       <source>Staged {0} key files, {1} targets</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="112" />
+      <location filename="../../gui/ios/passcode_theme.py" line="203" />
       <source>Step 1/3 — Trust check: opening a device session. If this computer isn't trusted yet, unlock your iPhone and tap “Trust This Computer” now.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="158" />
-      <source>Wrote {0} file(s) to the device.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="285" />
+      <source>Nothing was written: the device rejected the AirLift session. Unlock the iPhone, keep it awake, open Apple Books once, and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="125" />
+      <location filename="../../gui/ios/passcode_theme.py" line="216" />
       <source>Step 2/3 — Device trust confirmed; staging the theme…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="135" />
-      <source>Step 3/3 — Done.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="244" />
+      <source>Step 3/3 — Finishing…</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="139" />
+      <location filename="../../gui/ios/passcode_theme.py" line="248" />
       <source>The device is locked. Unlock your iPhone, then tap “Trust This Computer” when the dialog appears and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="144" />
+      <location filename="../../gui/ios/passcode_theme.py" line="253" />
       <source>You declined the trust request on the device. Connect your iPhone, tap “Trust This Computer” and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="149" />
+      <location filename="../../gui/ios/passcode_theme.py" line="258" />
       <source>The device did not confirm this computer as trusted — the Apple® sync service (ATC) refuses an untrusted host and the write would fail. Unlock your iPhone and tap “Trust This Computer”, then try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="162" />
-      <source>{0} file(s) skipped — they already exist (AirLift only writes new names). Remove the old keypad cache first to replace an existing theme.</source>
+      <location filename="../../gui/ios/passcode_theme.py" line="281" />
+      <source>Wrote {0} file(s) to the device.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="121" />
+      <location filename="../../gui/ios/passcode_theme.py" line="305" />
+      <source>Partially written: {0} of {1} file(s) reached the device; {2} could not be written{3}. A file that already exists on the device cannot be overwritten by AirLift, and a dropped or rejected session fails the same way — remove the old keypad cache to replace an existing theme, or reconnect and retry.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="212" />
       <source>the iPhone did not confirm this computer as trusted — tap “Trust This Computer” on the device and try again</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="529" />
+      <location filename="../../gui/ios/passcode_theme.py" line="290" />
+      <source>Nothing was written: all {0} file write(s) failed. Reconnect the iPhone and try again. If this theme is already on the device, remove the old keypad cache first — AirLift cannot overwrite existing files.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="303" />
+      <source> ({0})</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/ios/passcode_theme.py" line="802" />
       <source>Apply failed:
 
 {0}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/ios/passcode_theme.py" line="130" />
+      <location filename="../../gui/ios/passcode_theme.py" line="221" />
       <source>Writing {0} files to {1}…</source>
       <translation type="unfinished" />
     </message>
@@ -5353,7 +5568,7 @@ or you've reached the maximum amount of wallpapers (15) and have to wipe them.</
   <context>
     <name>QCoreApplication</name>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="756" />
+      <location filename="../../gui/ios/posterboard.py" line="771" />
       <location filename="../../gui/pages/main/home.py" line="157" />
       <source>Please connect a device.</source>
       <translation>يرجى توصيل جهاز.</translation>
@@ -5394,89 +5609,91 @@ Open up its settings and tap "Detect".</source>
       <translation>يجب أن تحتوي الفيديوهات على أقل من {0} إطار للتكرار. قلّل معدل الإطارات أو اجعل الفيديو أقصر.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="97" />
+      <location filename="../../devicemanagement/device_manager.py" line="100" />
       <source>Find My must be disabled in order to use this tool.</source>
       <translation>يجب تعطيل تحديد الموقع من أجل استخدام هذه الأداة.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="98" />
+      <location filename="../../devicemanagement/device_manager.py" line="101" />
       <source>Disable Find My from Settings (Settings -&gt; [Your Name] -&gt; Find My) and then try again.</source>
       <translation>لتعطل تحديد الموقع من الاعدادات (الاعدادات -&gt; [اسمك] -&gt; تحديد الموقع) ثم جرب مرة أخرى.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="100" />
       <source>Nugget cannot be used on this device. Click Show Details for more info.</source>
-      <translation>لا يمكنك ان تستعمل Nugget على هذا الجهاز. انقر على اضهار التفاصيل للمزيد من المعلومات.</translation>
+      <translation type="vanished">لا يمكنك ان تستعمل Nugget على هذا الجهاز. انقر على اضهار التفاصيل للمزيد من المعلومات.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="101" />
       <source>Your device is managed and MDM backup encryption is on. This must be turned off in order for Nugget to work. Please do not use Nugget on your school/work device!</source>
-      <translation>جهازك خاضع للإدارة وتم تفعيل تشفير النسخ الاحتياطي عبر إدارة الأجهزة (MDM). يجب تعطيل هذا التشفير حتى يعمل تطبيق Nugget بشكل صحيح. يرجى عدم استخدام Nugget على جهاز المدرسة أو العمل!</translation>
+      <translation type="vanished">جهازك خاضع للإدارة وتم تفعيل تشفير النسخ الاحتياطي عبر إدارة الأجهزة (MDM). يجب تعطيل هذا التشفير حتى يعمل تطبيق Nugget بشكل صحيح. يرجى عدم استخدام Nugget على جهاز المدرسة أو العمل!</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="103" />
+      <location filename="../../devicemanagement/device_manager.py" line="116" />
       <source>The session was terminated. Refresh the device list and try again.</source>
       <translation>تم إنهاء الجلسة. قم بتحديث قائمة الأجهزة وحاول مرة أخرى.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="105" />
+      <location filename="../../devicemanagement/device_manager.py" line="113" />
       <source>Device is password protected! You must trust the computer on your device.</source>
       <translation>الجهاز محمي بكلمة مرور! يجب أن تثق بجهاز الكمبيوتر من خلال الموافقة على الرسالة الظاهرة على الجهاز.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="106" />
+      <location filename="../../devicemanagement/device_manager.py" line="114" />
       <source>Unlock your device. On the popup, click "Trust", enter your password, then try again.</source>
       <translation>قم بإلغاء قفل جهازك. عندما تظهر الرسالة المنبثقة، اضغط على "الوثوق"، ثم أدخل كلمة المرور، وحاول من جديد.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="109" />
       <source>Device failed in sending files. The file list is possibly corrupted or has duplicates. Click Show Details for more info.</source>
-      <translation>فشل الجهاز في إرسال الملفات. من المحتمل أن تكون قائمة الملفات تالفة أو تحتوي على تكرارات. اضغط على "عرض التفاصيل" لمزيد من المعلومات.</translation>
+      <translation type="vanished">فشل الجهاز في إرسال الملفات. من المحتمل أن تكون قائمة الملفات تالفة أو تحتوي على تكرارات. اضغط على "عرض التفاصيل" لمزيد من المعلومات.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="112" />
+      <location filename="../../devicemanagement/device_manager.py" line="149" />
       <source>Access denied while sending files.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="115" />
+      <location filename="../../devicemanagement/device_manager.py" line="152" />
       <source>Applying tweaks requires developer mode.
 
 You can enable this at the bottom of Settings &gt; Privacy &amp; Security &gt; Developer Mode on your iPhone or iPad.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="239" />
+      <location filename="../../devicemanagement/device_manager.py" line="204" />
+      <source>Could not read the device's iOS version during %1 — the device may have disconnected. Reconnect the device, keep it unlocked, and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="468" />
       <source>Getting the device list timed out.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="241" />
+      <location filename="../../devicemanagement/device_manager.py" line="470" />
       <source>Device enumeration took too long. Check your USB connection and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="263" />
+      <location filename="../../devicemanagement/device_manager.py" line="492" />
       <source>If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.</source>
       <translation>إذا كنت تستخدم Linux، فتأكد من تثبيت usbmuxd و libimobiledevice.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="265" />
+      <location filename="../../devicemanagement/device_manager.py" line="494" />
       <source>Make sure you have the "Apple Devices" app from the Microsoft Store or iTunes from Apple's website.</source>
       <translation>تأكد من وجود تطبيق "Apple Devices" من متجر مايكروسوفت أو iTunes من موقع Apple الرسمي.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="269" />
+      <location filename="../../devicemanagement/device_manager.py" line="498" />
       <source>Failed to get device list. Click "Show Details" for the traceback.</source>
       <translation>فشل في جلب قائمة الأجهزة. اضغط على "عرض التفاصيل" للاطلاع على سجل الخطأ.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="326" />
+      <location filename="../../devicemanagement/device_manager.py" line="555" />
       <source>Click "Show Details" for the traceback.</source>
       <translation>ضغط على "عرض التفاصيل" للاطلاع على سجل الخطأ.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="369" />
+      <location filename="../../devicemanagement/device_manager.py" line="598" />
       <source>Device is password protected! You must trust the computer on your device.
 
 Unlock your device. On the popup, click "Trust", enter your password, then try again.</source>
@@ -5485,34 +5702,55 @@ Unlock your device. On the popup, click "Trust", enter your password, then try a
 قم بإلغاء قفل الجهاز، ثم اضغط على "الوثوق" في النافذة المنبثقة، وأدخل كلمة المرور، ثم حاول مرة أخرى.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="378" />
+      <location filename="../../devicemanagement/device_manager.py" line="607" />
       <source>If you keep receiving this error, try using a different cable or port.</source>
       <translation>إذا استمر ظهور هذا الخطأ، جرّب استخدام كابل أو منفذ مختلف.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="485" />
+      <location filename="../../devicemanagement/device_manager.py" line="715" />
       <source>Pairing Reset</source>
       <translation>إعادة تعيين الارتباط</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="486" />
+      <location filename="../../devicemanagement/device_manager.py" line="716" />
       <source>Your device's pairing was successfully reset. Refresh the device list before applying.</source>
       <translation>تمت إعادة تعيين ارتباط جهازك بنجاح. يُرجى تحديث قائمة الأجهزة قبل المتابعة.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="625" />
+      <location filename="../../devicemanagement/device_manager.py" line="855" />
       <source>MobileGestalt tweaks are not supported on this device.
 
 </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="916" />
+      <location filename="../../devicemanagement/device_manager.py" line="883" />
+      <source>MobileGestalt apply blocked by HotLoad safety rules: </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="936" />
+      <source>MobileGestalt apply blocked by HotLoad safety rules: every enabled MobileGestalt tweak is flagged for this device. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="1249" />
+      <source>Apply aborted: the protective backup could not be created (not enough disk space) and no confirmation prompt is available. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="1253" />
+      <location filename="../../devicemanagement/device_manager.py" line="1279" />
+      <source>Apply Aborted</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="1257" />
       <source>Not Enough Disk Space</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="918" />
+      <location filename="../../devicemanagement/device_manager.py" line="1259" />
       <source>The protective backup failed because the device or computer does not have enough free disk space.
 
 Continue anyway WITHOUT data protection?
@@ -5520,141 +5758,100 @@ Continue anyway WITHOUT data protection?
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1271" />
-      <location filename="../../devicemanagement/device_manager.py" line="1520" />
+      <location filename="../../devicemanagement/device_manager.py" line="1274" />
+      <source>Apply aborted: the protective backup could not be created (not enough disk space), and you chose not to continue without data protection. Nothing was applied.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="1688" />
+      <location filename="../../devicemanagement/device_manager.py" line="1937" />
       <source>PosterBoard database backed up successfully.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1337" />
+      <location filename="../../devicemanagement/device_manager.py" line="1754" />
       <source>Backing up device...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1397" />
+      <location filename="../../devicemanagement/device_manager.py" line="1814" />
       <source>Backup encryption is enabled. Enter your backup password to use the fast cached backup:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1399" />
-      <location filename="../../devicemanagement/device_manager.py" line="2598" />
+      <location filename="../../devicemanagement/device_manager.py" line="1816" />
+      <location filename="../../devicemanagement/device_manager.py" line="3005" />
       <source>Backup Encryption Password</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1400" />
+      <location filename="../../devicemanagement/device_manager.py" line="1817" />
       <source>Enter your iTunes/Finder backup password (used locally to prepare the cached backup):</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1425" />
+      <location filename="../../devicemanagement/device_manager.py" line="1842" />
       <source>Backing up device (cached)...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1469" />
+      <location filename="../../devicemanagement/device_manager.py" line="1886" />
       <source>Updating backup cache...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1507" />
+      <location filename="../../devicemanagement/device_manager.py" line="1924" />
       <source>Fetching PosterBoard database...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1515" />
+      <location filename="../../devicemanagement/device_manager.py" line="1932" />
       <source>Saving PosterBoard database...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1526" />
+      <location filename="../../devicemanagement/device_manager.py" line="1941" />
       <source>Warning: could not back up PosterBoard database — device is locked. Please unlock your device and try again.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1528" />
+      <location filename="../../devicemanagement/device_manager.py" line="1943" />
       <source>Warning: could not back up the PosterBoard database automatically.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1570" />
-      <source>Liquid Glass Disable (Beta 1): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
+      <location filename="../../devicemanagement/device_manager.py" line="3480" />
+      <source>Reset finished, but some items were skipped:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1594" />
-      <location filename="../../devicemanagement/device_manager.py" line="1723" />
+      <location filename="../../devicemanagement/device_manager.py" line="2011" />
       <source>Reading the device's .GlobalPreferences.plist...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1617" />
-      <source>Liquid Glass Disable (Beta 1): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1640" />
-      <source>Liquid Glass Disable (Beta 1): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1693" />
-      <source>Squair Protocol (Test): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1739" />
-      <source>Squair Protocol (Test): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1755" />
-      <source>Squair Protocol (Test): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1820" />
+      <location filename="../../devicemanagement/device_manager.py" line="2245" />
       <source>Restoring full backup... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1856" />
-      <source>Liquid Glass Disable (Beta 1): the verification gate failed, so the apply was cancelled and nothing was written:
-</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1902" />
-      <source>Liquid Glass Disable (Beta 1): no saved original .GlobalPreferences.plist for this device, so there is nothing safe to roll back to. The original is saved automatically before the first G1 apply.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1912" />
-      <source>Liquid Glass Disable (Beta 1): the saved original .GlobalPreferences.plist is unreadable, so it was NOT written back.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1942" />
-      <source>Squair Protocol (Test): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
-      <translation type="unfinished" />
-    </message>
-    <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1979" />
+      <location filename="../../devicemanagement/device_manager.py" line="2418" />
       <source>Liquid Glass Disable (Beta 1): unknown rollback route.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2401" />
+      <location filename="../../devicemanagement/device_manager.py" line="979" />
+      <location filename="../../devicemanagement/device_manager.py" line="2807" />
       <source>Skipped HotLoad-flagged tweaks: </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2408" />
+      <location filename="../../devicemanagement/device_manager.py" line="2814" />
       <source>Skipped unsupported/removed tweaks: </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2609" />
+      <location filename="../../devicemanagement/device_manager.py" line="3016" />
       <source>Backup encryption is enabled on your iPhone.
 
 WorkSlop Desktop needs to temporarily disable it to apply tweaks safely.
@@ -5667,46 +5864,146 @@ Tip: Option 1 is simpler if you don't know your backup password.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2427" />
+      <location filename="../../devicemanagement/device_manager.py" line="2833" />
       <source>Skipped (needs BookRestore, not supported by this fork): </source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2458" />
+      <location filename="../../devicemanagement/device_manager.py" line="124" />
+      <source>while sending %1 file(s) to the device</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="126" />
+      <source>during the restore</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="129" />
+      <source>The connection to the device was terminated </source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="131" />
+      <source>. The device may have disconnected or stalled. Check the USB cable, keep the device unlocked, and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="139" />
+      <source>Could not start the service "%1" on the device.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="140" />
+      <source>Unlock the device, make sure it is trusted, and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="145" />
+      <source>Device not found: %1</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="146" />
+      <source>The device disconnected or never appeared. Check the USB cable and try again.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="1981" />
+      <source>Lock Screen Keys (Test): no device is connected, so the device's own .GlobalPreferences.plist cannot be read. Connect the device and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2020" />
+      <source>Lock Screen Keys (Test): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2036" />
+      <source>Lock Screen Keys (Test): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2091" />
+      <source>Liquid Glass (Latest): no device is connected, so the device's own preference files cannot be read. Connect the device and try again. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2121" />
+      <source>Reading the device's preference files...</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2133" />
+      <source>Liquid Glass (Latest): the .GlobalPreferences.plist read from the device could not be parsed (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2138" />
+      <source>Liquid Glass (Latest): the device's own .GlobalPreferences.plist could not be read, and it is a required merge base. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2152" />
+      <source>Liquid Glass (Latest): the %1 read from the device could not be parsed (%2), so it was NOT written. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2174" />
+      <source>Liquid Glass (Latest): the device's original .GlobalPreferences.plist could not be saved for rollback (%1). Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2305" />
+      <source>Lock Screen Keys (Test): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2356" />
+      <source>Liquid Glass (Latest): the .GlobalPreferences.plist read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2367" />
+      <source>Liquid Glass (Latest): the %1 read from the device could not be parsed, so it was NOT written back. Nothing was written.</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="2864" />
       <source>Note: MobileGestalt tweaks were skipped (not supported on this iOS version).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2590" />
-      <location filename="../../devicemanagement/device_manager.py" line="2603" />
+      <location filename="../../devicemanagement/device_manager.py" line="2997" />
+      <location filename="../../devicemanagement/device_manager.py" line="3010" />
       <source>Password accepted. Proceeding with encrypted restore...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2593" />
+      <location filename="../../devicemanagement/device_manager.py" line="3000" />
       <source>Backup encryption is enabled. We'll use it for the restore.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2594" />
+      <location filename="../../devicemanagement/device_manager.py" line="3001" />
       <source>Please enter your iTunes/Finder backup password:</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2596" />
-      <location filename="../../devicemanagement/device_manager.py" line="2605" />
+      <location filename="../../devicemanagement/device_manager.py" line="3003" />
+      <location filename="../../devicemanagement/device_manager.py" line="3012" />
       <source>Backup password is required for encrypted restore. Please provide the password or disable encryption in iTunes/Finder.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2599" />
+      <location filename="../../devicemanagement/device_manager.py" line="3006" />
       <source>Enter your iTunes/Finder backup password (required for encrypted restore):</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="1811" />
-      <location filename="../../devicemanagement/device_manager.py" line="1883" />
-      <location filename="../../devicemanagement/device_manager.py" line="2802" />
+      <location filename="../../devicemanagement/device_manager.py" line="2236" />
+      <location filename="../../devicemanagement/device_manager.py" line="2283" />
+      <location filename="../../devicemanagement/device_manager.py" line="3180" />
       <source>No device connected.</source>
       <translation type="unfinished" />
     </message>
@@ -5715,11 +6012,10 @@ Tip: Option 1 is simpler if you don't know your backup password.</source>
       <translation type="vanished">لم يتم توفير ملف mobilegestalt! يرجى اختيار الملف لتطبيق تعديلات mobilegestalt.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="746" />
-      <location filename="../../devicemanagement/device_manager.py" line="778" />
-      <location filename="../../devicemanagement/device_manager.py" line="1957" />
-      <location filename="../../devicemanagement/device_manager.py" line="1999" />
-      <location filename="../../devicemanagement/device_manager.py" line="2706" />
+      <location filename="../../devicemanagement/device_manager.py" line="1062" />
+      <location filename="../../devicemanagement/device_manager.py" line="1094" />
+      <location filename="../../devicemanagement/device_manager.py" line="2320" />
+      <location filename="../../devicemanagement/device_manager.py" line="2395" />
       <source>Your device will now restart.
 
 Remember to turn Find My back on!</source>
@@ -5728,43 +6024,40 @@ Remember to turn Find My back on!</source>
 تذكر أن تقوم بتشغيل ”تحديد الموقع“!</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="748" />
-      <location filename="../../devicemanagement/device_manager.py" line="780" />
-      <location filename="../../devicemanagement/device_manager.py" line="1961" />
-      <location filename="../../devicemanagement/device_manager.py" line="2003" />
-      <location filename="../../devicemanagement/device_manager.py" line="2710" />
+      <location filename="../../devicemanagement/device_manager.py" line="1064" />
+      <location filename="../../devicemanagement/device_manager.py" line="1096" />
+      <location filename="../../devicemanagement/device_manager.py" line="2324" />
+      <location filename="../../devicemanagement/device_manager.py" line="2399" />
       <source>Please restart your device to see changes.</source>
       <translation>يرجى إعادة تشغيل جهازك لملاحظة التغييرات.</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="749" />
-      <location filename="../../devicemanagement/device_manager.py" line="781" />
-      <location filename="../../devicemanagement/device_manager.py" line="1963" />
-      <location filename="../../devicemanagement/device_manager.py" line="2005" />
-      <location filename="../../devicemanagement/device_manager.py" line="2712" />
+      <location filename="../../devicemanagement/device_manager.py" line="1065" />
+      <location filename="../../devicemanagement/device_manager.py" line="1097" />
+      <location filename="../../devicemanagement/device_manager.py" line="2326" />
+      <location filename="../../devicemanagement/device_manager.py" line="2401" />
       <source>All done! </source>
       <translation>تم كل شيء! </translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="749" />
-      <location filename="../../devicemanagement/device_manager.py" line="781" />
-      <location filename="../../devicemanagement/device_manager.py" line="967" />
-      <location filename="../../devicemanagement/device_manager.py" line="1964" />
-      <location filename="../../devicemanagement/device_manager.py" line="2006" />
-      <location filename="../../devicemanagement/device_manager.py" line="2018" />
-      <location filename="../../devicemanagement/device_manager.py" line="2713" />
-      <location filename="../../devicemanagement/device_manager.py" line="3075" />
+      <location filename="../../devicemanagement/device_manager.py" line="1065" />
+      <location filename="../../devicemanagement/device_manager.py" line="1097" />
+      <location filename="../../devicemanagement/device_manager.py" line="1320" />
+      <location filename="../../devicemanagement/device_manager.py" line="2327" />
+      <location filename="../../devicemanagement/device_manager.py" line="2402" />
+      <location filename="../../devicemanagement/device_manager.py" line="2430" />
+      <location filename="../../devicemanagement/device_manager.py" line="3505" />
       <source>Success!</source>
       <translation>نجحت!</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="423" />
+      <location filename="../../gui/ios/home.py" line="425" />
       <location filename="../../gui/pages/main/home.py" line="176" />
       <source>Supported!</source>
       <translation>مدعوم!</translation>
     </message>
     <message>
-      <location filename="../../gui/ios/home.py" line="416" />
+      <location filename="../../gui/ios/home.py" line="418" />
       <location filename="../../gui/pages/main/home.py" line="178" />
       <source>Not Supported.</source>
       <translation>غير مدعوم.</translation>
@@ -5778,7 +6071,7 @@ Remember to turn Find My back on!</source>
       <translation type="vanished">نوع ملف خاطئ</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="74" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="77" />
       <source>Warning</source>
       <translation>تحذير</translation>
     </message>
@@ -5787,148 +6080,158 @@ Remember to turn Find My back on!</source>
       <translation type="vanished">ملاحظة: قد تحتاج إلى إعادة تعيين جميع الخلفيات (قم بتفعيل الخيارات الخطرة في الإعدادات) ثم إعادة التطبيق لكي يعمل هذا الملف بشكل صحيح.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="37" />
+      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="43" />
       <source>Error</source>
       <translation>عذراً</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="38" />
+      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="44" />
       <source>Failed to load template</source>
       <translation>فشل تحميل القالب</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="437" />
-      <location filename="../../gui/ios/home.py" line="351" />
-      <location filename="../../gui/ios/home.py" line="353" />
+      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="128" />
+      <source>Skipped corrupt template: {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../tweaks/posterboard/template_options/templates_tweak.py" line="133" />
+      <source>Skipped corrupt template(s): {0}</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../devicemanagement/device_manager.py" line="666" />
+      <location filename="../../gui/ios/home.py" line="346" />
+      <location filename="../../gui/ios/home.py" line="348" />
       <source>No Device</source>
       <translation>لا يوجد جهاز</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="551" />
+      <location filename="../../devicemanagement/device_manager.py" line="781" />
       <source>This iOS version is not supported by this fork.
 
 WorkSlop Desktop supports iOS 16.0 -&gt; 27.x (detected from the device over the cable). Please use the original Nugget for other versions.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="585" />
+      <location filename="../../devicemanagement/device_manager.py" line="815" />
       <source>Loading MobileGestalt file...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="595" />
+      <location filename="../../devicemanagement/device_manager.py" line="825" />
       <source>No mobilegestalt file provided! Please select your device's com.apple.MobileGestalt.plist file first (MobileGestalt menu).</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="601" />
+      <location filename="../../devicemanagement/device_manager.py" line="831" />
       <source>The MobileGestalt file does not match this device (build/model mismatch). Please provide the file from this exact device.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="629" />
+      <location filename="../../devicemanagement/device_manager.py" line="859" />
       <source>No device selected.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="657" />
+      <location filename="../../devicemanagement/device_manager.py" line="940" />
       <source>No MobileGestalt tweaks are enabled.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="681" />
+      <location filename="../../devicemanagement/device_manager.py" line="989" />
       <source>Applying MobileGestalt tweaks...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="792" />
+      <location filename="../../devicemanagement/device_manager.py" line="1108" />
       <source>Restoring to device...{0}{1}</source>
       <translation>جارٍ الاستعادة إلى الجهاز... {0}{1}</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="807" />
+      <location filename="../../devicemanagement/device_manager.py" line="1123" />
       <source>Backing up device... ({0:.1f}%)</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="833" />
+      <location filename="../../devicemanagement/device_manager.py" line="1159" />
       <source>Applying changes to files...</source>
       <translation>جارٍ تطبيق التغييرات على الملفات...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="75" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="78" />
       <source>NOTE: You may need to reset all wallpapers and then re-apply for this file to work.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="340" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="343" />
       <source>Generating PosterBoard Video...</source>
       <translation>جاري إنشاء فيديو PosterBoard...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="345" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="348" />
       <source>Extracting tendie {0}...</source>
       <translation>جارٍ استخراج tendie {0}...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="350" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="353" />
       <source>Configuring template {0}...</source>
       <translation>جارٍ اعداد القالب {0}...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="353" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="356" />
       <source>Adding tendies...</source>
       <translation>إضافة tendies...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="380" />
+      <location filename="../../tweaks/posterboard/posterboard_tweak.py" line="383" />
       <source>Adding other tweaks...</source>
       <translation>إضافة تعديلات أخرى...</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="160" />
+      <location filename="../../tweaks/tweak_classes.py" line="315" />
       <source>Revert RDAR fix</source>
       <translation>التراجع عن إصلاح RDAR</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="161" />
+      <location filename="../../tweaks/tweak_classes.py" line="316" />
       <source>RDAR Fix</source>
       <translation>إصلاح RDAR</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="164" />
+      <location filename="../../tweaks/tweak_classes.py" line="319" />
       <source>Revert Status Bar Fix</source>
       <translation>التراجع عن إصلاح شريط الحالة</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="165" />
+      <location filename="../../tweaks/tweak_classes.py" line="320" />
       <source>Dynamic Island Status Bar Fix</source>
       <translation>إصلاح شريط الحالة في الـ Dynamic Island</translation>
     </message>
     <message>
-      <location filename="../../controllers/video_handler.py" line="89" />
+      <location filename="../../controllers/video_handler.py" line="113" />
       <source>Creating {0}...</source>
       <translation>إنتاج {0}...</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="2487" />
+      <location filename="../../devicemanagement/device_manager.py" line="2894" />
       <source>Generating backup...</source>
       <translation>جاري إنشاء نسخة احتياطية…</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="721" />
-      <location filename="../../devicemanagement/device_manager.py" line="757" />
+      <location filename="../../devicemanagement/device_manager.py" line="1037" />
+      <location filename="../../devicemanagement/device_manager.py" line="1073" />
       <source>DO NOT UNPLUG</source>
       <translation>لا تفصل الجهاز</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="723" />
-      <location filename="../../devicemanagement/device_manager.py" line="763" />
+      <location filename="../../devicemanagement/device_manager.py" line="1039" />
+      <location filename="../../devicemanagement/device_manager.py" line="1079" />
       <source>Preparing to restore...</source>
       <translation>جاري التحضير للاستعادة…</translation>
     </message>
     <message>
-      <location filename="../../devicemanagement/device_manager.py" line="114" />
+      <location filename="../../devicemanagement/device_manager.py" line="151" />
       <source>You must enable developer mode on your device. You can do it in the Settings app.</source>
       <translation>يجب عليك تفعيل وضع المطوّر على جهازك. يمكنك القيام بذلك من خلال تطبيق الإعدادات.</translation>
     </message>
@@ -5965,37 +6268,37 @@ You can enable this at the bottom of Settings &gt; Privacy &amp; Security &gt; D
       <translation type="vanished">يتم إعادة تشغيل الجهاز لتطبيق التغييرات…</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="302" />
+      <location filename="../../tweaks/tweak_classes.py" line="462" />
       <source>Failed to enable iPadOS:</source>
       <translation>فشل في تفعيل iPadOS</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="304" />
+      <location filename="../../tweaks/tweak_classes.py" line="464" />
       <source>CacheData is too short!</source>
       <translation>بيانات الذاكرة المؤقتة قصيرة جدًا!</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="318" />
+      <location filename="../../tweaks/tweak_classes.py" line="478" />
       <source>Pattern not found in CacheData.</source>
       <translation>النمط غير موجود في بيانات الذاكرة المؤقتة.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="324" />
+      <location filename="../../tweaks/tweak_classes.py" line="484" />
       <source>Right offset out of range.</source>
       <translation>الإزاحة اليمنى خارج النطاق.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="329" />
+      <location filename="../../tweaks/tweak_classes.py" line="489" />
       <source>Left offset out of range.</source>
       <translation>الإزاحة اليسرى خارج النطاق.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="337" />
+      <location filename="../../tweaks/tweak_classes.py" line="497" />
       <source>Value at %SIDE offset is not 1 or 3.</source>
       <translation>قيمة الإزاحة عند %SIDE ليست 1 أو 3.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/tweak_classes.py" line="344" />
+      <location filename="../../tweaks/tweak_classes.py" line="504" />
       <source>Values of %SIDE offset neighbors are not 0.</source>
       <translation>قيم الجيران حول إزاحة %SIDE ليست 0.</translation>
     </message>
@@ -6004,32 +6307,37 @@ You can enable this at the bottom of Settings &gt; Privacy &amp; Security &gt; D
       <translation type="vanished">يجب تشغيل التطبيق بصلاحيات المسؤول لاستخدام تعديلات BookRestore.</translation>
     </message>
     <message>
-      <location filename="../../gui/main_window.py" line="785" />
+      <location filename="../../gui/main_window.py" line="1046" />
       <source>Background device operation</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1934" />
+      <location filename="../../gui/main_window_mixins.py" line="2119" />
       <source>Abort</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1936" />
+      <location filename="../../gui/main_window_mixins.py" line="2121" />
       <source>Resume</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1957" />
+      <location filename="../../gui/main_window_mixins.py" line="2147" />
+      <source>Reset finished — some items were skipped</source>
+      <translation type="unfinished" />
+    </message>
+    <message>
+      <location filename="../../gui/main_window_mixins.py" line="2149" />
       <source>Reset complete!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1957" />
+      <location filename="../../gui/main_window_mixins.py" line="2151" />
       <source>Apply complete!</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/main_window_mixins.py" line="1961" />
+      <location filename="../../gui/main_window_mixins.py" line="2155" />
       <source>Operation failed</source>
       <translation type="unfinished" />
     </message>
@@ -6054,13 +6362,13 @@ You can enable this at the bottom of Settings &gt; Privacy &amp; Security &gt; D
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="347" />
-      <location filename="../../restore/restore.py" line="989" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="364" />
+      <location filename="../../restore/restore.py" line="1024" />
       <source>Device stayed locked</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/thread_workers/apply_worker.py" line="349" />
+      <location filename="../../gui/thread_workers/apply_worker.py" line="366" />
       <source>The device has not been unlocked long enough to push your photos and videos back.
 
 Unlock it, enter your passcode, and keep it connected via USB, then choose:
@@ -6095,15 +6403,15 @@ Unlock it, enter the passcode, tap "Trust" if the computer trust prompt appears,
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="498" />
+      <location filename="../../restore/restore.py" line="503" />
       <source>The protective backup could not be restored to the iPhone.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="500" />
+      <location filename="../../restore/restore.py" line="505" />
       <source>The device dropped the connection during the data restore.
 
-Your data is not lost — the protective backup taken before the wipe is kept on this computer.
+Your data is not lost — the protective backup taken before the restore is kept on this computer.
 
 A common cause is Find My still being on: iOS refuses to restore a backup while Find My (iCloud ▸ Find My iPhone) is enabled. Turn Find My off (Settings ▸ [your name] ▸ Find My), keep the iPhone unlocked with the screen on, and apply again so the restore can complete.
 
@@ -6111,12 +6419,12 @@ Do not erase the phone or set it up as new — the protective backup on this com
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="876" />
+      <location filename="../../restore/restore.py" line="911" />
       <source>Device locked — cannot restore backup</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="878" />
+      <location filename="../../restore/restore.py" line="913" />
       <source>The phone is asking for a passcode to start the restore service. This usually means the applied tweaks are preventing it from booting properly.
 
   • Resume — unlock the device, then keep trying to restore the backup.
@@ -6124,7 +6432,7 @@ Do not erase the phone or set it up as new — the protective backup on this com
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../restore/restore.py" line="991" />
+      <location filename="../../restore/restore.py" line="1026" />
       <source>The device has not been unlocked long enough to push your photos and videos back after the reboot.
 
 Unlock it, enter your passcode, and keep it connected via USB, then choose:
@@ -6134,17 +6442,17 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="251" />
+      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="361" />
       <source>Generating icon themes...</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="280" />
+      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="390" />
       <source>Skipped icon themes without icon file: {0}</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="281" />
+      <location filename="../../tweaks/icon_themes/icon_themes_tweak.py" line="391" />
       <source>Adding icon themes...</source>
       <translation type="unfinished" />
     </message>
@@ -6152,8 +6460,8 @@ Unlock it, enter your passcode, and keep it connected via USB, then choose:
   <context>
     <name>QtCore.QCoreApplication</name>
     <message>
-      <location filename="../../gui/ios/posterboard.py" line="682" />
-      <location filename="../../gui/ios/posterboard.py" line="774" />
+      <location filename="../../gui/ios/posterboard.py" line="694" />
+      <location filename="../../gui/ios/posterboard.py" line="789" />
       <source>Error!</source>
       <translation>حصل خطا!</translation>
     </message>
@@ -6178,52 +6486,52 @@ This is for your safety. Please apply the rest separately.</source>
       <translation type="vanished">الفيديو الحالي: {0}</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="61" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="64" />
       <source>Invalid config.json path in template.</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="69" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="72" />
       <source>No options were found in the config. Make sure that it is in the correct format.</source>
       <translation>لم يتم العثور على أي خيارات في ملف الإعدادات. تأكّد من أنه بتنسيق صحيح.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="71" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="74" />
       <source>This config does not have a valid domain!</source>
       <translation>ملف الإعدادات هذا لا يحتوي على نطاق صالح!</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="78" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="81" />
       <source>This config requires a newer version of Nugget.</source>
       <translation>ملف الإعدادات هذا يتطلب إصدارًا أحدث من Nugget.</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="89" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="99" />
       <source>This template requires iOS {0}.
 Your iOS version (iOS {1}) is too outdated!</source>
       <translation>هذا القالب يتطلب iOS {0}.
 إصدار iOS الحالي لديك ({1}) قديم جدًا!</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="93" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="106" />
       <source>This template requires iOS {0}.
 Your iOS version (iOS {1}) is too new!</source>
       <translation>هذا القالب يتطلب iOS {0}.
 إصدار iOS لديك ({1}) أحدث من المطلوب!</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="141" />
       <location filename="../../tweaks/posterboard/template_file.py" line="154" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="167" />
       <source>Invalid option type in template</source>
       <translation>نوع خيار غير صالح في القالب</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="156" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="169" />
       <source>No config.json found in file!</source>
       <translation>لم يتم العثور على ملف config.json داخل الملف!</translation>
     </message>
     <message>
-      <location filename="../../tweaks/posterboard/template_file.py" line="310" />
+      <location filename="../../tweaks/posterboard/template_file.py" line="323" />
       <source>Bundle id (default: {0})</source>
       <translation>معرّف الحزمة (الأساسي: {0})</translation>
     </message>
@@ -6244,12 +6552,12 @@ No selected file for required option</source>
   <context>
     <name>ResetDialog</name>
     <message>
-      <location filename="../../gui/dialogs/reset_dialog.py" line="19" />
+      <location filename="../../gui/dialogs/reset_dialog.py" line="23" />
       <source>Reset Page Tweaks</source>
       <translation type="unfinished" />
     </message>
     <message>
-      <location filename="../../gui/dialogs/reset_dialog.py" line="22" />
+      <location filename="../../gui/dialogs/reset_dialog.py" line="26" />
       <source>Select the pages you would like to reset.</source>
       <translation type="unfinished" />
     </message>
@@ -6257,7 +6565,7 @@ No selected file for required option</source>
   <context>
     <name>TextInputDialog</name>
     <message>
-      <location filename="../../gui/ios/components.py" line="35" />
+      <location filename="../../gui/ios/components.py" line="76" />
       <source>Enter value...</source>
       <translation type="unfinished" />
     </message>
@@ -6265,12 +6573,12 @@ No selected file for required option</source>
   <context>
     <name>UpdateAppDialog</name>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="268" />
+      <location filename="../../gui/dialogs/dialogs.py" line="290" />
       <source>Update Available</source>
       <translation>تحديث متوفر</translation>
     </message>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="281" />
+      <location filename="../../gui/dialogs/dialogs.py" line="303" />
       <source>WorkSlop Desktop v{0} is available. </source>
       <translation type="unfinished" />
     </message>
@@ -6279,7 +6587,7 @@ No selected file for required option</source>
       <translation type="vanished">الإصدار Nugget v{0} متوفر.</translation>
     </message>
     <message>
-      <location filename="../../gui/dialogs/dialogs.py" line="282" />
+      <location filename="../../gui/dialogs/dialogs.py" line="304" />
       <source>Would you like to go to the download on GitHub?</source>
       <translation>هل تود التحميل من Github؟</translation>
     </message>

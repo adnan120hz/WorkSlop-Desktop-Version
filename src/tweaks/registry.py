@@ -205,8 +205,9 @@ SPECS: tuple[TweakSpec, ...] = (
     #   reader launchd's stock disabled.plist mechanism — the delivery
     #          channel is proven; the on-device effect is user-reported
     #          working (2026-10-03), not lab-verified here.
-    # It shares the disabled.plist payload with the Daemons tweak; the
-    # apply pass merges both into one dict (see AdvancedPlistTweak merge).
+    # It shares the disabled.plist payload with the Daemons tweak; both
+    # writers merge through the single merge_disabled_plist owner in
+    # tweak_classes (Audit 38: logical OR, apply-order independent).
     _t(TweakID.DisableThermal, Section.INTERNAL, "Disable Thermal",
        FileLocation.disabledDaemons, "com.apple.thermalmonitord",
        description=QT_TRANSLATE_NOOP("Nugget", "Disables the thermalmonitord daemon via launchd's disabled list, so iOS stops applying thermal throttling. Reported working by users; also removes the device's thermal protection — the phone can run hotter under load. Re-enable by turning this off and applying again. A reboot is required.")),
@@ -249,7 +250,7 @@ SPECS: tuple[TweakSpec, ...] = (
     # The Wave 10 replacement candidates and their UNPROVEN/device-test
     # labelling are gone. Proof: tools/test_wave11_lg_v4_verbatim.py.
     _t(TweakID.SolariumForceFallback, Section.LIQUID_GLASS, "Force Solarium Fallback", GP, "SolariumForceFallback",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Force iOS to use Liquid Glass fallback mode. Unverified — needs device test.")),
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumForceFallback = true into com.apple.SwiftUI.plist (its reader is confirmed in the iOS 26.6.1 firmware). Whether the glass look changes on screen has not been shown yet — judge it with an isolated device test.")),
     _t(TweakID.DisableSolariumSwiftUI, Section.LIQUID_GLASS, "Disable Solarium (SwiftUI)", GP, "com.apple.SwiftUI.DisableSolarium",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium for SwiftUI. Reader removed in 26.1 — likely non-functional.")),
     _t(TweakID.GlassLegibility2, Section.LIQUID_GLASS, "Glass Legibility Value 2", FileLocation.uikit, "UIViewGlassLegibilitySetting", value=2,

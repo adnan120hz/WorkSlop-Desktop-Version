@@ -58,7 +58,10 @@ def iter_source_files() -> list[str]:
             d for d in _dirnames if d != "__pycache__" and d != "vendor"
         ]
         for fn in sorted(filenames):
-            if fn.endswith(".py"):
+            # resources_rc.py is the rcc-generated Qt resource blob: it
+            # holds no translatable strings, and pyside6-lupdate segfaults
+            # trying to parse it.
+            if fn.endswith(".py") and fn != "resources_rc.py":
                 files.append(os.path.join(dirpath, fn))
     for extra in ("main_app.py", "workslop_cli.py"):
         p = os.path.join(REPO_ROOT, extra)

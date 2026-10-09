@@ -1,3 +1,4 @@
+import logging
 import os
 
 from PySide6.QtCore import Qt, QSize, QCoreApplication, QUrl
@@ -15,6 +16,9 @@ from src.gui.ios.components import (
 from src.gui.theme import ColorThemeManager
 from src.gui.theme.colors import NUGGET_DARK
 from src.tweaks.tweaks import tweaks, TweakID
+from src.tweaks.tweak_classes import _notify_tweak_change
+
+logger = logging.getLogger("WorkSlop.posterboard")
 
 
 class TemplatePreviewCard(QLabel):
@@ -510,6 +514,8 @@ class IOSPosterboardPage(QWidget):
                 except Exception as e:
                     QMessageBox.warning(self.window, "Import Failed", f"Failed to load template:\n{file}\n\n{str(e)}")
             self._load_templates_list()
+            # Fix Audit 36: template choices persist via the preset AutoSave.
+            _notify_tweak_change()
 
     def _load_templates_list(self):
         from src.tweaks.tweaks import tweaks, TweakID
@@ -628,6 +634,7 @@ class IOSPosterboardPage(QWidget):
         else:
             pb.videoThumbnail = None
         self._update_video_labels()
+        _notify_tweak_change()
 
     def on_choose_video_clicked(self):
         from PySide6.QtWidgets import QFileDialog
@@ -640,20 +647,25 @@ class IOSPosterboardPage(QWidget):
         else:
             pb.videoFile = None
         self._update_video_labels()
+        _notify_tweak_change()
 
     def on_loop_toggled(self, checked: bool):
         tweaks[TweakID.PosterBoard].loop_video = checked
         self.reverse_chk.setVisible(checked)
         self.foreground_chk.setVisible(checked)
+        _notify_tweak_change()
 
     def on_reverse_toggled(self, checked: bool):
         tweaks[TweakID.PosterBoard].reverse_video = checked
+        _notify_tweak_change()
 
     def on_foreground_toggled(self, checked: bool):
         tweaks[TweakID.PosterBoard].use_foreground = checked
+        _notify_tweak_change()
 
     def on_calc_mode_selected(self, index: int):
         tweaks[TweakID.PosterBoard].calculationMode = 'linear' if index == 0 else 'discrete'
+        _notify_tweak_change()
 
     def on_export_video_clicked(self):
         import uuid
@@ -672,9 +684,9 @@ class IOSPosterboardPage(QWidget):
             make_archive(path, 'zip', path)
             os.rename(path + '.zip', zip_path)
             rmtree(path)
-            print(f"Created at {zip_path}")
+            logger.info("Created at %s", zip_path)
             if os.name == 'nt':
-                subprocess.Popen(f'explorer "{os.path.normpath(zip_path)}"')
+                subprocess.Popen(["explorer", os.path.normpath(zip_path)])
             else:
                 subprocess.call(["open", '-R', zip_path])
         except Exception as e:
@@ -705,6 +717,8 @@ class IOSPosterboardPage(QWidget):
                 if not tweaks[TweakID.PosterBoard].add_tendie(file):
                     break
             self.refresh_tendies()
+            # Fix Audit 36: wallpaper choices persist via the preset AutoSave.
+            _notify_tweak_change()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -743,6 +757,7 @@ class IOSPosterboardPage(QWidget):
             other.blockSignals(False)
             if hasattr(self, "_config_card"):
                 self._config_card.setVisible(bool(configs))
+            _notify_tweak_change()
         except Exception:
             pass
 
@@ -789,6 +804,28 @@ class IOSPosterboardPage(QWidget):
             self.saved_ids_list.setEnabled(True)
             self.saved_ids_list.addItems([item.to_str() for item in saved_ids])
 
+    def _persist_saved_ids(self):
+        """Write saved configuration IDs to storage right now (Fix Audit 36).
+
+        Clear/Remove used to mutate only the in-memory list, so the change
+        vanished on restart unless some later preset save happened to run.
+        Persist immediately through the same PreferenceManager store the
+        database flow uses, for the current device."""
+        try:
+            udid = self.window.device_manager.get_current_device_udid()
+        except Exception:
+            udid = None
+        if not udid:
+            return
+        try:
+            from src.devicemanagement.preference_manager import PreferenceManager
+            PreferenceManager.save_pbconfig_ids(
+                list(tweaks[TweakID.PosterBoard].config_manager.saved_items),
+                udid)
+            PreferenceManager.get_pbconfigs_prefs().sync()
+        except Exception:
+            pass
+
     def _on_clear_saved_ids(self):
         confirm = QMessageBox.question(
             self, QCoreApplication.translate("Nugget", "Clear Saved IDs"),
@@ -796,13 +833,18 @@ class IOSPosterboardPage(QWidget):
         if confirm != QMessageBox.StandardButton.Yes:
             return
         tweaks[TweakID.PosterBoard].config_manager.saved_items.clear()
+        # Fix Audit 36: persist at once, not at the next preset save.
+        self._persist_saved_ids()
         self._refresh_saved_ids()
+        _notify_tweak_change()
 
     def _on_remove_selected_id(self):
         curr_row = self.saved_ids_list.currentRow()
         if curr_row >= 0 and len(tweaks[TweakID.PosterBoard].config_manager.saved_items) > 0:
             tweaks[TweakID.PosterBoard].config_manager.saved_items.pop(curr_row)
+            self._persist_saved_ids()
             self._refresh_saved_ids()
+            _notify_tweak_change()
 
     def refresh_tendies(self):
         for reply, *_ in self._tendie_preview_replies:
@@ -853,9 +895,10 @@ class IOSPosterboardPage(QWidget):
             if not pixmap.isNull():
                 icon.setPixmap(pixmap.scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             else:
-                icon.setStyleSheet(f"background-color: {c.surface_hover}; border-radius: 10px;")
+                # Fix Audit 36: missing/undecodable icon -> visible placeholder.
+                self._set_thumbnail_placeholder(icon)
         except Exception:
-            icon.setStyleSheet(f"background-color: {c.surface_hover}; border-radius: 10px;")
+            self._set_thumbnail_placeholder(icon)
         inner.addWidget(icon, 0, Qt.AlignCenter)
 
         self._load_tendie_preview_by_name(card, icon, tendie.name)
@@ -932,6 +975,9 @@ class IOSPosterboardPage(QWidget):
         data = bytes(reply.readAll())
         reply.deleteLater()
         if reply.error() != QNetworkReply.NetworkError.NoError or not data:
+            # Fix Audit 36: a failed preview download leaves a visible
+            # placeholder instead of a silently empty card.
+            self._set_thumbnail_placeholder(icon_lbl)
             return
         if not self._widget_is_valid(icon_lbl):
             return
@@ -942,21 +988,60 @@ class IOSPosterboardPage(QWidget):
             return
         self._set_tendie_thumbnail(icon_lbl, path)
 
-    def _set_tendie_thumbnail(self, icon_lbl, path):
+    def _set_thumbnail_placeholder(self, icon_lbl):
+        """Visible fallback for a missing/corrupt thumbnail (Fix Audit 36).
+
+        The card must never crash or silently show an empty hole when the
+        preview file is gone or undecodable: keep a styled placeholder with
+        text so the user can see the wallpaper entry still exists."""
         if not self._widget_is_valid(icon_lbl):
             return
         try:
-            image = QImageReader(path).read()
+            c = self._palette()
+            icon_lbl.clear()
+            icon_lbl.setText(QCoreApplication.translate("Nugget", "No Preview"))
+            icon_lbl.setAlignment(Qt.AlignCenter)
+            icon_lbl.setStyleSheet(
+                f"background-color: {c.surface_hover}; border-radius: 10px;"
+                f" color: {c.text_secondary}; font-size: 11px;")
+        except Exception:
+            pass
+
+    def _set_tendie_thumbnail(self, icon_lbl, path):
+        if not self._widget_is_valid(icon_lbl):
+            return
+        # Fix Audit 36: a missing preview file is a placeholder, not a
+        # silently empty card.
+        if not path or not os.path.isfile(path):
+            self._set_thumbnail_placeholder(icon_lbl)
+            return
+        try:
+            # Audit 48: decode at the card's cover size instead of
+            # full-res — reader.size() reads only the image header, then
+            # setScaledSize makes the decoder scale while decoding. The
+            # center-crop below then produces the same 80x80 the card
+            # has always shown.
+            reader = QImageReader(path)
+            src = reader.size()
+            if src.isValid() and not src.isEmpty():
+                factor = max(80 / src.width(), 80 / src.height())
+                reader.setScaledSize(QSize(
+                    max(80, round(src.width() * factor)),
+                    max(80, round(src.height() * factor))))
+            image = reader.read()
             pixmap = QPixmap.fromImage(image) if not image.isNull() else QPixmap(path)
             if pixmap.isNull():
+                # Corrupt/undecodable file: placeholder, not a silent hole.
+                self._set_thumbnail_placeholder(icon_lbl)
                 return
             scaled = pixmap.scaled(
                 80, 80, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
             x = (scaled.width() - 80) // 2
             y = (scaled.height() - 80) // 2
+            icon_lbl.setText("")
             icon_lbl.setPixmap(scaled.copy(x, y, 80, 80))
         except Exception:
-            pass
+            self._set_thumbnail_placeholder(icon_lbl)
 
     def _widget_is_valid(self, widget) -> bool:
         import shiboken6
@@ -970,6 +1055,7 @@ class IOSPosterboardPage(QWidget):
         if tendie in tweaks[TweakID.PosterBoard].tendies:
             tweaks[TweakID.PosterBoard].tendies.remove(tendie)
         self.refresh_tendies()
+        _notify_tweak_change()
 
     def _reset_posterboard(self):
         c = self._palette()
@@ -1038,6 +1124,7 @@ class IOSPosterboardPage(QWidget):
         if dialog.exec() == QDialog.Accepted:
             if reset_all.isChecked():
                 tweaks[TweakID.PosterBoard].resetModes = ["All"]
+                _notify_tweak_change()
                 QMessageBox.information(
                     self.window,
                     QCoreApplication.translate("Nugget", "Reset Scheduled"),
@@ -1056,6 +1143,7 @@ class IOSPosterboardPage(QWidget):
             if reset_gallery.isChecked():
                 selected.append("Gallery Cache")
             tweaks[TweakID.PosterBoard].resetModes = selected
+            _notify_tweak_change()
             QMessageBox.information(
                 self.window,
                 QCoreApplication.translate("Nugget", "Reset Scheduled"),

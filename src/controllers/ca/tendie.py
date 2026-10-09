@@ -24,6 +24,16 @@ _INDEX_NAMES = ("index.xml", "Index.xml")
 _DEFAULT_SCENE = "main.caml"
 
 
+class TendieError(ValueError):
+    """A ``.tendies`` file that cannot yield a valid scene (Fix Audit 15).
+
+    Raised instead of returning an empty/None bundle that callers could
+    mistake for success: an empty archive, a non-zip file, or an archive
+    whose scenes all fail to parse is an honest error that names the
+    problem, never a silent "Success!".
+    """
+
+
 def _norm(p: str) -> str:
     return p.replace("\\", "/")
 
@@ -211,15 +221,39 @@ def _extract_inline_assets(caml_text: str) -> Tuple[str, Dict[str, bytes]]:
 
 
 def load_tendie(tendie_path: str) -> Optional[TendieBundle]:
-    """Open a ``.tendies`` zip and parse its scene documents."""
+    """Open a ``.tendies`` zip and parse its scene documents.
+
+    Fix Audit 15: an empty archive, a file that is not a zip at all, or
+    an archive with no parseable scene used to fall through as an
+    empty bundle / ``None`` that the GUI could report as "Success!".
+    Those cases now raise :class:`TendieError` naming the actual
+    problem (empty / not a valid .tendies). MercuryPoster containers
+    still return ``None`` — a documented, supported fallback the
+    preview callers handle explicitly.
+    """
     try:
         zf = zipfile.ZipFile(tendie_path)
-    except (zipfile.BadZipFile, OSError):
-        return None
+    except (zipfile.BadZipFile, OSError) as exc:
+        try:
+            empty = os.path.getsize(tendie_path) == 0
+        except OSError:
+            empty = False
+        if empty:
+            raise TendieError(
+                f"{tendie_path} is empty (0 bytes) — not a valid "
+                ".tendies file.") from exc
+        raise TendieError(
+            f"{tendie_path} is not a valid .tendies archive: {exc}"
+        ) from exc
 
     try:
         paths = [_norm(info.filename) for info in zf.infolist()]
         paths = [p for p in paths if not p.endswith("/")]
+
+        if not paths:
+            raise TendieError(
+                f"{tendie_path} is an empty archive — it contains no "
+                "files, so there is no scene to load.")
 
         if any("com.apple.mercuryposter" in p.lower() for p in paths):
             return None
@@ -280,6 +314,16 @@ def load_tendie(tendie_path: str) -> Optional[TendieBundle]:
             bundle.width = max(0, int(any_root.size.w or 390))
             bundle.height = max(0, int(any_root.size.h or 844))
             bundle.geometryFlipped = int(any_root.geometryFlipped or 0)
+
+        if (bundle.floating is None and bundle.background is None
+                and bundle.wallpaper is None):
+            # Fix Audit 15: files exist but none of them parsed into a
+            # scene — reporting this bundle would read as success with
+            # nothing behind it. Fail honestly instead.
+            raise TendieError(
+                f"{tendie_path} contains no valid scene — none of its "
+                "files parsed as a Core Animation (.ca) scene, so the "
+                ".tendies file is empty or invalid.")
         return bundle
     finally:
         zf.close()

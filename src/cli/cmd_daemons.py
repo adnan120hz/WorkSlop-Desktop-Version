@@ -7,7 +7,10 @@ only interface-visible keys ever reach the disabled-daemons plist.
 import argparse
 import sys
 
-from src.tweaks.daemons_tweak import Daemon, RECOMMENDED_ANALYTICS
+from src.tweaks.daemons_tweak import (
+    Daemon, RECOMMENDED_ANALYTICS, BLOCKED_DAEMONS, BLOCKED_DAEMON_KEYS,
+    VOICE_CONTROL_BLOCK_REASON,
+)
 from src.tweaks import tweak_loader
 from src.tweaks.tweaks import tweaks, TweakID
 
@@ -37,6 +40,15 @@ def _resolve_daemons(names):
 
 def _set_keys(daemon, value):
     keys = daemon.value if isinstance(daemon, Daemon) else [daemon]
+    if value:
+        # Fix Audit 12: Voice Control is hard-blocked (bootloop risk).
+        # Refuse before touching state or saving, with a non-zero exit —
+        # never print a fake "disabled" success for a blocked daemon.
+        blocked = (daemon in BLOCKED_DAEMONS
+                   or any(k in BLOCKED_DAEMON_KEYS for k in keys))
+        if blocked:
+            print(f"ERROR: {VOICE_CONTROL_BLOCK_REASON}", file=sys.stderr)
+            raise SystemExit(1)
     _daemons().set_multiple_values(keys, value=value)
     return keys
 

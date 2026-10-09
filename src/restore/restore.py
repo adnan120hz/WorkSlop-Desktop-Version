@@ -117,7 +117,7 @@ def merge_duplicates(original_files: list[FileToRestore]) -> list[FileToRestore]
         file_loc += restore_path
         if file_loc in existing_locations:
             if not restore_path.endswith('.plist'):
-                print(f'cannot merge duplicate file, ignoring {file_loc}')
+                log_warn(f'cannot merge duplicate file, ignoring {file_loc}')
                 continue
             # merge the data (plist files only). Empty or unparseable
             # records must never take the whole restore down with a raw
@@ -128,10 +128,10 @@ def merge_duplicates(original_files: list[FileToRestore]) -> list[FileToRestore]
             try:
                 added_data = plistlib.loads(file.contents) if file.contents else {}
             except Exception:
-                print(f'ignoring unparseable duplicate file {file_loc}')
+                log_warn(f'ignoring unparseable duplicate file {file_loc}')
                 continue
             if not isinstance(added_data, dict):
-                print(f'ignoring non-dict duplicate file {file_loc}')
+                log_warn(f'ignoring non-dict duplicate file {file_loc}')
                 continue
             if not added_data:
                 continue
@@ -142,7 +142,7 @@ def merge_duplicates(original_files: list[FileToRestore]) -> list[FileToRestore]
                 initial_data = {}
             if not isinstance(initial_data, dict):
                 initial_data = {}
-            print(f'merging duplicate files for {file_loc}')
+            log_info(f'merging duplicate files for {file_loc}')
             initial_data.update(added_data)
             target.contents = plistlib.dumps(initial_data)
             del initial_data, added_data
@@ -459,6 +459,11 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
         )
 
     def _on_failure(e: Exception) -> None:
+        # Audit 53a: disk-full is fatal and must propagate as-is — no
+        # retry (is_transient_restore_error already refuses it) and no
+        # friendly-message wrapping that would hide the real cause.
+        if type(e).__name__ == "NotEnoughDiskSpaceError":
+            raise e
         # The device already told us which file it stubbed on — cross-check
         # the pruned manifest on disk so the log shows exactly which rows
         # are missing their payload (MBErrorDomain/205 post-mortem).
@@ -696,7 +701,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 # empty" is not proof: an interrupted pull leaves a partial tree
                 # behind, and pruning on that would delete the backup's only
                 # copy of the photos and restore a fragment. When the store is
-                # unverified the media rows stay in the manifest, so the restore
+                # unconfirmed the media rows stay in the manifest, so the restore
                 # fails loudly on a missing payload instead of silently losing
                 # the library's files.
                 exclude_afc_media_trees=media_store_verified(media_dir)
@@ -751,8 +756,21 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             missing_payloads = await asyncio.to_thread(
                 verify_backup_payloads, backup_root, udid, manifest_password)
             if missing_payloads:
-                log_error(f"{len(missing_payloads)} manifest rows lack payloads "
-                          f"(e.g. {missing_payloads[:5]}) — Phase 3 will likely fail with MBErrorDomain/205")
+                # Audit 71: payloads the manifest promises are missing on
+                # disk — the backup is incomplete (e.g. a disk-full backup).
+                # This used to only log and continue, so the apply marched
+                # on toward the wipe/restore carrying a backup that cannot
+                # deliver what it promises. Stop here, before anything
+                # touches the device: at best Phase 3 would fail with
+                # MBErrorDomain/205; at worst the apply "succeeds" with
+                # data silently gone.
+                raise NuggetException(QCoreApplication.translate(
+                    "Nugget",
+                    "The protective backup is incomplete: {0} file(s) it "
+                    "promises are missing on disk (e.g. {1}). The apply was "
+                    "cancelled before anything was restored — free up disk "
+                    "space and try again.").format(
+                        len(missing_payloads), missing_payloads[:5]))
 
         progress_callback(_PHASE_BACKUP_END)
 
@@ -794,8 +812,13 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         # and never wipes, and Phase 3's protective restore
                         # lands on the LATER-STILL-LIVE device (the same
                         # delivery the PosterBoard-only path already uses).
+                        # Audit 72: retries open a fresh client — pin it to
+                        # the UDID snapshotted at the start of this apply
+                        # (``udid`` above), never "the first usbmux device",
+                        # which could be a different phone.
                         backup=back, reboot=not merge_phases,
                         lockdown_client=lockdown_client if sparse_attempt == 0 else None,
+                        udid=udid,
                         progress_callback=_tracking_callback)
                     log_info(f"Phase 2: sparse restore completed cleanly "
                              f"({sparse_progress['calls']} progress events)")
@@ -812,10 +835,22 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         await asyncio.sleep(25)
                         continue
                     if not sparse_progress["last"]:
-                        log_error("Phase 2: connection dropped with ZERO restore progress "
-                                  "on every attempt — the sparse restore was likely "
-                                  "REJECTED. Security state recovery will not trigger; "
-                                  "tweaks are NOT applied.")
+                        # Audit 41: zero restore progress on every attempt
+                        # means the sparse restore was REJECTED — no tweak
+                        # landed. This used to only log and then sail on
+                        # through Phase 3 to a final "completed
+                        # successfully". Fail the apply honestly instead:
+                        # the device was never wiped (security recovery
+                        # never triggered), so aborting here leaves user
+                        # data untouched on the device, and the protective
+                        # backup stays on this computer.
+                        raise NuggetException(QCoreApplication.translate(
+                            "Nugget",
+                            "The device rejected the tweak restore (the "
+                            "connection dropped with no restore progress on "
+                            "every attempt), so no tweaks were applied. "
+                            "Your data was not wiped. The protective backup "
+                            "is kept on this computer."))
                     else:
                         log_info(f"Phase 2: Device rebooted during sparse restore "
                                  f"(expected; last progress {sparse_progress['last']:.1f}%)")
@@ -1164,8 +1199,15 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                             return await ips.get_apps(application_type="Any", calculate_sizes=False)
 
                     try:
+                        # Audit 53b: retry only genuine connection/transient
+                        # failures — the default async_retry predicate retries
+                        # EVERY exception, so a local error (missing pairing
+                        # file, permission, disk-full) burned all attempts
+                        # before surfacing. is_connection_error is the
+                        # narrowed classifier for exactly this.
                         apps = await async_retry(
                             _get_apps, 3,
+                            retry_if=is_connection_error,
                             exp_cap=8,
                             on_retry=lambda attempt, total, e, delay: log_warn(
                                 f"InstallationProxy query failed (attempt {attempt}/3): {e}"

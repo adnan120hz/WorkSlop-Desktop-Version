@@ -79,6 +79,55 @@ def _lock_reason(tweak_id: TweakID, device_version: str = "",
             + "; ".join(bits))
 
 
+# --- S8 full-backup route gate (UI only) --------------------------------
+# The two Liquid Glass Disable (Beta 1) payloads ride the S8 full-backup
+# (all-data) route, which the backend only runs on iOS 26.6.1 builds
+# 23G82/23G83 (src.restore.lgd_full.lgd_full_route_applicable, fail-closed).
+# Their registry/deliverability verdict is otherwise "deliverable", so
+# without this UI gate the switches stayed toggleable with no device — or
+# on a build that can never run the route — and the apply then silently
+# skipped them. Lock the switches here, in the UI layer only; the backend
+# gate is unchanged.
+_S8_ROUTE_TWEAK_IDS = frozenset({
+    TweakID.LGDisableSquairTest, TweakID.LGDisableLatest})
+
+
+def _s8_route_lock_reason(tweak_id, device_version: str = "",
+                          device_build: str = "",
+                          has_device: bool = False) -> str:
+    """Why an S8-route switch is locked, or "" when it may be toggled.
+
+    UI-only mirror of the backend's exact window: a connected device on
+    iOS 26.6.1 build 23G82 or 23G83. Anything else (no device, another
+    build) locks the switch, with this text as its tooltip.
+    """
+    if tweak_id not in _S8_ROUTE_TWEAK_IDS:
+        return ""
+    if not has_device:
+        return (QCoreApplication.translate("Nugget", "Locked: ")
+                + QCoreApplication.translate(
+                    "Nugget",
+                    "no device connected. This full backup (all data) "
+                    "route needs an iPhone on iOS 26.6.1 (build 23G82 "
+                    "or 23G83)."))
+    try:
+        from src.restore.lgd_full import lgd_full_route_applicable
+        applicable = lgd_full_route_applicable(device_version, device_build)
+    except Exception:
+        applicable = False
+    if applicable:
+        return ""
+    shown = QCoreApplication.translate(
+        "Nugget", "this device: iOS %1, build %2").replace(
+            "%1", device_version or "?").replace(
+                "%2", device_build or "?")
+    return (QCoreApplication.translate("Nugget", "Locked: ")
+            + QCoreApplication.translate(
+                "Nugget",
+                "this full backup (all data) route runs only on iOS "
+                "26.6.1 builds 23G82 and 23G83 (%1).").replace("%1", shown))
+
+
 def _hidden_tweak_names() -> set:
     """Names of the tweaks that belong to HotLoad-hidden features for the
     current setup. Used by the preset loader to strip them during load."""
@@ -213,6 +262,10 @@ class IOSSectionContent(QWidget):
             device_build = self.window.device_manager.get_current_device_build()
         except Exception:
             device_build = ""
+        try:
+            device_udid = self.window.device_manager.get_current_device_udid()
+        except Exception:
+            device_udid = None
         # Wave 10: a device switch is a state transition, not just a repaint.
         # If MobileGestalt is locked/unknown on the newly selected device,
         # stale ON state from a supported device, a preset, or the no-device
@@ -262,6 +315,9 @@ class IOSSectionContent(QWidget):
             # Unsupported on this iOS: visible but locked (user decision
             # 2026-10-01) instead of hidden — the switch cannot be toggled.
             lock_reason = "" if is_compatible(tweak_id) else _lock_reason(tweak_id, device_ver, is_iphone, device_build)
+            if not lock_reason:
+                lock_reason = _s8_route_lock_reason(
+                    tweak_id, device_ver, device_build, bool(device_udid))
             if lock_reason:
                 card.setEnabled(False)
             row_layout = QHBoxLayout(card)
@@ -594,8 +650,18 @@ class IOSSectionContent(QWidget):
             version = getattr(self, "_device_version", "") or ""
             build = getattr(self, "_device_build", "") or ""
             model = "iPhone" if getattr(self, "_is_iphone", True) else ""
-        return is_tweak_compatible(
-            tweak_id, version, model.startswith("iPhone"), build)
+            dm = getattr(self.window, "device_manager", None)
+        if not is_tweak_compatible(
+                tweak_id, version, model.startswith("iPhone"), build):
+            return False
+        # S8-route rows also need a connected device inside the exact
+        # 23G82/23G83 window; the card lock above is the visual half of
+        # this same UI gate.
+        try:
+            udid = dm.get_current_device_udid() if dm is not None else None
+        except Exception:
+            udid = None
+        return not _s8_route_lock_reason(tweak_id, version, build, bool(udid))
 
     def _on_registry_switch(self, tweak_id: TweakID, checked: bool):
         # State-level guard: a visible-but-locked card cannot be toggled, but

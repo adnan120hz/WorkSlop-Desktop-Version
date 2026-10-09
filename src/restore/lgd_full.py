@@ -33,8 +33,7 @@ completely untouched):
   (first capture wins) before anything is written;
 * the G2 overlay is rebased onto the device's own managed file from
   this backup, so a pre-existing managed key is never dropped by the
-  whole-file replace, and that file is captured as the G2 rollback
-  original;
+  whole-file replace;
 * LGD full backups live in a dedicated pool (``<udid>-lgd-full``) with
   their own retention, never in the iOS 27 protective-backup pool, so
   an LGD run can neither displace nor impersonate the user's wipe
@@ -404,9 +403,8 @@ async def run_full_backup_route(udid: str, payloads: list, *,
     # 3b) G2 rebase (apply only): the staged overlay is a tweak-only dict
     # that REPLACES the whole managed file. Merge it onto the device's
     # own managed file from THIS backup so a pre-existing managed key is
-    # never silently dropped, and capture that file as the rollback
-    # original (first capture wins). When the backup carries no managed
-    # file there is nothing to preserve and the staged overlay stands.
+    # never silently dropped. When the backup carries no managed file
+    # there is nothing to preserve and the staged overlay stands.
     g2_device_base = None
     g2_staged_keys: list = []
     if apply_mode:
@@ -429,12 +427,6 @@ async def run_full_backup_route(udid: str, payloads: list, *,
                     except Exception:
                         g2_parsed = None
                     if isinstance(g2_parsed, dict):
-                        try:
-                            lg_disable.save_g2_original_if_absent(
-                                udid, g2_bytes)
-                        except OSError:
-                            pass  # a merge base matters more; rollback
-                            # falls back to the empty-overlay semantics
                         try:
                             staged_parsed = plistlib.loads(
                                 bytes(payloads[g2_index][2]))

@@ -7,8 +7,11 @@ from .tweak_classes import Tweak
 from src.controllers.files_handler import get_bundle_files
 from src.utils.file_to_restore import FileToRestore
 
+import logging
 import plistlib
 from os import path
+
+logger = logging.getLogger("WorkSlop.eligibility")
 
 class InvalidRegionCodeException(Exception):
     "Region code must be exactly 2 characters long!"
@@ -67,7 +70,7 @@ class EligibilityTweak(Tweak):
         # https://github.com/Lrdsnow/EUEnabler/blob/main/app.py
         if not self.enabled:
             return None
-        print(f"Applying EU Enabler for region \'{self.code}\'...")
+        logger.info(f"Applying EU Enabler for region \'{self.code}\'...")
         # get the plists directory
         source_dir = get_bundle_files("files/eligibility")
 

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from PySide6.QtWidgets import QWizard, QWizardPage, QLabel, QVBoxLayout, QProgressBar, QSizePolicy, QMessageBox
 from PySide6.QtCore import QSize, Qt
@@ -7,6 +8,9 @@ from src.exceptions.nugget_exception import NuggetException
 from src.gui.thread_workers.apply_worker import ApplyAlertMessage
 from src.gui.thread_workers.pb_worker import PBDBThread
 from src.tweaks.tweaks import tweaks, TweakID
+
+logger = logging.getLogger("WorkSlop.pb_dialog")
+
 
 class PosterBoardDBWizard(QWizard):
     def __init__(self, udid: str, pbDBLbl: QLabel, update_savedIds_list=lambda x: None):
@@ -72,7 +76,7 @@ class PosterBoardDBWizard(QWizard):
         return page
     
     def update_progress_bar(self, percent):
-        print(f'backup progress: {percent}')
+        logger.debug("backup progress: %s", percent)
         if percent == 0.0:
             self.backupInfoLbl.setText("Preparing device for backup...")
         else:
@@ -118,7 +122,7 @@ class PosterBoardDBWizard(QWizard):
             # self.setButtonLayout([QWizard.WizardButton.Stretch, QWizard.WizardButton.NextButton])
         except Exception as e:
             update_label("Backup Failed!")
-            print(repr(e))
+            logger.error("PosterBoard backup failed: %r", e, exc_info=True)
     
     # OVERWRITTEN FUNCTIONS
     def initializePage(self, id):

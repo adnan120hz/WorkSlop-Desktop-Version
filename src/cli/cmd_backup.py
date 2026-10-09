@@ -82,12 +82,16 @@ async def _create(udid, include_photos, include_posterboard) -> int:
 
 
 def _run_create(args) -> int:
-    from src.cli.common import bootstrap, make_device_manager, ensure_device
+    from src.cli.common import (
+        bootstrap, make_device_manager, ensure_device, ensure_not_killed)
     from src.devicemanagement.session import install_windows_selector_policy
     install_windows_selector_policy()  # Windows: pmd3 selector loop
     settings = bootstrap()
     dm = make_device_manager(settings)
     device = ensure_device(dm, settings, args.udid)
+    # HotLoad kill_app gate: same rule the GUI enforces at startup — refuse
+    # before any device work when this device/iOS is killed (Fix Audit 44).
+    ensure_not_killed(settings, device=device, dm=dm)
     udid = getattr(device, "udid", None)
     if not udid:
         print("ERROR: no UDID.", file=sys.stderr)

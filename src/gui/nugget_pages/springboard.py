@@ -6,7 +6,11 @@ bindings only: upstream's ``load_springboard()`` becomes this app's
 registry loader, and the lock-screen auto-lock slider row is hidden —
 its tweak (``SBMinimumLockscreenIdleTime``) is a tombstoned Settings
 duplicate in this app (REMOVED_TWEAK_IDS), so the row is removed
-instead of being left wired to a payload that must never apply.
+instead of being left wired to a payload that must never apply. The
+floating tab bar row is hidden the same way: its tweak
+(``UseFloatingTabBar``) is a ``disabled=True`` registry spec (dead key
+on iPadOS 26.4+), so it is never registered in ``tweaks`` and a wired
+radio would raise ``KeyError`` on click (Audit 99/56).
 """
 from src.gui.pages.page import Page
 from src.qt.nugget741_ui import Ui_Nugget741
@@ -24,8 +28,12 @@ class NuggetSpringboardPage(Page):
         self.ui.watchOSChk.toggled.connect(self.on_watchOSChk_toggled)
 
         # Rows whose tweaks this app tombstoned stay hidden, not dead.
+        # floatingTabBarContent: UseFloatingTabBar is a disabled registry
+        # spec (never registered, never applied) — hide its row instead
+        # of wiring radios to a tweak that does not exist (Audit 99/56).
         for name in ("autoLockLbl", "lockScreenAutoLockSlider",
-                     "lockScreenAutoLockSeparator"):
+                     "lockScreenAutoLockSeparator",
+                     "floatingTabBarContent"):
             widget = getattr(self.ui, name, None)
             if widget is not None:
                 widget.hide()
@@ -43,7 +51,10 @@ class NuggetSpringboardPage(Page):
         self.createRadioBtns(key=TweakID.HideDICompletely, container=self.ui.hideDICompletelyBtns)
 
         self.createRadioBtns(key=TweakID.SBShowAuthenticationEngineeringUI, container=self.ui.authEngUIBtns)
-        self.createRadioBtns(key=TweakID.UseFloatingTabBar, container=self.ui.floatingTabBarBtns, invert_values=True)
+        # No radios for UseFloatingTabBar: its spec is disabled=True, so
+        # the tweak is never in ``tweaks`` and any wired radio would
+        # KeyError on click. Its row (floatingTabBarContent) is hidden
+        # above with the other tombstoned rows.
 
         load_plist_tweaks()
 

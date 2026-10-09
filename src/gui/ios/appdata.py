@@ -314,6 +314,23 @@ class IOSAppDataPage(QWidget):
         self.access_lbl.setStyleSheet(f"color: {self._c.text_secondary}; font-size: 12px;")
         right_layout.addWidget(self.access_lbl)
 
+        # Fix Audit 24: read-path feedback (no device, fetch/browse
+        # errors, the backup offer, transfer results) is shown INLINE
+        # here instead of blocking QMessageBox dialogs — opening this
+        # page (showEvent -> refresh_apps) must never pop a modal.
+        # Data-reading behaviour is unchanged; only presentation moved.
+        self.status_lbl = QLabel("")
+        self.status_lbl.setWordWrap(True)
+        self.status_lbl.setStyleSheet(f"color: {self._c.text_secondary}; font-size: 12px;")
+        self.status_lbl.hide()
+        right_layout.addWidget(self.status_lbl)
+        self._backup_btn = QPushButton(tr("Read via device backup"))
+        self._backup_btn.setStyleSheet(t("mini_button"))
+        self._backup_btn.clicked.connect(self._on_backup_prompt_clicked)
+        self._backup_btn.hide()
+        right_layout.addWidget(self._backup_btn)
+        self._pending_backup_bundle = None
+
         self.file_tree = QTreeWidget()
         self.file_tree.setHeaderLabels([tr("Name"), tr("Type")])
         self.file_tree.header().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -372,6 +389,36 @@ class IOSAppDataPage(QWidget):
     def _retheme(self):
         pass
 
+    # -- inline feedback (Fix Audit 24) ----------------------------------
+    def _set_status(self, text: str):
+        """Show *text* inline on the page (never a blocking dialog)."""
+        self.status_lbl.setText(text or "")
+        self.status_lbl.setVisible(bool(text))
+
+    def _hide_backup_prompt(self):
+        self._pending_backup_bundle = None
+        self._backup_btn.hide()
+
+    def _show_backup_prompt(self, bundle_id: str, error: str):
+        self._pending_backup_bundle = bundle_id
+        self._set_status(tr(
+            "Cannot access %1 directly:\n%2\n\n"
+            "This app does not allow direct container access (Apple restriction).\n\n"
+            "Read its data via a device backup instead (like iMazing)?\n"
+            "Only this app's data is backed up — nothing else is copied.\n"
+            "(Read-only: files can be downloaded, not modified.)"
+        ).replace("%1", bundle_id).replace("%2", error))
+        self._backup_btn.show()
+
+    def _on_backup_prompt_clicked(self):
+        bundle_id = self._pending_backup_bundle
+        self._hide_backup_prompt()
+        if bundle_id:
+            self._browse_via_backup(bundle_id)
+
+    def _on_apps_error(self, error: str):
+        self._set_status(error)
+
     def showEvent(self, event):
         super().showEvent(event)
         if self.app_list.count() == 0:
@@ -386,17 +433,20 @@ class IOSAppDataPage(QWidget):
     def refresh_apps(self):
         udid = self._udid()
         if not udid:
-            QMessageBox.warning(self, tr("App Data"), tr("No device connected."))
+            self._set_status(tr("No device connected."))
             return
+        self._hide_backup_prompt()
+        self._set_status("")
         self.app_list.clear()
         self.app_list.addItem(tr("Loading apps..."))
         th = _AppListThread(udid)
         th.done.connect(self._on_apps_loaded)
-        th.error.connect(lambda e: QMessageBox.warning(self, tr("App Data"), e))
+        th.error.connect(self._on_apps_error)
         th.start()
         self._threads.append(th)
 
     def _on_apps_loaded(self, apps: list):
+        self._set_status("")
         self.app_list.clear()
         for app in apps:
             label = app["display_name"]
@@ -417,6 +467,8 @@ class IOSAppDataPage(QWidget):
         self._current_path = ""
         self._backup_mode = False
         self._access_level = ""
+        self._hide_backup_prompt()
+        self._set_status("")
         self._browse(app["bundle_id"], "")
 
     def _browse(self, bundle_id: str, path: str):
@@ -448,20 +500,14 @@ class IOSAppDataPage(QWidget):
     def _on_browse_error(self, bundle_id: str, error: str):
         # iMazing-style fallback: App Store apps without File Sharing deny
         # HouseArrest, but their data is still in the backup under
-        # AppDomain-<bundle_id>. Offer to read it from a quick per-app backup.
-        ask = QMessageBox.question(
-            self, tr("App Data"),
-            tr("Cannot access %1 directly:\n%2\n\n"
-               "This app does not allow direct container access (Apple restriction).\n\n"
-               "Read its data via a device backup instead (like iMazing)?\n"
-               "Only this app's data is backed up — nothing else is copied.\n"
-               "(Read-only: files can be downloaded, not modified.)").replace("%1", bundle_id).replace("%2", error),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes)
-        if ask == QMessageBox.StandardButton.Yes:
-            self._browse_via_backup(bundle_id)
+        # AppDomain-<bundle_id>. Offer to read it from a quick per-app
+        # backup — inline (Fix Audit 24), not a blocking question dialog;
+        # clicking the inline button starts the same backup read.
+        self._show_backup_prompt(bundle_id, error)
 
     def _browse_via_backup(self, bundle_id: str):
+        self._hide_backup_prompt()
+        self._set_status("")
         udid = self._udid()
         if not udid:
             return
@@ -502,9 +548,10 @@ class IOSAppDataPage(QWidget):
         self.progress.hide()
         self.path_lbl.setText(tr("Select an app to browse its data"))
         self.access_lbl.setText("")
-        QMessageBox.warning(self, tr("App Data"), tr("Backup read failed: %1").replace("%1", error))
+        self._set_status(tr("Backup read failed: %1").replace("%1", error))
 
     def _enter_backup_mode(self, bundle_id: str, tree):
+        self._set_status("")
         self._backup_mode = True
         self._backup_tree = tree
         self._current_path = ""
@@ -544,21 +591,20 @@ class IOSAppDataPage(QWidget):
 
     def _backup_write_blocked(self) -> bool:
         if self._backup_mode_active():
-            QMessageBox.information(
-                self, tr("App Data"),
-                tr("This view is read-only (data comes from a device backup, "
-                   "like iMazing). Downloads work; modifying files does not."))
+            self._set_status(tr(
+                "This view is read-only (data comes from a device backup, "
+                "like iMazing). Downloads work; modifying files does not."))
             return True
         return False
 
     def _download_selected(self):
         item = self.file_tree.currentItem()
         if not item or not self._current_app:
-            QMessageBox.information(self, tr("App Data"), tr("Select a file first."))
+            self._set_status(tr("Select a file first."))
             return
         e = item.data(0, Qt.UserRole)
         if not e or e["is_dir"]:
-            QMessageBox.information(self, tr("App Data"), tr("Select a file, not a folder."))
+            self._set_status(tr("Select a file, not a folder."))
             return
         local = QFileDialog.getSaveFileName(self, tr("Save file"), e["name"])[0]
         if not local:
@@ -573,9 +619,9 @@ class IOSAppDataPage(QWidget):
             e["path"], local, "pull",
         )
         th.done.connect(lambda p: (self.progress.hide(),
-                                   QMessageBox.information(self, tr("App Data"), tr("Saved to %1").replace("%1", p))))
+                                   self._set_status(tr("Saved to %1").replace("%1", p))))
         th.error.connect(lambda err: (self.progress.hide(),
-                                      QMessageBox.warning(self, tr("App Data"), err)))
+                                      self._set_status(err)))
         th.start()
         self._threads.append(th)
 
@@ -583,22 +629,22 @@ class IOSAppDataPage(QWidget):
         import shutil
         cached = self._backup_cache.get(self._current_app["bundle_id"])
         if not cached or not entry.get("fileID"):
-            QMessageBox.warning(self, tr("App Data"), tr("Backup data not available."))
+            self._set_status(tr("Backup data not available."))
             return
         _, backup_dir = cached
         from src.restore.appdomain_backup import payload_path
         src = payload_path(backup_dir, self._udid(), entry["fileID"])
         try:
             shutil.copyfile(src, local)
-            QMessageBox.information(self, tr("App Data"), tr("Saved to %1").replace("%1", local))
+            self._set_status(tr("Saved to %1").replace("%1", local))
         except OSError as exc:
-            QMessageBox.warning(self, tr("App Data"), tr("Could not save file: %1").replace("%1", str(exc)))
+            self._set_status(tr("Could not save file: %1").replace("%1", str(exc)))
 
     def _upload_file(self):
         if self._backup_write_blocked():
             return
         if not self._current_app:
-            QMessageBox.information(self, tr("App Data"), tr("Select an app first."))
+            self._set_status(tr("Select an app first."))
             return
         local = QFileDialog.getOpenFileName(self, tr("Choose file to upload"))[0]
         if not local:
@@ -613,7 +659,7 @@ class IOSAppDataPage(QWidget):
         th.done.connect(lambda p: (self.progress.hide(),
                                    self._browse(self._current_app["bundle_id"], self._current_path)))
         th.error.connect(lambda err: (self.progress.hide(),
-                                      QMessageBox.warning(self, tr("App Data"), err)))
+                                      self._set_status(err)))
         th.start()
         self._threads.append(th)
 
@@ -633,7 +679,7 @@ class IOSAppDataPage(QWidget):
                                      self._browse(self._current_app["bundle_id"],
                                                   self._current_path)))
         th.error.connect(lambda err: (self.progress.hide(),
-                                       QMessageBox.warning(self, tr("App Data"), err)))
+                                       self._set_status(err)))
         th.start()
         self._threads.append(th)
 
@@ -641,7 +687,7 @@ class IOSAppDataPage(QWidget):
         if self._backup_write_blocked():
             return
         if not self._current_app:
-            QMessageBox.information(self, tr("App Data"), tr("Select an app first."))
+            self._set_status(tr("Select an app first."))
             return
         name, ok = QInputDialog.getText(
             self, tr("New Folder"), tr("Folder name:"))
@@ -656,7 +702,7 @@ class IOSAppDataPage(QWidget):
             return
         e = self._selected_entry()
         if not e:
-            QMessageBox.information(self, tr("App Data"), tr("Select a file or folder first."))
+            self._set_status(tr("Select a file or folder first."))
             return
         new_name, ok = QInputDialog.getText(
             self, tr("Rename"), tr("New name:"), text=e["name"])
@@ -670,7 +716,7 @@ class IOSAppDataPage(QWidget):
             return
         e = self._selected_entry()
         if not e:
-            QMessageBox.information(self, tr("App Data"), tr("Select a file or folder first."))
+            self._set_status(tr("Select a file or folder first."))
             return
         kind = tr("folder") if e["is_dir"] else tr("file")
         confirm = QMessageBox.question(

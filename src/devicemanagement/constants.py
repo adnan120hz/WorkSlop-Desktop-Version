@@ -27,9 +27,12 @@ def _norm_build(build) -> str:
 
 
 def is_build_supported(build: str) -> bool:
-    # WorkSlop rule (user decision 2026-09-30): ONLY the iOS builds listed
-    # in SUPPORTED_BUILDS are supported. Anything else is rejected, even if
-    # its version number looks newer.
+    # Build-level check ONLY (user decision 2026-09-30): True just when the
+    # build is listed in SUPPORTED_BUILDS. This function alone rejects
+    # anything else, but it is NOT the whole device gate: is_device_supported
+    # below also accepts a device whose cable-reported version falls in the
+    # is_version_supported range (16.0 -> <27.0), so an unlisted build is
+    # still usable when its version is in range.
     return _norm_build(build) in SUPPORTED_BUILDS
 
 

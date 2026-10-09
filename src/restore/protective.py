@@ -209,6 +209,17 @@ PROTECTIVE_DOMAINS = frozenset({
     "MessagesDomain",    # iMessage / SMS / MMS (preserved across safe-state recovery)
 })
 
+# Photo/media domains — the only protective domains gated by
+# ``include_photos``. MessagesDomain is deliberately NOT in here:
+# iMessage/SMS/MMS data is user data that must survive regardless of
+# whether photos ride the backup (Audit 42 — Messages used to ride
+# along only when ``include_photos`` was set, because it shared this
+# gate with the photo domains via PROTECTIVE_DOMAINS).
+PHOTO_DOMAINS = frozenset({
+    "CameraRollDomain",
+    "MediaDomain",
+})
+
 # KeychainDomain is only included when the user has backup encryption
 # enabled — keychain payloads are encrypted at rest and iOS rejects
 # unencrypted keychain entries in a backup.  This preserves Apple Watch
@@ -336,7 +347,12 @@ def _is_protective_file(domain: str, relative_path: str, include_photos: bool = 
                 or relative_path.startswith(WEB_APP_PATH_PREFIXES)
                 or relative_path.startswith(WEBKIT_WEBSITE_DATA_PATH_PREFIXES)
                 or relative_path.startswith(ADDRESS_BOOK_PATH_PREFIXES))
-    if include_photos and domain in PROTECTIVE_DOMAINS:
+    # Audit 42: Messages data is always protective — it must not depend
+    # on the photo toggle. Photos are a separate domain/extension axis
+    # (CameraRollDomain/MediaDomain below, gated by include_photos).
+    if domain == "MessagesDomain":
+        return True
+    if include_photos and domain in PHOTO_DOMAINS:
         # Media trees moved to the AFC channel (DCIM, PhotoStreamsData) are not
         # uploaded by mobilebackup2 at all — the manifest rows the device still
         # records for them must be pruned too, or Phase 3 tries to restore
@@ -624,17 +640,20 @@ class ProtectiveBackupService(Mobilebackup2Service):
         self.include_posterboard = include_posterboard
 
     async def connect(self, max_retries: int = 5):
+        from src.exceptions.device_errors import is_connection_error
         from src.utils.async_retry import async_retry
 
-        retryable = (_pm3_exc.ConnectionTerminatedError, ConnectionError,
-                     OSError, asyncio.TimeoutError)
+        # Audit 53b: retry only genuine connection/transient failures.
+        # The old isinstance tuple included bare OSError, so a local
+        # filesystem error on this computer (missing pairing record,
+        # permission denied) was retried as if the device had dropped.
         base_connect = super().connect
         return await async_retry(
             base_connect,
             max_retries,
-            retry_if=lambda e: isinstance(e, retryable),
+            retry_if=is_connection_error,
             exp_cap=15,
-            on_retry=lambda attempt, total, e, delay: print(
+            on_retry=lambda attempt, total, e, delay: log_warn(
                 f"[ProtectiveBackup] mobilebackup2 connect failed "
                 f"(attempt {attempt}/{total}), retrying in {delay}s: {e}"
             ),
@@ -793,7 +812,18 @@ async def perform_protective_backup(
                     operation="backup",
                 )
             except NotEnoughDiskSpaceError:
-                log_warn("Device sent disk space purge request — ignoring, backup data is preserved")
+                # Audit 71: a purge request mid-backup means the device/host
+                # ran out of room — the backup on disk is INCOMPLETE. This
+                # used to be swallowed ("backup data is preserved"), so the
+                # partial backup was announced as complete and a later
+                # restore could "succeed" while data was missing. Fail
+                # loudly instead: callers surface an honest failure (the
+                # apply flow offers the user the explicit
+                # continue-without-protection choice for this error).
+                log_error("Device sent a disk-space purge request during the "
+                          "protective backup — the backup is incomplete; "
+                          "failing instead of claiming it finished")
+                raise
     except Exception:
         if afc_media_task is not None:
             # The backup failed — the media pull (still uploading user data) is

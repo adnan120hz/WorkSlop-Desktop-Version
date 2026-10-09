@@ -10,11 +10,15 @@ fetches are skipped and no rules are applied.
 """
 
 import json
+import logging
 import os
+import sys
 import time
 from typing import Optional
 
 import urllib.request
+
+logger = logging.getLogger("WorkSlop.hotload")
 
 from PySide6.QtCore import QStandardPaths
 
@@ -83,21 +87,191 @@ def _rules_path() -> str:
     return os.path.join(_settings_dir(), RULES_FILENAME)
 
 
+def _seed_candidates() -> list:
+    """Bundled seed locations for a first run with no cache (Fix Audit 13).
+
+    (a) frozen build: ``hotload_rules.json`` bundled at the PyInstaller
+    root (``sys._MEIPASS``, see compile.py); (b) source tree / tests:
+    ``hotload_rules.json`` at the repo root, resolved relative to this
+    module file (``src/controllers/hotload.py`` -> repo root)."""
+    candidates = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(os.path.join(meipass, RULES_FILENAME))
+    repo_root = os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    candidates.append(os.path.join(repo_root, RULES_FILENAME))
+    return candidates
+
+
+def _try_load_seed():
+    """Load the bundled seed rules, or None.
+
+    Returns ``(parsed, path)`` for the first candidate that exists and
+    passes :func:`validate_rules_payload`. A missing or invalid seed
+    returns None so the caller stays fail-closed — seeding never
+    weakens the corrupt/invalid-cache behaviour."""
+    for candidate in _seed_candidates():
+        if not os.path.isfile(candidate):
+            continue
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                parsed = json.load(f)
+        except Exception as exc:
+            logger.warning("HotLoad: bundled seed at %s unreadable (%s) "
+                           "— staying fail-closed", candidate, exc)
+            return None
+        problem = validate_rules_payload(parsed)
+        if problem is not None:
+            logger.warning("HotLoad: bundled seed at %s invalid (%s) "
+                           "— staying fail-closed", candidate, problem)
+            return None
+        return parsed, candidate
+    return None
+
+
+#: Actions the matching code below actually consumes. A rule whose
+#: action is none of these (and which names no tweak) can never match
+#: anything, so the schema validator rejects it (Fix Audit 13/84b).
+_KNOWN_ACTIONS = (KILL_ACTION, HIDE_ACTION, DISABLE_DAEMON_ACTION)
+
+
+def validate_rules_payload(parsed) -> Optional[str]:
+    """Deep schema check for a HotLoad rules payload (Fix Audit 13/84b).
+
+    ``json.loads`` succeeding used to be the whole validation, so a
+    payload like ``{"rules": "yes"}`` or a rule missing every field the
+    matcher reads loaded as "valid" and silently matched nothing —
+    fail-open with extra steps. Returns ``None`` when the payload is
+    usable, or a short description of the first problem. Only the
+    fields the matching code really consumes are validated:
+
+    * top level: a dict with ``rules`` as a list (``version``, when
+      present, an int);
+    * every rule: a dict naming a ``tweak`` (what ``rule_for`` reads)
+      and/or a known ``action`` (what ``kill_rule`` / ``hidden_features``
+      / ``disabled_daemons`` read); ``hide_feature`` rules must name a
+      ``feature``, ``disable_daemon`` rules a ``daemons`` list;
+    * the scoping fields, when present, must have the types
+      ``_rule_applicable`` compares against (version strings, string
+      lists, a bool ``disabled``, a string ``reason``).
+    """
+    if not isinstance(parsed, dict):
+        return "top level is not an object"
+    if "rules" not in parsed:
+        return "missing 'rules'"
+    rules = parsed["rules"]
+    if not isinstance(rules, list):
+        return "'rules' is not a list"
+    version = parsed.get("version")
+    if version is not None and (isinstance(version, bool)
+                                or not isinstance(version, int)):
+        return "'version' is not an integer"
+    for idx, rule in enumerate(rules):
+        where = f"rule {idx}"
+        if not isinstance(rule, dict):
+            return f"{where} is not an object"
+        tweak = rule.get("tweak")
+        action = rule.get("action")
+        if tweak is not None and (not isinstance(tweak, str) or not tweak):
+            return f"{where}: 'tweak' is not a non-empty string"
+        if action is not None and action not in _KNOWN_ACTIONS:
+            return f"{where}: unknown action {action!r}"
+        if tweak is None and action is None:
+            return f"{where} names neither a tweak nor an action"
+        if action == HIDE_ACTION:
+            feature = rule.get("feature")
+            if not isinstance(feature, str) or not feature:
+                return f"{where}: hide_feature rule names no feature"
+        if action == DISABLE_DAEMON_ACTION:
+            daemons = rule.get("daemons")
+            if (not isinstance(daemons, list)
+                    or not all(isinstance(d, str) for d in daemons)):
+                return f"{where}: disable_daemon rule has no daemon list"
+        for key in ("min_version", "max_version",
+                    "min_app_version", "max_app_version", "reason"):
+            if key in rule and not isinstance(rule[key], str):
+                return f"{where}: '{key}' is not a string"
+        for key in ("app_versions", "only_models"):
+            if key in rule and (not isinstance(rule[key], list)
+                                or not all(isinstance(v, str)
+                                           for v in rule[key])):
+                return f"{where}: '{key}' is not a list of strings"
+        if "disabled" in rule and not isinstance(rule["disabled"], bool):
+            return f"{where}: 'disabled' is not a boolean"
+    return None
+
+
+def _unavailable_reason(hotload) -> Optional[str]:
+    """Why the cached rules cannot be trusted, or None when they can.
+
+    Bare instances (tests building ``HotLoad`` via ``object.__new__``
+    and assigning ``_rules`` by hand) carry no load state and count as
+    available; only a real load that failed marks the cache unusable.
+    """
+    if getattr(hotload, "_rules_available", None) is False:
+        return getattr(hotload, "_rules_error", None) or "cache unreadable"
+    return None
+
+
 class HotLoad:
     def __init__(self, settings=None):
         self.settings = settings
         self._rules = {"version": 0, "rules": []}
+        # Fix Audit 13/84b: whether the cache actually yielded a valid
+        # rules payload. The gates below fail CLOSED while this is
+        # False (see _load_local), instead of the old behaviour where a
+        # missing/corrupt cache silently meant "no rules, all allowed".
+        self._rules_available = False
+        self._rules_error: Optional[str] = None
         self._load_local()
 
     # --- storage ---------------------------------------------------------
     def _load_local(self):
+        path = _rules_path()
         try:
-            with open(_rules_path(), "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 parsed = json.load(f)
-            if isinstance(parsed, dict) and "rules" in parsed:
+        except FileNotFoundError:
+            # Fix Audit 13 (seeding): a first run has no cache yet, and
+            # failing closed there hides/refuses every gated feature
+            # before the first fetch can succeed (also offline). Fall
+            # back to the bundled seed rules; only when no valid seed
+            # exists does the missing cache stay fail-closed.
+            seeded = _try_load_seed()
+            if seeded is not None:
+                parsed, seed_path = seeded
                 self._rules = parsed
-        except Exception:
+                self._rules_available = True
+                self._rules_error = None
+                logger.info("HotLoad: no cached rules file at %s — "
+                            "using bundled seed rules from %s",
+                            path, seed_path)
+                return
             self._rules = {"version": 0, "rules": []}
+            self._rules_available = False
+            self._rules_error = f"no cached rules file at {path}"
+            logger.warning("HotLoad: %s — gated features fail closed "
+                           "until rules are fetched", self._rules_error)
+            return
+        except Exception as exc:  # unreadable / not JSON at all
+            self._rules = {"version": 0, "rules": []}
+            self._rules_available = False
+            self._rules_error = f"cached rules unreadable: {exc}"
+            logger.warning("HotLoad: %s — gated features fail closed",
+                           self._rules_error)
+            return
+        problem = validate_rules_payload(parsed)
+        if problem is not None:
+            self._rules = {"version": 0, "rules": []}
+            self._rules_available = False
+            self._rules_error = f"cached rules invalid: {problem}"
+            logger.warning("HotLoad: %s — gated features fail closed",
+                           self._rules_error)
+            return
+        self._rules = parsed
+        self._rules_available = True
+        self._rules_error = None
 
     def is_enabled(self) -> bool:
         if self.settings is None:
@@ -114,7 +288,12 @@ class HotLoad:
         try:
             self.settings.sync()
         except Exception:
-            pass
+            # Fix Audit 13/84b: was a bare ``except: pass`` — a kill
+            # switch that failed to persist looked exactly like one
+            # that saved. Behaviour unchanged (never raise), but the
+            # failure is now on the record.
+            logger.warning("HotLoad: persisting the kill switch "
+                           "failed", exc_info=True)
 
     # --- fetching --------------------------------------------------------
     def update(self, url: Optional[str] = None) -> bool:
@@ -131,16 +310,24 @@ class HotLoad:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = resp.read()
             parsed = json.loads(data.decode("utf-8"))
-            if not isinstance(parsed, dict) or "rules" not in parsed:
+            problem = validate_rules_payload(parsed)
+            if problem is not None:
+                # Fix Audit 13/84b: a fetched payload that only parses
+                # as JSON is not a rules file — keep the old cache and
+                # say why, instead of caching a fail-open shell.
+                logger.warning("HotLoad: fetched rules invalid (%s) — "
+                               "keeping the previous cache", problem)
                 return False
             parsed["_fetched_at"] = int(time.time())
             path = _rules_path()
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(parsed, f, ensure_ascii=False, indent=2)
             self._rules = parsed
+            self._rules_available = True
+            self._rules_error = None
             return True
         except Exception as e:
-            print(f"[HotLoad] update failed: {e}")
+            logger.error("[HotLoad] update failed: %s", e)
             return False
 
     # --- matching --------------------------------------------------------
@@ -152,6 +339,19 @@ class HotLoad:
         if not self.is_enabled():
             return None
         tweak_name = getattr(tweak_id, "name", str(tweak_id))
+        unavailable = _unavailable_reason(self)
+        if unavailable is not None:
+            # Fix Audit 13/84b: fail CLOSED. With no trustworthy rules
+            # the gate cannot know this tweak is safe, so it refuses
+            # (callers skip/block on any returned rule) instead of the
+            # old fail-open "no rules cached = everything allowed".
+            return {
+                "tweak": tweak_name,
+                "action": "hotload_unavailable",
+                "reason": ("HotLoad safety rules are unavailable "
+                           f"({unavailable}); gated features refuse "
+                           "to run until the rules load."),
+            }
         for rule in self._rules.get("rules", []):
             try:
                 if rule.get("tweak") != tweak_name:
@@ -173,6 +373,17 @@ class HotLoad:
         """
         if not self.is_enabled():
             return None
+        unavailable = _unavailable_reason(self)
+        if unavailable is not None:
+            # Fix Audit 13/84b: fail CLOSED at the app-level gate too —
+            # no trustworthy rules means the kill-switch check itself
+            # cannot pass, so it reports as killed with the reason.
+            return {
+                "action": KILL_ACTION,
+                "reason": ("HotLoad safety rules are unavailable "
+                           f"({unavailable}); refusing to run until "
+                           "the rules load."),
+            }
         for rule in self._rules.get("rules", []):
             try:
                 if rule.get("action") != KILL_ACTION:
@@ -200,6 +411,11 @@ class HotLoad:
         of sight so nobody can enable them accidentally."""
         if not self.is_enabled():
             return set()
+        if _unavailable_reason(self) is not None:
+            # Fix Audit 13/84b: fail CLOSED — with no trustworthy rules
+            # every gated feature is treated as hidden (refuses to run)
+            # rather than silently shown and runnable.
+            return set(FEATURE_TWEAKS)
         hidden = set()
         for rule in self._rules.get("rules", []):
             try:

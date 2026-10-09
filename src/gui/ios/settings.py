@@ -88,7 +88,14 @@ class IOSSettingsPage(QWidget):
         live = []
         for widget, qss_fn in self._fn_styled:
             try:
-                widget.setStyleSheet(qss_fn(c))
+                # Audit 91 (page level): skip widgets already wearing
+                # the computed sheet — Settings refreshes on every show
+                # (Audit 57), and an identical setStyleSheet only
+                # re-polishes. Freshly rebuilt rows still get styled
+                # (their sheet differs); deleted ones prune below.
+                sheet = qss_fn(c)
+                if widget.styleSheet() != sheet:
+                    widget.setStyleSheet(sheet)
                 live.append((widget, qss_fn))
             except Exception:
                 pass  # widget was rebuilt away (device rows refresh)
@@ -306,9 +313,25 @@ class IOSSettingsPage(QWidget):
                 QPushButton:hover {{ background-color: {c.surface_hover}; }}
             """)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Audit 57: the page outlives device changes, so re-read the
+        # live state every time it is shown. Navigation alone could not
+        # be trusted to do this: a bare setCurrentIndex(4) (Home's gear)
+        # emits nothing when Settings is already the current page, and
+        # the shell can re-show the stack without any index change.
+        self.refresh()
+
     def refresh(self):
         """Called when navigating to Settings — picks up device changes."""
+        if getattr(self, "_device_section_lay", None) is None:
+            return  # still under construction; rows build at the end
         self._build_device_rows()
+        # The presets section too: open_presets_section routes through
+        # here, and presets saved elsewhere (Home preset popup, import)
+        # since this page was built must not stay invisible (Audit 57).
+        if hasattr(self, "preset_list"):
+            self.refresh_presets()
         btns = getattr(self, "interface_buttons", None)
         if btns:
             from src.gui.ios.theme_manager import ThemeManager
@@ -552,7 +575,7 @@ class IOSSettingsPage(QWidget):
         if dialog.exec() == QDialog.Accepted:
             text = dialog.textValue()
             on_submit(text)
-            self.org_value_lbl.setText(text if text else QCoreApplication.translate("MainWindow", "None"))
+            self.org_value_lbl.setText(text if text else QCoreApplication.translate("Nugget", "None"))
 
     def _on_org_name_edited(self, text: str):
         pref = self.window.device_manager.pref_manager
@@ -593,7 +616,7 @@ class IOSSettingsPage(QWidget):
         h.addWidget(self._ws_title(tr("Enter Organization Name")), 1)
         self.org_value_lbl = self._ws_value(
             pref.organization_name if pref.organization_name
-            else QCoreApplication.translate("MainWindow", "None"))
+            else QCoreApplication.translate("Nugget", "None"))
         h.addWidget(self.org_value_lbl)
         edit_btn = QLabel("\u270e")
 
@@ -646,12 +669,14 @@ class IOSSettingsPage(QWidget):
 
     def _retheme(self):
         c = self._palette()
-        self._scroll.setStyleSheet(
-            f"background-color: {c.bg_primary}; border: none;"
-        )
-        self._accent_picker.setStyleSheet(
-            f"background-color: {c.bg_primary};"
-        )
+        # Audit 91: these two roots carry the whole page subtree; only
+        # re-set when the palette actually changed the string.
+        _scroll_qss = f"background-color: {c.bg_primary}; border: none;"
+        if self._scroll.styleSheet() != _scroll_qss:
+            self._scroll.setStyleSheet(_scroll_qss)
+        _accent_qss = f"background-color: {c.bg_primary};"
+        if self._accent_picker.styleSheet() != _accent_qss:
+            self._accent_picker.setStyleSheet(_accent_qss)
         apply_full_nugget_chrome(self, self._full_nugget)
         self._restyle_tracked()
         if hasattr(self, '_preset_name_txt'):
@@ -803,13 +828,15 @@ class IOSSettingsPage(QWidget):
     def _on_restore_data_clicked(self):
         # WorkSlop: Restore Backup menu — 2 formats.
         mbox = QMessageBox(self.window)
-        mbox.setWindowTitle("Restore Backup")
-        mbox.setText("Choose the backup format to restore:")
-        mbox.setInformativeText(
+        mbox.setWindowTitle(QCoreApplication.translate("Nugget", "Restore Backup"))
+        mbox.setText(QCoreApplication.translate(
+            "Nugget", "Choose the backup format to restore:"))
+        mbox.setInformativeText(QCoreApplication.translate(
+            "Nugget",
             "Full Backup: a standard iPhone backup folder in iTunes/Finder "
             "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
             "WorkSlop Backup: the selective protective backup this app "
-            "keeps on this computer (only restorable from this app).")
+            "keeps on this computer (only restorable from this app)."))
         full_btn = mbox.addButton(
             QCoreApplication.translate("Nugget", "Full Backup..."),
             QMessageBox.ButtonRole.ActionRole)
@@ -834,11 +861,13 @@ class IOSSettingsPage(QWidget):
             return
         reply = QMessageBox.question(
             self.window,
-            "Restore Full Backup?",
-            "This restores the selected backup to the connected iPhone, "
-            "then reboots it.\n\n"
-            "Make sure the iPhone is connected, unlocked and awake, "
-            "then do you want to continue?",
+            QCoreApplication.translate("Nugget", "Restore Full Backup?"),
+            QCoreApplication.translate(
+                "Nugget",
+                "This restores the selected backup to the connected iPhone, "
+                "then reboots it.\n\n"
+                "Make sure the iPhone is connected, unlocked and awake, "
+                "then do you want to continue?"),
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
@@ -848,12 +877,14 @@ class IOSSettingsPage(QWidget):
         # Original GoldenNugget protective-backup restore, unchanged.
         reply = QMessageBox.question(
             self.window,
-            "Restore Data From Backup?",
-            "This restores photos, messages, contacts and settings from the "
-            "last protective backup on this computer.\n\n"
-            "Applied tweaks and wallpapers are KEPT.\n\n"
-            "Make sure the iPhone is connected, unlocked and awake, "
-            "then do you want to continue?",
+            QCoreApplication.translate("Nugget", "Restore Data From Backup?"),
+            QCoreApplication.translate(
+                "Nugget",
+                "This restores photos, messages, contacts and settings from the "
+                "last protective backup on this computer.\n\n"
+                "Applied tweaks and wallpapers are KEPT.\n\n"
+                "Make sure the iPhone is connected, unlocked and awake, "
+                "then do you want to continue?"),
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
@@ -891,11 +922,13 @@ class IOSSettingsPage(QWidget):
         if checked:
             reply = QMessageBox.question(
                 self.window,
-                "Enable Fast Backup Cache?",
-                "WARNING: The cached backup feature is experimental and, when it "
-                "fails, can leave your device without wallpaper data or on the "
-                "Setup screen.\n\n"
-                "Enable the fast backup cache anyway?",
+                QCoreApplication.translate("Nugget", "Enable Fast Backup Cache?"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "WARNING: The cached backup feature is experimental and, when it "
+                    "fails, can leave your device without wallpaper data or on the "
+                    "Setup screen.\n\n"
+                    "Enable the fast backup cache anyway?"),
             )
             if reply != QMessageBox.StandardButton.Yes:
                 switch.blockSignals(True)
@@ -911,12 +944,14 @@ class IOSSettingsPage(QWidget):
         if checked:
             reply = QMessageBox.question(
                 self.window,
-                "Enable Encrypted Backups?",
-                "WARNING: Using encrypted backups with WorkSlop Desktop is experimental "
-                "and may cause DATA LOSS or leave your device stuck on the Setup "
-                "screen after applying tweaks.\n\n"
-                "Make sure you know your backup password before continuing.\n\n"
-                "Enable encrypted backups anyway?",
+                QCoreApplication.translate("Nugget", "Enable Encrypted Backups?"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "WARNING: Using encrypted backups with WorkSlop Desktop is experimental "
+                    "and may cause DATA LOSS or leave your device stuck on the Setup "
+                    "screen after applying tweaks.\n\n"
+                    "Make sure you know your backup password before continuing.\n\n"
+                    "Enable encrypted backups anyway?"),
             )
             if reply != QMessageBox.StandardButton.Yes:
                 switch.blockSignals(True)
@@ -932,11 +967,13 @@ class IOSSettingsPage(QWidget):
         if checked and pref.use_backup_cache:
             QMessageBox.warning(
                 self.window,
-                "Fast Backup Cache is on",
-                "The Fast Backup Cache also uses the AFC (parallel) media "
-                "channel for photos, so this switch has no effect while the "
-                "cache is on. Turn the cache off to use it on the standard "
-                "backup path.",
+                QCoreApplication.translate("Nugget", "Fast Backup Cache is on"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "The Fast Backup Cache also uses the AFC (parallel) media "
+                    "channel for photos, so this switch has no effect while the "
+                    "cache is on. Turn the cache off to use it on the standard "
+                    "backup path."),
             )
         pref.use_afc_media = checked
         self.window.settings.setValue("use_afc_media", checked)

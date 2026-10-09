@@ -23,6 +23,11 @@ jobs:
           .env\Scripts\activate.bat
           pip install -r requirements.txt
 
+      - name: Run offscreen tests
+        run: |
+          .env\Scripts\activate.bat
+          python tools/run_offscreen_tests.py
+
       - name: Set up MSBuild (for zsign)
         uses: microsoft/setup-msbuild@v2
 

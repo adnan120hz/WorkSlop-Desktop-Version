@@ -126,6 +126,24 @@ def daemon_compat_warning(name: str, meta, window) -> Optional[str]:
 
 def load_preset_flow(parent, window, pm: PresetManager, name: str) -> bool:
     """Confirm, safety-check, load *name*, then restart. True if loaded."""
+    # Fix Audit 73: loading a preset restarts the process, which would
+    # kill a running restore mid-write. Apply the same guard as
+    # window-close (device_operations_running, shared with closeEvent):
+    # refuse up front — nothing is loaded and nothing restarts. There is
+    # no true cancel for a running restore, so the honest action is to
+    # wait for it to finish and load the preset again.
+    from src.gui.main_window_mixins import device_operations_running
+    running = device_operations_running(window)
+    if running:
+        QMessageBox.warning(
+            parent, _T("Nugget", "Load Preset"),
+            _T("Nugget",
+               "Cannot load a preset while a device {0} is running — "
+               "loading a preset restarts WorkSlop Desktop and would "
+               "interrupt it mid-write.\n\nWait for it to finish, then "
+               "load the preset again. Nothing was loaded.").format(
+                   " and ".join(running)))
+        return False
     meta = pm.get_preset_metadata(name)
     desc = meta.get("description", "") if meta else ""
     model = meta.get("device_model", "Unknown") if meta else "Unknown"
@@ -175,9 +193,14 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str) -> bool:
             device_build=dm.get_current_device_build(),
             device_version=dm.get_current_device_version(),
             device_model=dm.get_current_device_model()):
+        # Fix Audit 43 (follow-up): name the specific reason the load
+        # recorded (e.g. the unsupported preset version) instead of a
+        # generic failure; the generic text is only the fallback when
+        # PresetManager recorded no error.
+        detail = getattr(pm, "last_error", None)
         QMessageBox.critical(
             parent, _T("Nugget", "Load Preset"),
-            _T("Nugget", "Failed to load the preset."))
+            str(detail) if detail else _T("Nugget", "Failed to load the preset."))
         return False
     if pm.last_skipped:
         skipped_lines = "\n".join(
@@ -191,6 +214,19 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str) -> bool:
 
     window.settings.setValue("last_loaded_preset", name)
     window._sync_settings()
+    # Fix Audit 73 (re-check): an operation may have started while the
+    # dialogs above were open — never restart over a running restore.
+    running = device_operations_running(window)
+    if running:
+        QMessageBox.warning(
+            parent, _T("Nugget", "Load Preset"),
+            _T("Nugget",
+               "Preset \"{0}\" was loaded, but WorkSlop Desktop was NOT "
+               "restarted because a device {1} is now running — "
+               "restarting would interrupt it mid-write.\n\nRestart "
+               "WorkSlop Desktop yourself once it finishes to apply the "
+               "preset.").format(name, " and ".join(running)))
+        return True
     QMessageBox.information(
         parent, _T("Nugget", "Load Preset"),
         _T("Nugget",

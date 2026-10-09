@@ -2,7 +2,8 @@
 
 A guided tour of every part of the codebase: what each package does, how the
 main flows work end-to-end, and which conventions hold the whole thing
-together. For agent-facing operational notes see [AGENTS.md](../AGENTS.md);
+together. Agent-facing operational notes formerly lived in a repo-level
+`AGENTS.md`, which was removed from the repository on 2026-10-09;
 for the iOS 27 status-bar research see [iOS27_StatusBar_Research.md](iOS27_StatusBar_Research.md);
 for line-level verified facts gathered during a codebase audit see [FINDINGS.md](FINDINGS.md).
 

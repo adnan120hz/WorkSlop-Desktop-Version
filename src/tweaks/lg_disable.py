@@ -35,8 +35,9 @@ on iOS 26.6.x builds 23G82/23G83 only, a full-backup route
 (``src/restore/lgd_full.py``) that injects these exact payloads into a
 complete device backup and restores it. The ``build_*_payload`` helpers
 below are the canonical payload constructors: the sparse path stages the
-equivalent plist dicts through the generic BasicPlistTweak merge (and the
-verification gate re-checks the final records), while the full-backup
+equivalent plist dicts through the generic BasicPlistTweak merge (the
+builders' own ``diff_gate`` self-check; ``verify_apply_gate`` below is
+not called by any production path), while the full-backup
 route and the offline tests consume the builders directly. Whether
 restored (23G83) accepts these records — by either channel — is NOT
 device-proven yet; the uncertainty is inherent to the Beta 1 label, not
@@ -288,10 +289,19 @@ def _check_candidate_key(effective: dict, route: str) -> list:
 def verify_apply_gate(files, *, g2_active: bool, g1_active: bool,
                       g1_base: Optional[dict] = None,
                       g1_allowed_new=()) -> list:
-    """The Beta 1 verification gate, run on EVERY apply that stages us.
+    """The Beta 1 verification gate over a pass's final restore records.
 
-    ``files`` is the pass's final FileToRestore list (before restore).
-    Returns a list of problems; empty = the apply may proceed. Checks:
+    NOT wired into production: no apply path calls this function (grep
+    ``verify_apply_gate`` finds only its definition here and its offline
+    checks in ``tools/test_liquid_glass_disable.py``). The gates that
+    actually run on apply live in ``device_manager`` (the
+    ``_raise_if_unsupported`` fork-support check plus the per-tweak
+    deliverability / MobileGestalt gates), in ``build_g1_payload``'s
+    internal ``diff_gate`` self-check, and — on the full-backup route
+    only — in ``lgd_full.verify_injected_payloads``.
+
+    ``files`` is a FileToRestore list (before restore). Returns a list
+    of problems; empty = the records below would pass. Checks:
 
     * G2 (when staged): a record exists for ManagedPreferencesDomain /
       mobile/.GlobalPreferences.plist, parses, and carries
@@ -440,37 +450,6 @@ def load_original_meta(udid) -> Optional[dict]:
 def original_saved(udid) -> bool:
     return bool(udid) and os.path.exists(original_plist_path(udid))
 
-
-def g2_original_plist_path(udid) -> str:
-    return os.path.join(_store_dir(), f"{_safe_udid(udid)}.g2-original.plist")
-
-
-def save_g2_original_if_absent(udid, base_bytes: bytes) -> bool:
-    """Persist the device's pre-tweak managed overlay (first capture wins).
-
-    The G2 writer REPLACES the whole managed .GlobalPreferences.plist, so
-    the full-backup route captures the device's own copy out of the apply
-    backup before writing — both to merge onto (no pre-existing managed
-    key is lost) and to restore byte-exact on rollback.
-    """
-    plist_path = g2_original_plist_path(udid)
-    if os.path.exists(plist_path):
-        return False
-    tmp_path = plist_path + ".tmp"
-    with open(tmp_path, "wb") as fh:
-        fh.write(bytes(base_bytes))
-    os.replace(tmp_path, plist_path)
-    return True
-
-
-def load_g2_original(udid) -> Optional[bytes]:
-    """The saved pre-tweak managed overlay bytes, or None."""
-    try:
-        with open(g2_original_plist_path(udid), "rb") as fh:
-            data = fh.read()
-        return data or None
-    except OSError:
-        return None
 
 # --- tweak classes ---------------------------------------------------------
 # The Beta 1 route tweaks (LGDG2Tweak/LGDG1Tweak) left the product with

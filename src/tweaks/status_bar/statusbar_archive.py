@@ -19,9 +19,9 @@ out-of-band channel is involved.
 Scope: only the carrier **names** are user-settable. Everything else in the
 cellular entry is written with fixed values chosen to form a structurally
 valid record (round-trip verified offline only -- on-device rendering is
-UNVERIFIED, like every other tweak in this repo until a real-device test).
+NOT CONFIRMED, like every other tweak in this repo until a real-device test).
 
-Intended failure mode (also UNVERIFIED on-device): when the record decodes
+Intended failure mode (also not confirmed on-device): when the record decodes
 empty SpringBoard is expected to remove the file itself and the stock carrier
 names come back, so a rejected archive should degrade to "no override"
 instead of a broken status bar.

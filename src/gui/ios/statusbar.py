@@ -1,7 +1,7 @@
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QHBoxLayout, QLabel,
-    QDialog, QPushButton
+    QDialog, QPushButton, QComboBox, QDialogButtonBox
 )
 from packaging.version import Version, InvalidVersion
 
@@ -12,6 +12,7 @@ from src.gui.ios.components import (
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.status_bar.status_setter import StatusBarItem
+from src.tweaks.status_bar.status_bar_tweak import data_network_type_label
 
 # iOS 27 dropped the classic statusBarOverrides struct: only the carrier name
 # survives, through StatusBarOverrides.archive. Everything else has no
@@ -175,21 +176,19 @@ class IOSStatusBarPage(QWidget):
             self.status_manager.set_battery_capacity, self.status_manager.unset_battery_capacity,
             0, 100,
         )
-        self.network_type_row = self._make_number_row(
+        self.network_type_row = self._make_network_type_row(
             QCoreApplication.translate("Nugget", "Change Data Network Type"),
             self.status_manager.is_data_network_type_overridden(),
             self.status_manager.get_data_network_type_override(),
             self.status_manager.get_data_network_type_override,
             self.status_manager.set_data_network_type, self.status_manager.unset_data_network_type,
-            0, 30,
         )
-        self.secondary_network_type_row = self._make_number_row(
+        self.secondary_network_type_row = self._make_network_type_row(
             QCoreApplication.translate("Nugget", "Secondary Data Network Type"),
             self.status_manager.is_secondary_data_network_type_overridden(),
             self.status_manager.get_secondary_data_network_type_override(),
             self.status_manager.get_secondary_data_network_type_override,
             self.status_manager.set_secondary_data_network_type, self.status_manager.unset_secondary_data_network_type,
-            0, 30,
         )
 
         # Raw signal strength
@@ -241,14 +240,14 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Explains the trimmed page on iOS 27; hidden everywhere else.
-        # The archive mechanism itself is unverified on-device (audit T19),
-        # so the note says so outright instead of implying it works.
+        # The archive mechanism itself has not been tested on-device
+        # (audit T19), so the note says so outright instead of implying it works.
         self._ios27_note = QLabel(QCoreApplication.translate(
             "Nugget",
             "iOS 27 replaced the status bar override file, so only the carrier "
             "name can be changed here. The other options need iOS 26 or lower. "
-            "Note: the iOS 27 carrier-name path is experimental and unverified "
-            "on real devices — it may silently do nothing."
+            "Note: the iOS 27 carrier-name path is experimental and has not "
+            "been tested on real devices — it may silently do nothing."
         ))
         self._ios27_note.setWordWrap(True)
         self.content_layout.addWidget(self._ios27_note)
@@ -578,6 +577,71 @@ class IOSStatusBarPage(QWidget):
             value = dialog.get_value()
             setter(value)
             value_lbl.setText(str(value))
+
+    def _make_network_type_row(self, title: str, overridden: bool, current: int, getter, setter, unsetter, survives_ios27: bool = False):
+        """Data-network-type row: same card shape as the number rows, but
+        the value is picked by name (5G / LTE / ...) instead of a raw
+        0-30 number. The struct still stores the raw index — only the
+        presentation is labeled (fake-5G research 2026-10-09)."""
+        c = ColorThemeManager.instance().colors
+        card = QWidget()
+        row = QHBoxLayout(card)
+        row.setContentsMargins(16, 10, 16, 10)
+        row.setSpacing(12)
+
+        label = QLabel(title)
+        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        row.addWidget(label, 1)
+
+        value_lbl = QLabel(data_network_type_label(current) if overridden else QCoreApplication.translate("Nugget", "Default"))
+        value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        row.addWidget(value_lbl)
+
+        switch = IOSSwitch(overridden)
+        switch.toggled.connect(lambda checked: self._on_network_type_row_toggled(checked, getter, setter, unsetter, value_lbl))
+        row.addWidget(switch)
+
+        edit_btn = QLabel("✎")
+        edit_btn.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.mousePressEvent = lambda e: self._on_network_type_row_edit(title, getter, setter, value_lbl)
+        row.addWidget(edit_btn)
+
+        self.content_layout.addWidget(card)
+        self._rows.append((card, survives_ios27))
+        return switch
+
+    def _on_network_type_row_toggled(self, checked: bool, getter, setter, unsetter, value_lbl):
+        # Same fresh-read rule as the other rows (no stale closures).
+        current = getter()
+        if checked:
+            setter(current)
+        else:
+            unsetter()
+        value_lbl.setText(data_network_type_label(current) if checked else QCoreApplication.translate("Nugget", "Default"))
+
+    def _on_network_type_row_edit(self, title: str, getter, setter, value_lbl):
+        current = getter()
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setModal(True)
+        dialog.setMinimumWidth(320)
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+        combo = QComboBox()
+        for value in range(31):  # 0-30: the struct's historical range
+            combo.addItem(data_network_type_label(value), value)
+        combo.setCurrentIndex(max(0, min(current, 30)))
+        layout.addWidget(combo)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() == QDialog.Accepted:
+            value = combo.currentData()
+            setter(value)
+            value_lbl.setText(data_network_type_label(value))
 
     def _on_enabled_toggled(self, checked: bool):
         self.status_manager.set_enabled(checked)

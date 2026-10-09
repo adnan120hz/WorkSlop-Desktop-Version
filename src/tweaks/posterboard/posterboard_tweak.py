@@ -1,5 +1,8 @@
+import logging
 import os
 import uuid
+
+logger = logging.getLogger("WorkSlop.posterboard_tweak")
 import plistlib
 from random import randint
 from shutil import copytree
@@ -163,7 +166,7 @@ class PosterboardTweak(Tweak):
                             domain=f"AppDomain-{self.bundle_id}"
                         ))
                     except IOError:
-                        print(f"Failed to open file: {folder}") # TODO: Add QDebug equivalent
+                        logger.error(f"Failed to open file: {folder}")
                 else:
                     # add config files if needed (configurations mode only)
                     if self.use_configs and curr_path.endswith("versions") and "descriptor" in curr_path:
@@ -259,7 +262,7 @@ class PosterboardTweak(Tweak):
                 os.rename(contents_path, bg_path)
             else:
                 contents_path = os.path.join(contents_path, "9183.Custom_Background-810w-1080h@2x~ipad.ca")
-            print(f"path at {contents_path}, creating caml")
+            logger.debug(f"path at {contents_path}, creating caml")
             video_handler.create_caml(
                 video_path=self.videoFile, output_file=contents_path,
                 auto_reverses=self.reverse_video, calculationMode=self.calculationMode,

@@ -199,7 +199,44 @@ class RiskySection(QWidget):
         w_row.addWidget(self._res_width_warn)
         res_inner.addLayout(w_row)
 
+        # Fix Audit 30: the backend validator's reason used to be
+        # discarded by the GUI (the backend skipped the tweak and only
+        # the reason *code* ever surfaced). Its message now shows here,
+        # next to the fields it is about, as soon as it applies.
+        self._res_reason_lbl = QLabel("")
+        self._res_reason_lbl.setWordWrap(True)
+        self._res_reason_lbl.setStyleSheet(
+            f"font-size: 12px; color: {c.danger_text}; "
+            "background-color: transparent;")
+        self._res_reason_lbl.hide()
+        res_inner.addWidget(self._res_reason_lbl)
+
         self._layout.addWidget(self._res_card)
+
+    def _update_res_reason(self):
+        """Show the Risky validator's reason instead of discarding it.
+
+        The backend gate (``capabilities.validate_custom_resolution``)
+        returns a user-readable message with every rejection; the GUI
+        used to throw it away and show only a red dot. The same call
+        runs here so what the user reads next to the fields is exactly
+        the reason the backend would skip the tweak for (Fix Audit 30).
+        """
+        lbl = getattr(self, "_res_reason_lbl", None)
+        if lbl is None:
+            return
+        tweak = tweaks.get(TweakID.CustomResolution)
+        if tweak is None or not tweak.enabled:
+            lbl.hide()
+            return
+        from src.tweaks.capabilities import validate_custom_resolution
+        ok, _code, message = validate_custom_resolution(
+            getattr(tweak, "value", None))
+        if ok or not message:
+            lbl.hide()
+            return
+        lbl.setText(tr("Custom Resolution will be skipped: ") + str(message))
+        lbl.show()
 
     def _sync_controls(self):
         for tweak_id in self._switches:
@@ -207,6 +244,7 @@ class RiskySection(QWidget):
         # Nugget: resChangerContent hidden unless the resolution tweak is on
         if hasattr(self, "_res_card") and TweakID.CustomResolution in tweaks:
             self._res_card.setVisible(bool(tweaks[TweakID.CustomResolution].enabled))
+        self._update_res_reason()
 
     # -- handlers (mirror Nugget's risky.py on_* 1:1) -----------------------
     def on_disableOTAChk_clicked(self, checked: bool):
@@ -224,6 +262,7 @@ class RiskySection(QWidget):
                 self._res_card.show()
             else:
                 self._res_card.hide()
+        self._update_res_reason()
 
     def on_resHeightTxt_textEdited(self, txt: str):
         if TweakID.CustomResolution not in tweaks:
@@ -232,6 +271,7 @@ class RiskySection(QWidget):
             # remove the canvas_height value
             tweaks[TweakID.CustomResolution].value.pop("canvas_height", None)
             self._res_height_warn.hide()
+            self._update_res_reason()
             return
         try:
             val = int(txt)
@@ -239,6 +279,7 @@ class RiskySection(QWidget):
             self._res_height_warn.hide()
         except Exception:
             self._res_height_warn.show()
+        self._update_res_reason()
 
     def on_resWidthTxt_textEdited(self, txt: str):
         if TweakID.CustomResolution not in tweaks:
@@ -247,6 +288,7 @@ class RiskySection(QWidget):
             # remove the canvas_width value
             tweaks[TweakID.CustomResolution].value.pop("canvas_width", None)
             self._res_width_warn.hide()
+            self._update_res_reason()
             return
         try:
             val = int(txt)
@@ -254,3 +296,4 @@ class RiskySection(QWidget):
             self._res_width_warn.hide()
         except Exception:
             self._res_width_warn.show()
+        self._update_res_reason()

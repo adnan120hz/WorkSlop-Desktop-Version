@@ -219,7 +219,12 @@ def main() -> int:
     translator.load_translations()
 
     from PySide6.QtGui import QIcon
-    icon_path = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), "workslop.ico")
+    # The .ico is only bundled (and only reliably decodable by the platform
+    # icon engines) on Windows; macOS/Linux builds bundle workslop_icon.png
+    # instead (Fix Audit 67 — the unconditional .ico load left QIcon null
+    # there, so early dialogs fell back to the default Qt icon).
+    _icon_name = "workslop.ico" if os.name == "nt" else "workslop_icon.png"
+    icon_path = os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(__file__)), _icon_name)
     app.setWindowIcon(QIcon(icon_path))
 
     # Restore the preset that was loaded right before the app restarted (pages

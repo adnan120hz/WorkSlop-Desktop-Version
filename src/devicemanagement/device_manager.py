@@ -15,7 +15,7 @@ from packaging.version import Version
 
 from pymobiledevice3 import usbmux
 from pymobiledevice3.services.mobile_config import MobileConfigService
-from pymobiledevice3.exceptions import MuxException, PasswordRequiredError, ConnectionTerminatedError, AccessDeniedError, InvalidServiceError
+from pymobiledevice3.exceptions import MuxException, PasswordRequiredError, PasscodeRequiredError, ConnectionTerminatedError, AccessDeniedError, InvalidServiceError, StartServiceError, DeviceNotFoundError
 from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 import pymobiledevice3.service_connection as _sc
 
@@ -51,7 +51,7 @@ from src.controllers.apply_journal import (
     begin_journal, value_summary,
     TW_DELIVERED, TW_FAILED, TW_NOT_DELIVERED, TW_SKIPPED, TW_STAGED,
 )
-from src.tweaks.registry import SPECS_BY_ID, Kind as _SpecKind
+from src.tweaks.registry import SPECS, SPECS_BY_ID, Kind as _SpecKind
 
 from src.utils.alerts import ApplyAlertMessage
 from src.utils.pages import Page
@@ -80,18 +80,18 @@ from src.restore.afc_media import (
 from src.restore.protective import log_error, log_info, log_warn
 
 def get_files_list_str(files_list: list[FileToRestore] = None) -> str:
+    # Fix Audit 85: the file list is returned for the alert's detailed
+    # text; it is no longer also printed to stdout on every apply error.
     files_str: str = ""
     if files_list != None:
         files_str = "FILES LIST:"
-        print("\nFile List:\n")
         for file in files_list:
             file_info = f"\n    Domain: {file.domain}\n    Path: {file.restore_path}"
             files_str += file_info
-            print(file_info)
     return files_str
 
 def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list[FileToRestore] = None):
-    print(traceback.format_exc())
+    log_error(traceback.format_exc())
     update_label("Failed to restore")
     if "Find My" in str(e):
         # The match is on the raw device error; quote it verbatim in
@@ -100,18 +100,51 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
         return ApplyAlertMessage(QCoreApplication.tr("Find My must be disabled in order to use this tool."),
                        detailed_txt=QCoreApplication.tr("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again.")
                        + "\n\nDEVICE ERROR:\n" + str(e))
-    elif "Encrypted Backup MDM" in str(e):
-        return ApplyAlertMessage(QCoreApplication.tr("Nugget cannot be used on this device. Click Show Details for more info."),
-                       detailed_txt=QCoreApplication.tr("Your device is managed and MDM backup encryption is on. This must be turned off in order for Nugget to work. Please do not use Nugget on your school/work device!"))
-    elif "SessionInactive" in str(e) or "ConnectionAbortedError" in str(e):
-        return ApplyAlertMessage(QCoreApplication.tr("The session was terminated. Refresh the device list and try again."))
-    elif "PasswordRequiredError" in str(e):
+    # Fix Audit 51: the old branches here matched on ``str(e)`` text that
+    # pymobiledevice3 10.7.1 never produces. A bare
+    # ``PasswordRequiredError()`` stringifies to "" (the class carries no
+    # default message), so the "PasswordRequiredError" in str(e) branch
+    # could never fire, and no code in this repo (or in pymobiledevice3)
+    # ever raises an "Encrypted Backup MDM" text — both branches were
+    # dead and are removed. The live mapping below uses isinstance
+    # against the real classes, consistent with
+    # src/exceptions/device_errors.py (is_device_lock_required_error).
+    elif isinstance(e, (PasswordRequiredError, PasscodeRequiredError)):
         return ApplyAlertMessage(QCoreApplication.tr("Device is password protected! You must trust the computer on your device."),
                        detailed_txt=QCoreApplication.tr("Unlock your device. On the popup, click \"Trust\", enter your password, then try again."))
+    elif "SessionInactive" in str(e) or "ConnectionAbortedError" in str(e):
+        return ApplyAlertMessage(QCoreApplication.tr("The session was terminated. Refresh the device list and try again."))
     elif isinstance(e, ConnectionTerminatedError):
+        # Fix Audit 51 (b): a terminated connection means the device
+        # disconnected or stalled mid-operation — it says nothing about
+        # the staged file list, so the old "file list is possibly
+        # corrupted" label was wrong and is gone. The message names the
+        # failure and the phase context (what was being sent).
         files_str: str = get_files_list_str(files_list)
-        return ApplyAlertMessage(QCoreApplication.tr("Device failed in sending files. The file list is possibly corrupted or has duplicates. Click Show Details for more info."),
-                                 detailed_txt=files_str + "TRACEBACK:\n\n" + str(traceback.format_exc()))
+        phase = (QCoreApplication.tr("while sending %1 file(s) to the device")
+                 .replace("%1", str(len(files_list))) if files_list
+                 else QCoreApplication.tr("during the restore"))
+        detail = str(e).strip()
+        return ApplyAlertMessage(
+            QCoreApplication.tr("The connection to the device was terminated ")
+            + phase + QCoreApplication.tr(
+                ". The device may have disconnected or stalled. "
+                "Check the USB cable, keep the device unlocked, and try again."),
+            detailed_txt=((detail + "\n\n") if detail else "")
+            + files_str + "TRACEBACK:\n\n" + str(traceback.format_exc()))
+    elif isinstance(e, StartServiceError):
+        # pymobiledevice3 carries the context on attributes, not in
+        # str(e) (which is empty): name the service that failed to start.
+        return ApplyAlertMessage(
+            QCoreApplication.tr("Could not start the service \"%1\" on the device.").replace("%1", str(getattr(e, "service_name", "") or "unknown"))
+            + " " + QCoreApplication.tr("Unlock the device, make sure it is trusted, and try again."),
+            detailed_txt=(str(getattr(e, "message", "") or "") + "\n\nTRACEBACK:\n\n" + str(traceback.format_exc())).strip())
+    elif isinstance(e, DeviceNotFoundError):
+        # Name the device that was looked up instead of a generic label.
+        return ApplyAlertMessage(
+            QCoreApplication.tr("Device not found: %1").replace("%1", str(str(e).strip() or getattr(e, "udid", "") or "unknown")),
+            detailed_txt=QCoreApplication.tr("The device disconnected or never appeared. Check the USB cable and try again.")
+            + "\n\nTRACEBACK:\n\n" + str(traceback.format_exc()))
     elif isinstance(e, AccessDeniedError):
         return ApplyAlertMessage(QCoreApplication.tr("Access denied while sending files."), detailed_txt="Try running the program with sudo.")
     elif isinstance(e, InvalidServiceError):
@@ -136,6 +169,55 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
             backup_path=backup_path
         )
 
+def try_parse_device_version(raw) -> Optional[Version]:
+    """Parse a device-reported version string; None when unreadable.
+
+    Fix Audit 45: bare ``Version(device_version)`` calls threw
+    packaging's InvalidVersion raw when the device dropped mid-apply
+    and the version string came back empty/None/garbage. This parser
+    never raises — callers that need a decision use
+    :func:`require_device_version` so the failure surfaces as a
+    human-readable "device may have disconnected" error instead of a
+    traceback.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return Version(text)
+    except Exception:
+        return None
+
+
+def require_device_version(raw, context: str = "apply") -> Version:
+    """Parsed device Version, or a human-readable NuggetException.
+
+    Used on the apply/reset paths (Fix Audit 45): an unreadable version
+    there means the device went away mid-operation, which must read as
+    such — never as a raw InvalidVersion traceback.
+    """
+    parsed = try_parse_device_version(raw)
+    if parsed is None:
+        raise NuggetException(QCoreApplication.tr(
+            "Could not read the device's iOS version during %1 — the "
+            "device may have disconnected. Reconnect the device, keep "
+            "it unlocked, and try again. Nothing was written.").replace(
+                "%1", context))
+    return parsed
+
+
+def device_version_at_least(raw, minimum: str, context: str = "apply") -> bool:
+    """True when the device version is >= ``minimum`` (Fix Audit 45)."""
+    return require_device_version(raw, context) >= Version(minimum)
+
+
+def device_version_below(raw, minimum: str, context: str = "apply") -> bool:
+    """True when the device version is < ``minimum`` (Fix Audit 45)."""
+    return require_device_version(raw, context) < Version(minimum)
+
+
 def lg_reset_contents(dev_version) -> bytes:
     """Reset payload bytes for the Liquid Glass page's files, v4 semantics.
 
@@ -147,9 +229,148 @@ def lg_reset_contents(dev_version) -> bytes:
     among these paths; every other reset page keeps the Wave 10 P0
     always-empty-plist payload.
     """
-    if dev_version and Version(dev_version) >= Version("27.0"):
+    parsed = try_parse_device_version(dev_version)
+    if dev_version and parsed is None:
+        # Non-empty but unreadable (device dropped mid-reset): fail
+        # with a human message, not InvalidVersion (Fix Audit 45).
+        require_device_version(dev_version, "reset")
+    if parsed is not None and parsed >= Version("27.0"):
         return plistlib.dumps({})
     return b""
+
+
+# Fix Audit 93 (B): deterministic apply order + duplicate-key conflict log.
+#
+# The apply loops used to walk the global ``tweaks`` dict in insertion
+# order, which is whatever order the loaders happened to run in — i.e.
+# whichever pages the user opened first. The staged payload must not
+# depend on navigation history, so the loops below walk the tweaks in
+# registry-registration order instead: every tweak that has a
+# ``TweakSpec`` takes its ``SPECS`` index.
+#
+# Tie-break (documented, payload-preserving): tweaks without a registry
+# spec (MobileGestalt family, Daemons, Risky, Nugget LG, the file
+# families) have no registry index, so they keep their relative
+# ``tweaks``-dict insertion order after the registry block (Python's
+# sort is stable). That preserves the historical last-writer for the
+# real duplicate-key pairs that live outside the registry (e.g.
+# RdarFix vs CustomResolution on the resolution plist, Enable/Disable
+# LGLPM on one CacheExtra key): forcing a brand-new winner there could
+# change staged values, so their relative order is deliberately NOT
+# re-decided here — the collision is logged explicitly instead (see
+# ``log_plist_key_conflicts``). Registry-internal duplicates stage the
+# same values in the same relative order as before, because
+# ``load_plist_tweaks`` already inserted them in ``SPECS`` order.
+_REGISTRY_ORDER = {spec.id: idx for idx, spec in enumerate(SPECS)}
+_NON_REGISTRY_RANK = len(SPECS)
+
+
+def deterministic_tweak_items(source=None):
+    """``(TweakID, tweak)`` pairs in deterministic apply order.
+
+    Registry tweaks come first, in ``SPECS`` registration order; every
+    other tweak follows in its current ``tweaks``-dict insertion order
+    (stable tie-break, see the Audit 93 note above). ``source`` defaults
+    to the global ``tweaks`` dict.
+    """
+    items = list((tweaks if source is None else source).items())
+    return sorted(
+        items,
+        key=lambda kv: _REGISTRY_ORDER.get(kv[0], _NON_REGISTRY_RANK))
+
+
+def _tweak_label(tweak_name) -> str:
+    return tweak_name.name if hasattr(tweak_name, "name") else str(tweak_name)
+
+
+def _effective_plist_writes(tweak):
+    """``(location, key)`` pairs one tweak stages into shared plists.
+
+    Only the shared-dict writers are listed: Basic/Advanced plist
+    tweaks (into ``basic_plists``) and FeatureFlag tweaks (into
+    ``flag_plist``). Staged-marker tweaks (LGD Squair/Latest) never
+    write the shared dicts, so their spec keys are not staged writes
+    and are skipped; file-generating families write whole files, not
+    shared plist keys.
+    """
+    if hasattr(tweak, "staged"):
+        return []
+    location = getattr(tweak, "file_location", None)
+    loc_label = location.value if location is not None else None
+    if isinstance(tweak, AdvancedPlistTweak):
+        if loc_label is None or not isinstance(tweak.value, dict):
+            return []
+        try:
+            keys = tweak._filter_keys(tweak.value)
+        except Exception:
+            keys = tweak.value
+        return [(loc_label, k) for k in keys]
+    if isinstance(tweak, BasicPlistTweak):
+        if loc_label is None or getattr(tweak, "key", None) is None:
+            return []
+        return [(loc_label, tweak.key)]
+    if isinstance(tweak, FeatureFlagTweak):
+        return [(f"FeatureFlags:{tweak.flag_category}", flag)
+                for flag in getattr(tweak, "flag_names", [])]
+    return []
+
+
+def _effective_gestalt_writes(tweak):
+    """``(location, key)`` pairs one tweak stages into CacheExtra."""
+    if not isinstance(tweak, (MobileGestaltTweak, MobileGestaltPickerTweak,
+                              MobileGestaltMultiTweak,
+                              MobileGestaltCacheDataTweak)):
+        return []
+    loc_label = FileLocation.mga.value + " CacheExtra"
+    key_values = getattr(tweak, "keyValues", None)
+    if isinstance(key_values, dict):
+        return [(loc_label, k) for k in key_values]
+    key = getattr(tweak, "key", None)
+    if key is None:
+        return []
+    subkey = getattr(tweak, "subkey", None)
+    return [(loc_label, f"{key}/{subkey}" if subkey else key)]
+
+
+def find_plist_key_conflicts(items, *, gestalt: bool = False) -> list:
+    """Duplicate shared-plist keys written by >1 enabled tweak.
+
+    Returns one dict per colliding ``(location, key)`` naming the key,
+    the location and every tweak that writes it, in apply order.
+    """
+    writers: dict = {}
+    for tweak_name, tweak in items:
+        if not getattr(tweak, "enabled", False):
+            continue
+        writes = (_effective_gestalt_writes(tweak) if gestalt
+                  else _effective_plist_writes(tweak))
+        for location, key in writes:
+            names = writers.setdefault((location, key), [])
+            label = _tweak_label(tweak_name)
+            if label not in names:
+                names.append(label)
+    return [{"key": key, "location": location, "tweaks": names}
+            for (location, key), names in writers.items()
+            if len(names) > 1]
+
+
+def log_plist_key_conflicts(items, *, gestalt: bool = False) -> list:
+    """Log every duplicate-key collision explicitly (Audit 93).
+
+    A shared plist key written by two enabled tweaks used to resolve
+    silently by apply order. The staged values are NOT changed here —
+    the winner stays exactly who it was (deterministic registry order,
+    insertion-order tie-break outside the registry) — but the collision
+    is named in the log with its key, location and tweaks.
+    """
+    conflicts = find_plist_key_conflicts(items, gestalt=gestalt)
+    for conflict in conflicts:
+        log_warn(
+            "[ApplyOrder] duplicate plist key conflict: "
+            f"key={conflict['key']!r} location={conflict['location']} "
+            f"tweaks={conflict['tweaks']} — last writer in deterministic "
+            "apply order wins (values unchanged; see Audit 93 tie-break).")
+    return conflicts
 
 
 class DeviceManager:
@@ -191,6 +412,11 @@ class DeviceManager:
         # copy it somewhere safe.
         self.last_protective_backup_root: str | None = None
         
+        # Fix Audit 6: human-readable reset skips from the last reset
+        # (empty = nothing skipped). The GUI only shows
+        # "Reset complete!" when this is empty.
+        self.last_reset_skips: list = []
+
         # Wave 10 Apply Journal state for the running operation.
         self.last_apply_journal_path: str | None = None
         self._current_journal = None
@@ -466,10 +692,11 @@ class DeviceManager:
         device = self.data_singleton.current_device
         if device == None:
             return False
-        try:
-            return Version(device.version) >= Version("27.0")
-        except Exception:
-            return False
+        # Fix Audit 45: unreadable version (device gone) reads as
+        # "not partially supported" here — this is a UI query, so it
+        # must never raise; the apply paths fail loudly instead.
+        parsed = try_parse_device_version(device.version)
+        return parsed is not None and parsed >= Version("27.0")
         
     # REAUDIT FIX: the sync wrapper reset_device_pairing() was dead code —
     # zero callers anywhere (grep); the only use is apply_worker.py calling
@@ -500,7 +727,7 @@ class DeviceManager:
         # plist tweaks that never set ``restoring_domains``.
         dev_version = self.get_current_device_version()
         if self.pref_manager.skip_setup and (restoring_domains
-                or (dev_version and Version(dev_version) < Version("27.0"))):
+                or (dev_version and device_version_below(dev_version, "27.0", "skip-setup"))):
             # get the already existing cloud config info
             async with lockdown_session(self.data_singleton.current_device.udid) as ld:
                 async with MobileConfigService(lockdown=ld) as mcs:
@@ -631,6 +858,41 @@ class DeviceManager:
         if not udid:
             raise NuggetException(QCoreApplication.tr("No device selected."))
 
+        # Fix Audit 93 (A): the standalone MobileGestalt apply used to
+        # bypass HotLoad entirely. It now passes the SAME gate as the
+        # main apply: the app-level ``kill_app`` rule (the check the GUI
+        # runs at startup and the CLI runs as ``ensure_not_killed``)
+        # refuses the whole apply, and the per-tweak gate from
+        # ``_apply_tweak_pass`` (hidden-feature membership or a matching
+        # ``rule_for``) skips flagged tweaks. No new gate is invented —
+        # both checks are the existing HotLoad mechanisms, asked with
+        # this device's version/model.
+        hotload = HotLoad(self.pref_manager.settings)
+        hotload_version = version
+        hotload_model = self.get_current_device_model()
+        try:
+            kill_rule = hotload.kill_rule(hotload_version, hotload_model)
+        except Exception:
+            # Mirror the CLI gate: a broken rules lookup must not invent
+            # a block.
+            kill_rule = None
+        if kill_rule:
+            reason = str(kill_rule.get("reason")
+                         or "This version of iOS is currently not supported.")
+            raise NuggetException(QCoreApplication.tr(
+                "MobileGestalt apply blocked by HotLoad safety rules: ")
+                + reason)
+        hotload_hidden_names = hotload.hidden_tweak_names(
+            device_version=hotload_version, device_model=hotload_model)
+
+        def _hotload_blocked(tid) -> bool:
+            return (tid.name in hotload_hidden_names
+                    or hotload.rule_for(
+                        tid, device_version=hotload_version,
+                        device_model=hotload_model) is not None)
+
+        hotload_skipped: list = []
+
         # B20 FIX: figure out WHAT is enabled before touching the MGA base
         # file. The RDAR fix writes a standalone resolution plist — it does
         # not need the MobileGestalt base at all. The old code loaded the MGA
@@ -640,10 +902,15 @@ class DeviceManager:
             MobileGestaltTweak, MobileGestaltPickerTweak,
             MobileGestaltMultiTweak, MobileGestaltCacheDataTweak,
         )
-        has_gestalt = any(
-            isinstance(tw, gestalt_tweak_types) and tw.enabled
-            for tw in tweaks.values()
-        )
+        ordered_tweaks = deterministic_tweak_items()
+        has_gestalt = False
+        for _tid, _tw in ordered_tweaks:
+            if not (isinstance(_tw, gestalt_tweak_types) and _tw.enabled):
+                continue
+            if _hotload_blocked(_tid):
+                hotload_skipped.append(_tid)
+                continue
+            has_gestalt = True
         if len(CustomGestaltTweaks.custom_tweaks) > 0:
             # Wave 10 Package 1: CustomGestaltTweaks is killed as a product
             # surface. Stale in-memory custom keys are ignored here and never
@@ -655,7 +922,20 @@ class DeviceManager:
         # page but this button ignored it. Honor it here too.
         rdar_tweak = tweaks.get(TweakID.RdarFix)
         rdar_on = rdar_tweak is not None and rdar_tweak.enabled
+        if rdar_on and _hotload_blocked(TweakID.RdarFix):
+            hotload_skipped.append(TweakID.RdarFix)
+            rdar_on = False
+        if hotload_skipped:
+            log_warn("[HotLoad] MobileGestalt apply skipped flagged "
+                     "tweaks: " + ", ".join(
+                         sorted(t.name if hasattr(t, "name") else str(t)
+                                for t in hotload_skipped)))
         if not has_gestalt and not rdar_on:
+            if hotload_skipped:
+                raise NuggetException(QCoreApplication.tr(
+                    "MobileGestalt apply blocked by HotLoad safety rules: "
+                    "every enabled MobileGestalt tweak is flagged for "
+                    "this device. Nothing was applied."))
             raise NuggetException(QCoreApplication.tr(
                 "No MobileGestalt tweaks are enabled."))
 
@@ -680,14 +960,45 @@ class DeviceManager:
         except Exception as _je:
             log_warn(f"Apply Journal snapshot (gestalt) failed: {_je}")
             journal_entries = []
+        # Fix Audit 93 (A): HotLoad-blocked tweaks earn the same skipped
+        # journal state the main apply pass records (j_skip) — requested
+        # but never staged.
+        if hotload_skipped:
+            _skipped_names = {
+                t.name if hasattr(t, "name") else str(t)
+                for t in hotload_skipped}
+            for _entry in journal_entries:
+                if _entry.get("tweak_id") in _skipped_names:
+                    _entry["status"] = TW_SKIPPED
+                    _entry["skip_reason"] = "hotload_rule"
+                    _entry["hotload"] = {
+                        "result": "skipped",
+                        "reason": "HotLoad safety rules flagged this "
+                                  "tweak for this device."}
+            update_label(QCoreApplication.tr(
+                "Skipped HotLoad-flagged tweaks: ")
+                + ", ".join(sorted(_skipped_names)))
+
+        # Fix Audit 5: persist the requested entries BEFORE the restore
+        # runs, not only at the staging write below.
+        try:
+            journal.write()
+        except Exception as _je:
+            log_warn(f"Apply Journal pre-apply write (gestalt) failed: {_je}")
 
         update_label(QCoreApplication.tr("Applying MobileGestalt tweaks..."))
         files_to_restore: list[FileToRestore] = []
         try:
             if has_gestalt:
+                # Fix Audit 93 (B): deterministic registry order (the
+                # dict's navigation-dependent order is gone) + explicit
+                # duplicate CacheExtra key logging. HotLoad-flagged
+                # tweaks never stage (Audit 93 A gate above).
+                log_plist_key_conflicts(ordered_tweaks, gestalt=True)
                 gestalt_plist = self._load_gestalt_plist(update_label)
-                for tweak_name in tweaks:
-                    tweak = tweaks[tweak_name]
+                for tweak_name, tweak in ordered_tweaks:
+                    if tweak_name in hotload_skipped:
+                        continue
                     if isinstance(tweak, gestalt_tweak_types):
                         gestalt_plist = tweak.apply_tweak(gestalt_plist)
                 self.concat_file(
@@ -712,6 +1023,8 @@ class DeviceManager:
             try:
                 _keys = journal.attach_files(files_to_restore)
                 for _entry in journal_entries:
+                    if _entry.get("status") == TW_SKIPPED:
+                        continue
                     _entry["status"] = TW_STAGED
                     journal.associate(_entry, _keys)
                 journal.write()
@@ -833,6 +1146,16 @@ class DeviceManager:
             except Exception as e:
                 log_warn(f"Apply Journal begin failed: {e}")
                 self._current_journal = None
+            # Fix Audit 5: snapshot every requested tweak/family into the
+            # journal NOW, before Phase 0 / the tweak pass runs — an abort
+            # during the protective backup must still leave a journal that
+            # names what was asked for (PosterBoard, Templates, Gestalt,
+            # and every enabled tweak).
+            if self._current_journal is not None:
+                try:
+                    self._journal_snapshot_entries(self._current_journal)
+                except Exception as e:
+                    log_warn(f"Apply Journal pre-apply snapshot failed: {e}")
             update_label(QCoreApplication.tr("Applying changes to files..."))
             self._protective_backup_skipped = False
             self._known_backup_encryption = None  # re-established by Phase 0
@@ -914,6 +1237,21 @@ class DeviceManager:
                         if prompt_choice is None:
                             log_warn("Protective backup failed (disk space) and no "
                                      "prompt_choice callback — aborting apply")
+                            # Fix Audit 54: an abort must surface as an
+                            # abort, never as silence the UI/CLI then
+                            # renders as success. The journal (finally
+                            # below) finalizes "aborted"; this alert is
+                            # what the GUI shows and the CLI exit code
+                            # keys off. There is no Cancel button here —
+                            # the apply simply did not run.
+                            final_alert = ApplyAlertMessage(
+                                txt=QCoreApplication.tr(
+                                    "Apply aborted: the protective backup "
+                                    "could not be created (not enough disk "
+                                    "space) and no confirmation prompt is "
+                                    "available. Nothing was applied."),
+                                title=QCoreApplication.tr("Apply Aborted"),
+                                icon=QMessageBox.Warning)
                             return
                         decision = prompt_choice(
                             QCoreApplication.tr("Not Enough Disk Space"),
@@ -928,6 +1266,18 @@ class DeviceManager:
                             pb_from_cache = False
                             self._protective_backup_skipped = True
                         else:
+                            # Fix Audit 54: user-chosen abort — same
+                            # honest non-success alert as the headless
+                            # abort above.
+                            final_alert = ApplyAlertMessage(
+                                txt=QCoreApplication.tr(
+                                    "Apply aborted: the protective backup "
+                                    "could not be created (not enough disk "
+                                    "space), and you chose not to continue "
+                                    "without data protection. Nothing was "
+                                    "applied."),
+                                title=QCoreApplication.tr("Apply Aborted"),
+                                icon=QMessageBox.Warning)
                             return
                     else:
                         raise
@@ -1092,11 +1442,75 @@ class DeviceManager:
                           "operation": operation})
             return [journal.add_entry(entry)]
 
+        # Fix Audit 5: PosterBoard / Templates are file-generating
+        # families driven by queued content, not by an ``enabled`` flag,
+        # so they need explicit descriptors here — otherwise they fell
+        # through to the descriptor-missing fallback (and, because the
+        # snapshot only looked at ``enabled``, were never recorded).
+        if isinstance(tweak, PosterboardTweak):
+            entry = base()
+            entry.update({
+                "id": "posterboard.tendies", "name": name,
+                "family": "PosterBoard", "kind": "special",
+                "operation": {
+                    "tendies": len(getattr(tweak, "tendies", []) or []),
+                    "video": getattr(tweak, "videoFile", None) is not None,
+                    "reset_modes": list(getattr(tweak, "resetModes", []) or []),
+                    "use_configs": bool(getattr(tweak, "use_configs", False)),
+                }})
+            return [journal.add_entry(entry)]
+        if isinstance(tweak, TemplatesTweak):
+            entry = base()
+            entry.update({
+                "id": "templates.files", "name": name,
+                "family": "Templates", "kind": "special",
+                "operation": {
+                    "templates": len(getattr(tweak, "templates", []) or []),
+                }})
+            return [journal.add_entry(entry)]
+
         entry = base()
         entry.update({"id": f"tweakid.{name.lower()}", "name": name,
                       "family": type(tweak).__name__, "kind": "special",
                       "descriptor_missing": True, "operation": {}})
         return [journal.add_entry(entry)]
+
+    def _journal_snapshot_entries(self, journal) -> dict:
+        """Record one journal entry per requested tweak, BEFORE apply runs.
+
+        Fix Audit 5: the snapshot used to live only inside the tweak pass
+        (after Phase 0) and only looked at ``enabled`` — PosterBoard and
+        Templates are content-driven (their ``enabled`` flag is never
+        set), so they were never journaled at all, and an abort during
+        the protective backup left a journal with zero tweaks. This runs
+        right after ``begin_journal`` and again (as a merge) inside the
+        tweak pass, so tweaks force-enabled later (HotLoad daemons) are
+        added while everything queued at apply-start is already on disk.
+        """
+        j_entries: dict = {}
+        for entry in journal.data["tweaks"]:
+            _tid = entry.get("tweak_id")
+            if _tid:
+                j_entries.setdefault(_tid, []).append(entry)
+        for _jname, _jtweak in tweaks.items():
+            _jkey = _jname.name if hasattr(_jname, "name") else str(_jname)
+            if _jkey in j_entries:
+                continue
+            if _jname in (TweakID.PosterBoard, TweakID.Templates):
+                try:
+                    if _jtweak.is_empty():
+                        continue
+                except Exception:
+                    pass
+            elif not getattr(_jtweak, "enabled", False):
+                continue
+            j_entries[_jkey] = self._journal_describe(
+                journal, _jname, _jtweak)
+        try:
+            journal.write()
+        except Exception as e:
+            log_warn(f"Apply Journal snapshot write failed: {e}")
+        return j_entries
 
     def _journal_attach(self, journal, side: dict) -> None:
         """Attach staged files to entries and resolve pre-restore states.
@@ -1194,7 +1608,7 @@ class DeviceManager:
 
         When the AFC media channel carries the bulk photo trees, those trees are
         NOT in the backup — the media store is their only copy once the device
-        is wiped. An unverified store (never pulled, interrupted pull, cancelled
+        is wiped. An unconfirmed store (never pulled, interrupted pull, cancelled
         parallel task) must stop the apply here, while the device is still
         intact, instead of letting Phase 5 push a fragment and report success.
         """
@@ -1523,8 +1937,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             update_label(QCoreApplication.tr("PosterBoard database backed up successfully."))
         except Exception as e:
             log_error(f"Failed to back up PosterBoard database: {e}\n{traceback.format_exc()}")
-            print(f"Failed to back up PosterBoard database: {e}")
-            print(traceback.format_exc())
             if _is_device_locked_error(e):
                 update_label(QCoreApplication.tr("Warning: could not back up PosterBoard database — device is locked. Please unlock your device and try again."))
             else:
@@ -1556,8 +1968,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             try:
                 sq.staged = False
                 sq._lgd_base = None
-            except Exception:
-                pass
+            except Exception as exc:
+                # Fix Audit 84: was a silent `except: pass` — log it;
+                # behavior unchanged (arming continues unarmed).
+                log_warn(f"Lock Screen Keys (Test): could not reset the "
+                         f"tweak's stale state before arming: {exc}")
         if sq is None or not getattr(sq, "enabled", False):
             return
         udid = self.get_current_device_udid()
@@ -1663,8 +2078,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 lt._lgd_gp_base = None
                 lt._lgd_swiftui_base = None
                 lt._lgd_springboard_base = None
-            except Exception:
-                pass
+            except Exception as exc:
+                # Fix Audit 84: was a silent `except: pass` — log it;
+                # behavior unchanged (arming continues unarmed).
+                log_warn(f"Liquid Glass (Latest): could not reset the "
+                         f"tweak's stale state before arming: {exc}")
         if lt is None or not getattr(lt, "enabled", False):
             return
         udid = self.get_current_device_udid()
@@ -1842,11 +2260,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
     def lgd_rollback(self, which: str, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
         """Roll back one Liquid Glass Disable (Beta 1) route from the UI.
 
-        ``which`` is "g2" (restore the captured managed overlay with only
-        our candidate key removed — an empty overlay only when no original
-        was ever captured) or "g1" (write back the device original saved
-        before the first apply). On 23G82/23G83 both run through the
-        full-backup route; elsewhere through plain sparse delivery.
+        ``which`` is "squair" (from a fresh device capture, remove
+        exactly the two Squair keys from .GlobalPreferences.plist) or
+        "latest" (from fresh captures of the three payload files,
+        remove exactly this payload's keys from each). On 23G82/23G83
+        both run through the full-backup route; elsewhere through plain
+        sparse delivery. Any other value is refused as unknown.
         Runs through the same start_restore machinery as every other
         apply/reset.
         """
@@ -2089,18 +2508,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         j_current = None
         if journal is not None:
             try:
-                for _jname, _jtweak in tweaks.items():
-                    if not getattr(_jtweak, "enabled", False):
-                        continue
-                    if _jname in (TweakID.PosterBoard, TweakID.Templates):
-                        try:
-                            if _jtweak.is_empty():
-                                continue
-                        except Exception:
-                            pass
-                    _jkey = _jname.name if hasattr(_jname, "name") else str(_jname)
-                    j_entries[_jkey] = self._journal_describe(
-                        journal, _jname, _jtweak)
+                # Merge with the pre-apply snapshot taken in
+                # _apply_changes (Fix Audit 5): entries already on the
+                # journal are kept, tweaks force-enabled since then
+                # (HotLoad daemons) are added.
+                j_entries = self._journal_snapshot_entries(journal)
             except Exception as e:
                 log_warn(f"Apply Journal snapshot failed: {e}")
                 journal = None
@@ -2161,8 +2573,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 update_label, hotload=hotload,
                 hotload_hidden_names=hotload_hidden_names)
             # set the plist keys
-            for tweak_name in tweaks:
-                tweak = tweaks[tweak_name]
+            # Fix Audit 93 (B): deterministic registry order instead of
+            # the tweaks dict's navigation-dependent insertion order,
+            # with duplicate shared-plist keys logged explicitly (the
+            # staged values themselves are unchanged — see the
+            # deterministic_tweak_items tie-break note).
+            _ordered_tweaks = deterministic_tweak_items()
+            log_plist_key_conflicts(_ordered_tweaks)
+            for tweak_name, tweak in _ordered_tweaks:
                 # Backend pre-loop gate (Wave 10): an enabled tweak that is
                 # removed, version/device-class locked, or MobileGestalt-
                 # backed on a locked/unknown device is skipped before any
@@ -2316,7 +2734,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     if br_files:
                         files_to_restore.extend(br_files)
                 elif isinstance(tweak, StatusBarTweak):
-                    if Version(self.get_current_device_version()) >= Version("27.0"):
+                    if device_version_at_least(self.get_current_device_version(), "27.0", "apply"):
                         # iOS 27: the classic binary statusBarOverrides file is
                         # dead and the Speakeasy feature flag cannot be written,
                         # but SpringBoard unarchives the carrier name itself
@@ -2445,6 +2863,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     update_label(QCoreApplication.tr(
                         "Note: MobileGestalt tweaks were skipped (not supported on this iOS version)."))
                 else:
+                    log_plist_key_conflicts(_ordered_tweaks, gestalt=True)
                     gestalt_plist = self._load_gestalt_plist(update_label)
                     for gtweak in gestalt_tweaks:
                         gestalt_plist = gtweak.apply_tweak(gestalt_plist)
@@ -2510,7 +2929,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # iOS 26 keeps the upstream Nugget behavior: overlay only.
             gp_tweaks = basic_plists.get(FileLocation.globalPreferences)
             if (gp_tweaks
-                    and Version(self.get_current_device_version()) >= Version("27.0")):
+                    and device_version_at_least(self.get_current_device_version(), "27.0", "apply")):
                 gp_base = getattr(self, "_gp_base_plist", None)
                 if isinstance(gp_base, dict):
                     merged_gp = dict(gp_base)
@@ -2550,7 +2969,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
 
             # Check if backup encryption is enabled and handle it
             backup_password = ""
-            if Version(self.get_current_device_version()) >= Version("27.0"):
+            if device_version_at_least(self.get_current_device_version(), "27.0", "apply"):
                 # Phase 0's protective backup already established the
                 # encryption state (and may have captured a password). Reusing
                 # it avoids a whole extra lockdown session on every apply; only
@@ -2719,8 +3138,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     try:
                         tmp_dir.cleanup()
                     except Exception as e:
-                        # ignore clean up errors
-                        print(str(e))
+                        # ignore clean up errors (logged, not printed)
+                        log_warn(f"Temp dir cleanup failed: {e}")
 
     ## RESETTING TWEAKS
     def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
@@ -2777,6 +3196,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             uses_domains = False
             _page_starts: list = []
             _null_starts: list = []
+            # Fix Audit 6: every file/daemon the reset skips is recorded
+            # here (what + why) and surfaced in the result alert and the
+            # journal — never swallowed silently. ``last_reset_skips``
+            # is the same list object so the GUI can check it after the
+            # run ("Reset complete!" only when it stays empty).
+            reset_skips: list = []
+            page_skip_reasons: dict = {}
+            self.last_reset_skips = reset_skips
 
             # plain if-chains, not match: the page set is a long, stable list
             # and a flat chain keeps the diff readable when pages are added
@@ -2786,7 +3213,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 if page == Page.StatusBar:
                     ## STATUS BAR
                     dev_version = self.get_current_device_version()
-                    if dev_version and Version(dev_version) >= Version("27.0"):
+                    if dev_version and device_version_at_least(dev_version, "27.0", "reset"):
                         # iOS 27: SpringBoard reads the carrier name from
                         # StatusBarOverrides.archive. Writing a valid archive
                         # with no cellular entries is the reset -- SpringBoard
@@ -2845,7 +3272,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     # it on iOS 26 made reset MORE destructive than apply —
                     # wiping a live user file the apply never touched.
                     dev_version = self.get_current_device_version()
-                    if dev_version and Version(dev_version) >= Version("27.0"):
+                    if dev_version and device_version_at_least(dev_version, "27.0", "reset"):
                         # B10 FIX: on iOS 27 the HomeDomain copy holds the
                         # MERGED plist (user base + tweak keys). Nulling it
                         # would wipe the user's language/region/keyboard, so
@@ -2865,6 +3292,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                             log_warn("iOS 27 HomeDomain .GlobalPreferences.plist reset skipped: "
                                      "no pristine base on record — leaving the file untouched "
                                      "rather than wiping user preferences.")
+                            # Fix Audit 6: report the skip, not just log it.
+                            reset_skips.append(
+                                f"{page.getPageName()}: "
+                                f"{FileLocation.globalPreferencesHomeDomain.value} "
+                                "skipped — no pristine base on record, so the "
+                                "file was left untouched rather than wiped.")
+                            page_skip_reasons[page] = "no_pristine_gp_base"
                     files_to_null.append(FileLocation.appStore.value)
                     files_to_null.append(FileLocation.backboardd.value)
                     files_to_null.append(FileLocation.coreMotion.value)
@@ -2909,7 +3343,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         files_to_null.append(_app_loc.value)
                         lg_v4_null_paths.add(_app_loc.value)
                     dev_version = self.get_current_device_version()
-                    if dev_version and Version(dev_version) >= Version("27.0"):
+                    if dev_version and device_version_at_least(dev_version, "27.0", "reset"):
                         # Same B10 rule as InternalOptions above: the iOS 27
                         # HomeDomain copy is a merged user+tweak plist — restore
                         # the pristine base, never null it.
@@ -2925,6 +3359,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         else:
                             log_warn("iOS 27 HomeDomain .GlobalPreferences.plist reset skipped: "
                                      "no pristine base on record — leaving the file untouched.")
+                            # Fix Audit 6: report the skip, not just log it.
+                            reset_skips.append(
+                                f"{page.getPageName()}: "
+                                f"{FileLocation.globalPreferencesHomeDomain.value} "
+                                "skipped — no pristine base on record, so the "
+                                "file was left untouched rather than wiped.")
+                            page_skip_reasons[page] = "no_pristine_gp_base"
                 elif page == Page.RiskyTweaks:
                     ## RISKY (B10 FIX) — DisableOTA + CustomResolution. Both
                     ## are full-file writes, so nulling returns them to stock.
@@ -2953,6 +3394,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         uses_domains = True
                     except NuggetException as e:
                         log_warn(f"MobileGestalt reset skipped: {e}")
+                        # Fix Audit 6: report the skip, not just log it.
+                        reset_skips.append(
+                            f"{page.getPageName()}: MobileGestalt file "
+                            f"skipped — {e}")
+                        page_skip_reasons[page] = "gestalt_base_unavailable"
 
             _direct_total = len(files_to_restore)
 
@@ -3006,6 +3452,18 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     entry["status"] = TW_STAGED if page_keys else TW_FAILED
                     if not page_keys:
                         entry["error"] = "no_file_staged"
+                    # Fix Audit 6: name the skip on the journal entry too.
+                    if _page in page_skip_reasons:
+                        entry["skip_reason"] = page_skip_reasons[_page]
+                        if not page_keys:
+                            entry["error"] = page_skip_reasons[_page]
+                    elif not page_keys:
+                        # A page that staged nothing is a skip the user
+                        # must hear about (Fix Audit 6 catch-all).
+                        reset_skips.append(
+                            f"{_page.getPageName()}: no reset file was "
+                            "staged for this page, so nothing was reset "
+                            "for it.")
                 try:
                     journal.write()
                 except Exception as e:
@@ -3014,6 +3472,19 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # restore to the device
             final_alert = await self.start_restore(files_to_restore, update_label,
                                                    prompt_choice=prompt_choice)
+            # Fix Audit 6: skipped files ride the result alert itself —
+            # a bare "Reset complete!" is only honest when nothing was
+            # skipped (the GUI checks ``last_reset_skips`` the same way).
+            if reset_skips and isinstance(final_alert, ApplyAlertMessage):
+                skip_block = (QCoreApplication.tr(
+                    "Reset finished, but some items were skipped:")
+                    + "\n" + "\n".join(f"- {s}" for s in reset_skips))
+                final_alert.txt = (f"{final_alert.txt}\n\n{skip_block}"
+                                   if final_alert.txt else skip_block)
+                final_alert.detailed_txt = (
+                    ((final_alert.detailed_txt + "\n\n")
+                     if final_alert.detailed_txt else "")
+                    + "SKIPPED:\n" + "\n".join(reset_skips))
             if journal is not None:
                 for _entry in journal.data["tweaks"]:
                     if _entry["status"] == TW_STAGED:

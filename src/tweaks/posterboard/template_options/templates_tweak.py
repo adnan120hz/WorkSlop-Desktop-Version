@@ -1,6 +1,9 @@
+import logging
 import os
 import traceback
 import uuid
+
+logger = logging.getLogger("WorkSlop.templates_tweak")
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QCoreApplication
@@ -15,6 +18,9 @@ class TemplatesTweak(Tweak):
     def __init__(self):
         super().__init__(key=None)
         self.templates: list[TemplateFile] = []
+        # per-file record of templates skipped by the last apply_tweak()
+        # (name, error) — a corrupt template must never read as applied
+        self.skipped_templates: list = []
 
     def uses_domains(self):
         # TODO: figure out which templates use sparse restore
@@ -31,7 +37,7 @@ class TemplatesTweak(Tweak):
             new_template = TemplateFile(path=file, device_version=version)
             self.templates.append(new_template)
         except Exception as e:
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             detailsBox = QtWidgets.QMessageBox()
             detailsBox.setIcon(QtWidgets.QMessageBox.Critical)
             detailsBox.setWindowTitle(QCoreApplication.tr("Error"))
@@ -80,7 +86,7 @@ class TemplatesTweak(Tweak):
                             domain=restore_domain
                         ))
                     except IOError:
-                        print(f"Failed to open file: {folder}") # TODO: Add QDebug equivalent
+                        logger.error(f"Failed to open file: {folder}")
                 else:
                     self.recursive_add(old_bundle, domain, files_to_restore, os.path.join(curr_path, folder), f"{restore_path}/{folder}", isAdding)
             else:
@@ -98,15 +104,31 @@ class TemplatesTweak(Tweak):
         if len(self.templates) == 0:
             return
         update_label("Extracting templates...")
+        self.skipped_templates = []
         # extract templates
         for template in self.templates:
             # ignore PosterBoard templates since that is handled in PosterBoard tweaks
             if template.domain != 'com.apple.PosterBoard' and template.domain != 'AppDomain-com.apple.PosterBoard':
                 temp_dir = os.path.join(output_dir, str(uuid.uuid4()))
                 os.makedirs(temp_dir)
-                template.extract(output_dir=temp_dir)
-                domain = template.domain
-                if template.change_bundle_id:
-                    domain = f"AppDomain-{template.bundle_id}"
-                self.recursive_add(old_bundle=template.domain, domain=domain, files_to_restore=files_to_restore, curr_path=temp_dir)
+                # one corrupt .batter must not kill the whole apply: stage
+                # this template's files separately, skip + report it per
+                # file on failure, and keep going with the valid ones
+                staged: list[FileToRestore] = []
+                try:
+                    template.extract(output_dir=temp_dir)
+                    domain = template.domain
+                    if template.change_bundle_id:
+                        domain = f"AppDomain-{template.bundle_id}"
+                    self.recursive_add(old_bundle=template.domain, domain=domain, files_to_restore=staged, curr_path=temp_dir)
+                except Exception as e:
+                    template_name = getattr(template, "name", None) or getattr(template, "path", "unknown template")
+                    self.skipped_templates.append((template_name, str(e)))
+                    logger.error(f"Skipping corrupt template {template_name}: {e}")
+                    update_label(QCoreApplication.tr("Skipped corrupt template: {0}").format(template_name))
+                    continue
+                files_to_restore.extend(staged)
+        if self.skipped_templates:
+            skipped_names = ", ".join(name for name, _ in self.skipped_templates)
+            update_label(QCoreApplication.tr("Skipped corrupt template(s): {0}").format(skipped_names))
         update_label("Adding other tweaks...")

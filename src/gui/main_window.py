@@ -60,6 +60,7 @@ from src.gui.main_window_mixins import (
     DeviceBarMixin,
     NavigationMixin,
     SettingsMixin,
+    device_operations_running,
 )
 
 # Classic (Nugget UI) chrome — device bar, sidebar, home toolbar — uses
@@ -943,7 +944,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         css = t("global")
         sheet = css + ("\n" + base if base.strip() else "")
         store[key] = (base, sheet)
-        widget.setStyleSheet(sheet)
+        # Audit 91: re-setting an identical sheet re-polishes the page's
+        # whole subtree for nothing (the plain re-show path, where the
+        # theme has not changed). Skip the call in that case — the page
+        # ends up wearing exactly the same sheet.
+        if sheet != current:
+            widget.setStyleSheet(sheet)
 
     def _retheme_visible_page(self):
         """Retheme + re-layer the global rules on the visible iOS page.
@@ -1024,20 +1030,16 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         operation short right in the middle of a Manifest.db write, leaving
         the backup corrupted (the reported MBErrorDomain/205 fallout).
         """
-        terminating = []
-        if getattr(self, "apply_in_progress", False):
-            terminating.append("apply/reset")
-        if getattr(self, "_cache_restore_in_progress", False):
-            terminating.append("data restore")
-        pt_worker = getattr(self._ios_page_objs.get("ios_passthemes"),
+        # Fix Audit 73: one shared guard list (also used by the Load
+        # Preset restart) — it now covers Gestalt apply and full
+        # restore too, which closeEvent used to miss.
+        terminating = device_operations_running(self)
+        page_objs = getattr(self, "_ios_page_objs", None) or {}
+        pt_worker = getattr(page_objs.get("ios_passthemes"),
                             "_worker", None)
-        if _still_running(pt_worker):
-            terminating.append("passcode theme write")
         pairing_worker = getattr(
-            self._ios_page_objs.get("ios_settings"),
+            page_objs.get("ios_settings"),
             "_reset_pairing_thread", None)
-        if _still_running(pairing_worker):
-            terminating.append("pairing reset")
         if terminating:
             reply = QtWidgets.QMessageBox.question(
                 self,
@@ -1060,6 +1062,8 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             for worker in (
                 getattr(self, "worker_thread", None),
                 getattr(self, "_cache_restore_thread", None),
+                getattr(self, "_gestalt_apply_thread", None),
+                getattr(self, "_full_restore_thread", None),
                 pairing_worker,
                 pt_worker,
             ):

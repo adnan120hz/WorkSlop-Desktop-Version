@@ -1,6 +1,9 @@
+import logging
 import os
 import uuid
 import zipfile
+
+logger = logging.getLogger("WorkSlop.template_file")
 import fnmatch
 
 from json import load
@@ -15,7 +18,7 @@ from .template_options import OptionType, TemplateOption, ReplaceOption, RemoveO
 from src.exceptions.posterboard_exceptions import PBTemplateException
 from src.utils.zip_safe import safe_extractall, safe_join
 from src.qt.custom_elements.resizable_image_label import ResizableImageLabel
-from src.devicemanagement.constants import Version
+from src.devicemanagement.constants import Version, _parse_version
 
 CURRENT_FORMAT = 2
 
@@ -85,11 +88,21 @@ class TemplateFile(TendieFile):
                     self.min_version = data['min_version']
                     # check the device version
                     # TODO: need to make this check also happen when connected device is updated
-                    if Version(self.min_version) > Version(device_version):
+                    # device_version can be missing (no device connected yet):
+                    # Version(None) would crash, so treat an unknown device
+                    # version explicitly — the gate cannot be checked, say
+                    # so, and load the template instead of dying here.
+                    parsed_device_version = _parse_version(device_version)
+                    if parsed_device_version is None:
+                        logger.warning(f"Template {path}: device version unknown, min_version {self.min_version} not checked.")
+                    elif Version(self.min_version) > parsed_device_version:
                         raise PBTemplateException(path, QtCore.QCoreApplication.tr("This template requires iOS {0}.\nYour iOS version (iOS {1}) is too outdated!").format(self.min_version, device_version))
                 if 'max_version' in data:
                     self.max_version = data['max_version']
-                    if Version(self.max_version) < Version(device_version):
+                    parsed_device_version = _parse_version(device_version)
+                    if parsed_device_version is None:
+                        logger.warning(f"Template {path}: device version unknown, max_version {self.max_version} not checked.")
+                    elif Version(self.max_version) < parsed_device_version:
                         raise PBTemplateException(path, QtCore.QCoreApplication.tr("This template requires iOS {0}.\nYour iOS version (iOS {1}) is too new!").format(self.max_version, device_version))
 
                 # load the previews
@@ -160,7 +173,7 @@ class TemplateFile(TendieFile):
             try:
                 rmtree(self.tmp_dir.name)
             except Exception as e:
-                print(f"Error when removing temp dir: {str(e)}")
+                logger.error(f"Error when removing temp dir: {str(e)}")
 
     def extract(self, output_dir: str):
         zip_output = os.path.join(output_dir, str(uuid.uuid4()))

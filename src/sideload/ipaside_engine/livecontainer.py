@@ -37,7 +37,7 @@ from typing import Any, Callable
 
 import requests
 
-from . import apps, ipa as ipa_module, lockdown, provision, signing
+from . import apps, ipa as ipa_module, lockdown, paths, provision, signing
 from src.utils.zip_safe import safe_extractall as _safe_extractall
 from .errors import EngineError
 
@@ -76,7 +76,10 @@ SIDESTORE_DOCUMENTS = "/Documents/SideStore/Documents"
 PAIRING_NAME = "ALTPairingFile.mobiledevicepairing"
 
 #: Where usbmux keeps the pairing records this PC has for its devices.
-_LOCKDOWN_DIR = Path(r"C:\ProgramData\Apple\Lockdown")
+#: Fix Audit 46: resolved per-OS by the single shared helper in
+#: :mod:`ipaside_engine.paths` — the same helper ``pairing`` uses, so
+#: the two modules can never point at different folders again.
+_LOCKDOWN_DIR = paths.apple_lockdown_dir()
 
 #: The SideStore bundled inside the +SideStore build, and the files it reads on first
 #: launch to import a signing certificate without the user having to sign in. Named and
