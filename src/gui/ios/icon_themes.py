@@ -1,6 +1,11 @@
 # FROZEN 2026-10-09 (user order): Icon Themes menu is device-proven.
 # Do not change behavior without an explicit order from the user;
 # verified by tools/test_icon_themes_frozen.py.
+# Change log (explicit user order, 2026-10-09 evening): the iOS 18 icon
+# gallery is now two side-by-side tables — Light and Dark — each with
+# its own Add All (previously one table + a Light-only Add All). The
+# WebClip payload builder, target paths, and icon delivery are
+# unchanged; the hash manifest was updated in the same commit.
 import os
 
 from PySide6.QtCore import Qt, QCoreApplication, QSize
@@ -25,14 +30,16 @@ def _tr(text: str) -> str:
     return QCoreApplication.translate("Nugget", text)
 
 
-# iOS 18 stock icon gallery (catwithabaloon pack), shown as a table
-# inside this page. The same curated set the mobile app ships: 51
-# apps, Light artwork for all of them, Dark artwork for 50 (the pack
-# ships no Dark Shortcuts). Picking a row's Light/Dark button — or
-# Add All — adds that artwork to Icon Themes as a normal IconTheme,
-# so it rides the existing WebClip payload builder
-# (src/tweaks/icon_themes/icon_themes_tweak.py) unchanged: the target
-# column shows the exact HomeDomain restore path the builder writes,
+# iOS 18 stock icon gallery (catwithabaloon pack), shown as two
+# side-by-side tables inside this page: Light and Dark. The same
+# curated set the mobile app ships: 51 apps, Light artwork for all of
+# them, Dark artwork for 50 (the pack ships no Dark Shortcuts, whose
+# Dark row therefore offers no artwork to add). Picking a row's Add
+# button — or a table's Add All — adds that artwork to Icon Themes as
+# a normal IconTheme, so it rides the existing WebClip payload
+# builder (src/tweaks/icon_themes/icon_themes_tweak.py) unchanged:
+# the target column shows the exact HomeDomain restore path the
+# builder writes,
 # ``Library/WebClips/WorkSlop_<bundleID>,<displayName>.webclip/icon.png``.
 #
 # Icon artwork: "iOS 18 App Icons by catwithabaloon"
@@ -214,28 +221,45 @@ class IOSIconThemesPage(QWidget):
         self.content_layout.addWidget(ios18_header)
 
         ios18_hint = QLabel(_tr(
-            "Stock iOS 18 app icons from the catwithabaloon icon pack. "
-            "Use Light or Dark on a row to add that artwork to Icon "
-            "Themes, or Add All to add every app that is not in Icon "
-            "Themes yet (Light artwork); it is delivered as a WebClip "
-            "to the target shown, exactly like any other icon theme."))
+            "Stock iOS 18 app icons from the catwithabaloon icon pack, "
+            "in two tables: Light and Dark. Use Add on a row to add "
+            "that artwork to Icon Themes, or a table's Add All to add "
+            "every app of that artwork that is not in Icon Themes "
+            "yet; it is delivered as a WebClip to the target shown, "
+            "exactly like any other icon theme."))
         ios18_hint.setWordWrap(True)
         self._ios18_hint = ios18_hint
         self.content_layout.addWidget(ios18_hint)
-
-        add_all_btn = QPushButton(_tr("Add All"))
-        add_all_btn.setObjectName("ios18AddAll")
-        add_all_btn.setCursor(Qt.PointingHandCursor)
-        add_all_btn.clicked.connect(self._use_all_icons)
-        self._ios18_add_all_btn = add_all_btn
-        self.content_layout.addWidget(add_all_btn)
 
         self._ios18_status = QLabel("")
         self._ios18_status.setWordWrap(True)
         self.content_layout.addWidget(self._ios18_status)
 
-        self._ios18_table = self._build_ios18_table()
-        self.content_layout.addWidget(self._ios18_table)
+        # Two side-by-side tables (Light | Dark), each with its own
+        # Add All (user order 2026-10-09). The tables only present the
+        # pack; adding rides the unchanged WebClip payload builder.
+        self._ios18_add_all_buttons: list[QPushButton] = []
+        tables_row = QHBoxLayout()
+        tables_row.setSpacing(12)
+        self._ios18_tables: list[QTableWidget] = []
+        for dark in (False, True):
+            col = QVBoxLayout()
+            col.setSpacing(8)
+            variant = _tr("Dark") if dark else _tr("Light")
+            add_all_btn = QPushButton(_tr("Add All {0}").format(variant))
+            add_all_btn.setObjectName(
+                "ios18AddAllDark" if dark else "ios18AddAllLight")
+            add_all_btn.setCursor(Qt.PointingHandCursor)
+            add_all_btn.clicked.connect(
+                lambda _=False, d=dark: self._use_all_icons(d))
+            self._ios18_add_all_buttons.append(add_all_btn)
+            col.addWidget(add_all_btn)
+            table = self._build_ios18_table(dark=dark)
+            self._ios18_tables.append(table)
+            col.addWidget(table)
+            tables_row.addLayout(col, 1)
+        self._ios18_table = self._ios18_tables[0]
+        self.content_layout.addLayout(tables_row)
 
         ios18_credit = QLabel(_tr(
             "Icon artwork: iOS 18 App Icons by catwithabaloon "
@@ -250,12 +274,12 @@ class IOSIconThemesPage(QWidget):
         self.refresh_themes()
 
     # -- iOS 18 stock icon table ----------------------------------------
-    def _build_ios18_table(self) -> QTableWidget:
+    def _build_ios18_table(self, dark: bool) -> QTableWidget:
         tweak = tweaks[TweakID.IconThemes]
-        table = QTableWidget(len(IOS18_ICONS), 6)
+        table = QTableWidget(len(IOS18_ICONS), 4)
         table.setObjectName("ios18IconTable")
         table.setHorizontalHeaderLabels([
-            _tr("Light"), _tr("Dark"), _tr("App"), _tr("Bundle ID"),
+            _tr("Dark") if dark else _tr("Light"), _tr("App"),
             _tr("Target on device"), _tr("Add"),
         ])
         table.verticalHeader().setVisible(False)
@@ -264,25 +288,20 @@ class IOSIconThemesPage(QWidget):
             QTableWidget.SelectionBehavior.SelectRows)
         header = table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         table.setColumnWidth(0, 64)
-        table.setColumnWidth(1, 64)
-        table.setColumnWidth(5, 132)
+        table.setColumnWidth(3, 84)
 
         for row, (name, bundle_id, slug) in enumerate(IOS18_ICONS):
             table.setRowHeight(row, 56)
-            table.setCellWidget(row, 0, self._icon_cell(slug, dark=False))
-            table.setCellWidget(row, 1, self._icon_cell(slug, dark=True))
-            table.setItem(row, 2, QTableWidgetItem(name))
-            table.setItem(row, 3, QTableWidgetItem(bundle_id))
-            table.setItem(row, 4, QTableWidgetItem(
+            table.setCellWidget(row, 0, self._icon_cell(slug, dark=dark))
+            table.setItem(row, 1, QTableWidgetItem(name))
+            table.setItem(row, 2, QTableWidgetItem(
                 webclip_target(bundle_id, name, tweak)))
             table.setCellWidget(
-                row, 5, self._add_cell(name, bundle_id, slug))
+                row, 3, self._add_cell(name, bundle_id, slug, dark))
 
         # The page itself scrolls, so the table shows every row and
         # never grows its own vertical scrollbar.
@@ -320,23 +339,23 @@ class IOSIconThemesPage(QWidget):
             lbl.setPixmap(pix)
         return lbl
 
-    def _add_cell(self, name: str, bundle_id: str, slug: str) -> QWidget:
+    def _add_cell(self, name: str, bundle_id: str, slug: str,
+                  dark: bool) -> QWidget:
         box = QWidget()
         row = QHBoxLayout(box)
         row.setContentsMargins(4, 4, 4, 4)
         row.setSpacing(6)
-        for label, dark in ((_tr("Light"), False), (_tr("Dark"), True)):
-            btn = QPushButton(label)
-            btn.setObjectName("ios18AddBtn")
-            btn.setCursor(Qt.PointingHandCursor)
-            available = os.path.isfile(icon_asset_path(slug, dark))
-            btn.setEnabled(available)
-            if available:
-                btn.clicked.connect(
-                    lambda _=False, n=name, b=bundle_id, s=slug, d=dark:
-                    self._use_icon(n, b, s, d))
-            row.addWidget(btn)
-            self._ios18_add_buttons.append(btn)
+        btn = QPushButton(_tr("Add"))
+        btn.setObjectName("ios18AddBtn")
+        btn.setCursor(Qt.PointingHandCursor)
+        available = os.path.isfile(icon_asset_path(slug, dark))
+        btn.setEnabled(available)
+        if available:
+            btn.clicked.connect(
+                lambda _=False, n=name, b=bundle_id, s=slug, d=dark:
+                self._use_icon(n, b, s, d))
+        row.addWidget(btn)
+        self._ios18_add_buttons.append(btn)
         return box
 
     def _use_icon(self, name: str, bundle_id: str, slug: str, dark: bool):
@@ -359,7 +378,7 @@ class IOSIconThemesPage(QWidget):
             "Added {0} ({1}) to Icon Themes.").format(
                 name, _tr("Dark") if dark else _tr("Light")))
 
-    def _use_all_icons(self):
+    def _use_all_icons(self, dark: bool):
         tweak = tweaks[TweakID.IconThemes]
         existing = {t.bundle_id for t in tweak.themes}
         added = 0
@@ -367,7 +386,7 @@ class IOSIconThemesPage(QWidget):
         for name, bundle_id, slug in IOS18_ICONS:
             if bundle_id in existing:
                 continue
-            path = icon_asset_path(slug, dark=False)
+            path = icon_asset_path(slug, dark=dark)
             if not os.path.isfile(path):
                 continue
             theme = IconTheme(bundle_id=bundle_id, display_name=name,
@@ -379,15 +398,16 @@ class IOSIconThemesPage(QWidget):
         if added:
             tweak.set_enabled(not tweak.is_empty())
             self.refresh_themes()
+        variant = _tr("Dark") if dark else _tr("Light")
         if added and store_failed:
             self._ios18_status.setText(_tr(
-                "Added {0} iOS 18 icons (Light) to Icon Themes; {1} "
+                "Added {0} iOS 18 icons ({1}) to Icon Themes; {2} "
                 "could not be stored (those themes may not apply "
-                "reliably).").format(added, store_failed))
+                "reliably).").format(added, variant, store_failed))
         elif added:
             self._ios18_status.setText(_tr(
-                "Added {0} iOS 18 icons (Light) to Icon Themes.").format(
-                    added))
+                "Added {0} iOS 18 icons ({1}) to Icon Themes.").format(
+                    added, variant))
         elif store_failed:
             self._ios18_status.setText(_tr(
                 "Nothing new was added, and {0} icons could not be "
@@ -395,7 +415,8 @@ class IOSIconThemesPage(QWidget):
                     store_failed))
         else:
             self._ios18_status.setText(_tr(
-                "Every iOS 18 icon is already in Icon Themes."))
+                "Every iOS 18 icon ({0}) is already in Icon "
+                "Themes.").format(variant))
 
     def _reset_themes(self):
         reply = QMessageBox.question(
@@ -477,50 +498,52 @@ class IOSIconThemesPage(QWidget):
             self._ios18_hint.setStyleSheet(
                 f"color: {c.text_secondary}; font-size: 13px;"
                 " background-color: transparent;")
-            self._ios18_add_all_btn.setStyleSheet(f"""
-                QPushButton#ios18AddAll {{
-                    background-color: {c.bg_secondary};
-                    border: 1px solid {c.border};
-                    border-radius: 12px;
-                    color: {c.accent};
-                    font-size: 14px;
-                    font-weight: 600;
-                    padding: 12px;
-                }}
-                QPushButton#ios18AddAll:hover {{ background-color: {c.surface_hover}; }}
-            """)
+            for add_all_btn in self._ios18_add_all_buttons:
+                add_all_btn.setStyleSheet(f"""
+                    QPushButton#ios18AddAllLight, QPushButton#ios18AddAllDark {{
+                        background-color: {c.bg_secondary};
+                        border: 1px solid {c.border};
+                        border-radius: 12px;
+                        color: {c.accent};
+                        font-size: 14px;
+                        font-weight: 600;
+                        padding: 12px;
+                    }}
+                    QPushButton#ios18AddAllLight:hover, QPushButton#ios18AddAllDark:hover {{ background-color: {c.surface_hover}; }}
+                """)
             self._ios18_status.setStyleSheet(
                 f"color: {c.accent}; font-size: 13px;"
                 " background-color: transparent;")
             self._ios18_credit.setStyleSheet(
                 f"color: {c.text_secondary}; font-size: 12px;"
                 " background-color: transparent;")
-            self._ios18_table.setStyleSheet(f"""
-                QTableWidget#ios18IconTable {{
-                    background-color: {c.bg_secondary};
-                    border: 1px solid {c.border};
-                    border-radius: 12px;
-                    gridline-color: {c.divider};
-                    color: {c.text_primary};
-                    font-size: 13px;
-                }}
-                QTableWidget#ios18IconTable::item {{
-                    padding: 4px 8px;
-                    border: none;
-                }}
-                QTableWidget#ios18IconTable::item:selected {{
-                    background-color: {c.surface_hover};
-                    color: {c.text_primary};
-                }}
-                QHeaderView::section {{
-                    background-color: {c.bg_tertiary};
-                    color: {c.text_secondary};
-                    border: none;
-                    padding: 8px;
-                    font-size: 13px;
-                    font-weight: 600;
-                }}
-            """)
+            for table in self._ios18_tables:
+                table.setStyleSheet(f"""
+                    QTableWidget#ios18IconTable {{
+                        background-color: {c.bg_secondary};
+                        border: 1px solid {c.border};
+                        border-radius: 12px;
+                        gridline-color: {c.divider};
+                        color: {c.text_primary};
+                        font-size: 13px;
+                    }}
+                    QTableWidget#ios18IconTable::item {{
+                        padding: 4px 8px;
+                        border: none;
+                    }}
+                    QTableWidget#ios18IconTable::item:selected {{
+                        background-color: {c.surface_hover};
+                        color: {c.text_primary};
+                    }}
+                    QHeaderView::section {{
+                        background-color: {c.bg_tertiary};
+                        color: {c.text_secondary};
+                        border: none;
+                        padding: 8px;
+                        font-size: 13px;
+                        font-weight: 600;
+                    }}
+                """)
             for btn in self._ios18_add_buttons:
                 btn.setStyleSheet(f"""
                     QPushButton#ios18AddBtn {{

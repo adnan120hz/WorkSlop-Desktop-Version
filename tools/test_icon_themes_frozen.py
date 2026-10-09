@@ -10,7 +10,8 @@ its behavior.
 This test pins the SHA-256 of every file that implements the menu:
 
 * ``src/gui/ios/icon_themes.py`` — the page (themes list, the iOS 18
-  table with per-row Add + Add All, "Import Icon Pack (.zip)...").
+  two side-by-side tables (Light/Dark) with
+  per-row Add + one Add All per table, "Import Icon Pack (.zip)...").
 * ``src/tweaks/icon_themes/icon_themes_tweak.py`` — the model, the
   WebClip builder (``WorkSlop_<bundleID>,<name>``) and the hash-matched
   pack importer.
@@ -153,7 +154,7 @@ EXPECTED_SHA256 = {
     "files/ios18_icons/Light/watch.png": "c7bc40e969cef802ac51c4f0618ede887f55b0524b3e03307054eb341663780e",
     "files/ios18_icons/Light/weather.png": "f46be82e7592687241321a0cb7e043f0d147eb2819eec03d858bec125d4ab4a9",
     "src/gui/dialogs/icon_pack_downloader.py": "fed1ecc9be5650f0987170b01ddbdc9075095780d2fd7034785e170f3f473d29",
-    "src/gui/ios/icon_themes.py": "28a8ba4637f1e2bf6a5f37c8d5819d4de5560d588fa7eee8b0a2b9f76f766fb1",
+    "src/gui/ios/icon_themes.py": "70302959a7d072f14e11db4aa597aae80448607e5865278618adbf779920ef45",
     "src/tweaks/icon_themes/icon_themes_tweak.py": "3f344d6336be0c7a44aab3eef3c012fc7e7391c7f2ce144584ee111ebe0a3860",
 }
 
