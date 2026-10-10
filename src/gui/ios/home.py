@@ -18,7 +18,6 @@ _FEATURE_ICONS = {
     "Passcode Theme": ":/icon/lock.svg",
     "MobileGestalt": ":/icon/flag.svg",
     "Liquid Glass": ":/icon/liquid-glass.svg",
-    "Liquid Glass iOS 26.6.1 RC S8": ":/icon/ws-glass.svg",
     "App Data": ":/icon/folder.svg",
 }
 
@@ -232,14 +231,11 @@ class IOSHomePage(QWidget):
             self._make_card(
             "Custom Icon", "Themed app icons & labels", 10),
             self._make_card(
-            "Passcode Theme", "Custom keypad theme (.passthm)", 11),
-            self._make_card(
-            "Liquid Glass iOS 26.6.1 RC S8", "Experimental — Latest Keys (S8)", 16,
-            route_id="latest")]
+            "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
         (self.tweaks_card, self.liquidglass_card, self.appdata_card,
          self.mobilegestalt_card, self.posterboard_card, self.daemons_card,
          self.statusbar_card, self.icon_themes_card,
-         self.passcode_theme_card, self.lgd_latest_card) = cards_row
+         self.passcode_theme_card) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
@@ -460,11 +456,6 @@ class IOSHomePage(QWidget):
 
     def set_mobilegestalt_visible(self, visible: bool):
         self.mobilegestalt_card.setVisible(visible)
-        self.cards_grid.reflow()
-
-    def set_lgd_visible(self, visible: bool):
-        """Show/hide the Liquid Glass Disable tile."""
-        self.lgd_latest_card.setVisible(visible)
         self.cards_grid.reflow()
 
     def set_mobilegestalt_locked(self, locked: bool, device_version: str = ""):

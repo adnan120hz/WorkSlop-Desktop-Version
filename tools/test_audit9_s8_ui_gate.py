@@ -48,7 +48,14 @@ from src.tweaks.registry import Section  # noqa: E402
 from src.tweaks.tweak_names import TweakID  # noqa: E402
 from src.tweaks.tweaks import tweaks  # noqa: E402
 
-S8_IDS = (TweakID.LGDisableSquairTest, TweakID.LGDisableLatest)
+S8_IDS = (TweakID.LGDisableSquairTest,)
+# The Liquid Glass (Latest) payload left with the S8 route in v15;
+# its ID is a tombstone and can never own a switch again.
+check("the removed Latest id is never route-locked (no switch at all)",
+      _s8_route_lock_reason(TweakID.LGDisableLatest,
+                            "26.6.1", "23G83", True) == ""
+      and _s8_route_lock_reason(TweakID.LGDisableLatest,
+                            "", "", False) == "")
 
 
 class _DeviceManager:
@@ -119,15 +126,15 @@ check("non-S8 tweak is never S8-locked",
                             "", "", False) == "")
 check("no device locks the S8 switch",
       "23G82" in _s8_route_lock_reason(
-          TweakID.LGDisableLatest, "26.6.1", "23G83", False))
+          TweakID.LGDisableSquairTest, "26.6.1", "23G83", False))
 check("23G82 with a device is unlocked",
-      _s8_route_lock_reason(TweakID.LGDisableLatest,
+      _s8_route_lock_reason(TweakID.LGDisableSquairTest,
                             "26.6.1", "23G82", True) == "")
 check("23G83 with a device is unlocked",
       _s8_route_lock_reason(TweakID.LGDisableSquairTest,
                             "26.6.1", "23G83", True) == "")
 check("wrong build with a device is locked",
-      _s8_route_lock_reason(TweakID.LGDisableLatest,
+      _s8_route_lock_reason(TweakID.LGDisableSquairTest,
                             "26.6.1", "23G71", True) != "")
 
 CASES = [
@@ -176,7 +183,7 @@ for label, udid, version, build, expect_enabled in CASES:
     app.processEvents()
     page.refresh()
     text = page._status_label.text()
-    sw = page.content._switches[TweakID.LGDisableLatest]
+    sw = page.content._switches[TweakID.LGDisableSquairTest]
     check(f"{label}: page switch enabled == {expect_enabled}",
           bool(sw.isEnabled()) == expect_enabled)
     check(f"{label}: status names the full-backup (all data) route",

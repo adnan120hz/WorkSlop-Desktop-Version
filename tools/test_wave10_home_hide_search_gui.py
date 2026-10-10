@@ -114,10 +114,11 @@ check("registry section of Hide Search is SpringBoard (v4)",
 home = IOSHomePage(window)
 app.processEvents()
 tile_titles = [title.text() for _icon, _res, title, _sub in home._tiles]
-check("v4 Home has the ten feature tiles (G1/G2 removed in v14.0)",
+check("v4 Home has the nine feature tiles (G1/G2 removed in v14.0, "
+      "Latest tile removed in v15)",
       tile_titles == ["Tweaks", "Liquid Glass", "App Data", "MobileGestalt",
                       "PosterBoard", "Daemons", "Status Bar", "Custom Icon",
-                      "Passcode Theme", "Liquid Glass iOS 26.6.1 RC S8"],
+                      "Passcode Theme"],
       str(tile_titles))
 check("Home has no Hide Search tile (it lives in the SpringBoard page)",
       not any("Hide Search" in t for t in tile_titles))

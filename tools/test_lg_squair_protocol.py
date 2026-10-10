@@ -116,9 +116,10 @@ def test_registry_shape():
     spec = SPECS_BY_ID[TweakID.LGDisableSquairTest]
     check("Squair spec lives in the LGD section",
           spec.section is Section.LIQUID_GLASS_DISABLE)
-    check("section holds the Squair test + Liquid Glass (Latest)",
+    check("section holds the Squair test payload only (Latest "
+          "removed in v15)",
           [s.id for s in SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]]
-          == [TweakID.LGDisableSquairTest, TweakID.LGDisableLatest],
+          == [TweakID.LGDisableSquairTest],
           str([s.id.name
                for s in SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]]))
     check("spec mirrors the HomeDomain GP file",

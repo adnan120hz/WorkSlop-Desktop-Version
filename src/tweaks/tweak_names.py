@@ -229,10 +229,22 @@ class TweakID(Enum):
     # full-backup route. Own ID. See src/tweaks/lg_squair.py.
     LGDisableSquairTest = auto()
 
-    # Liquid Glass (Latest) — product payload (2026-10-07): the newest
-    # audited key set (SolariumForceFallback in its S8-proven
-    # com.apple.SwiftUI.plist home, the two lock-screen keys in
-    # .GlobalPreferences.plist, the specular key in
-    # com.apple.springboard.plist) riding the full-backup route. Own
-    # ID. See src/tweaks/lg_latest.py.
-    LGDisableLatest = auto()
+    # Liquid Glass (Latest) — REMOVED in v15 (user order 2026-10-10)
+    # together with the "Liquid Glass iOS 26.6.1 RC S8" feature: the
+    # author's own device test (2026-10-10) showed no on-screen effect.
+    # Tombstone only — the member stays so old presets/journals naming
+    # it still parse; it is recorded in REMOVED_TWEAK_IDS
+    # (src/tweaks/capabilities.py) and must never resolve to an active
+    # spec or payload again. src/tweaks/lg_latest.py survives only as
+    # the rollback planner that strips this payload's keys from devices
+    # that applied it under v14.
+    LGDisableLatest = auto()  # tombstone: S8/Latest route (removed v15)
+
+    # Liquid Glass firmware-research specs (2026-10-10): real Apple
+    # firmware keys located by diffing iOS 26.1 (23B85) against iOS
+    # 26.6.1 RC (23G82); each key's reader is verified alive in the
+    # 26.6.1 firmware. The on-screen effect of every entry here is NOT
+    # proven — see their registry descriptions.
+    LGForceFallbackUIKit = auto()
+    LGForceFallbackSwiftUI = auto()
+    LGNoBlurReducedFrost = auto()

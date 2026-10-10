@@ -2051,152 +2051,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         return bool(sq is not None and getattr(sq, "enabled", False)
                     and getattr(sq, "staged", False))
 
-    ## LIQUID GLASS (LATEST)
-    async def _lgd_prepare_latest(self, update_label=lambda x: None, hotload=None, hotload_hidden_names=frozenset()):
-        """Arm the Liquid Glass (Latest) payload for this apply pass.
-
-        The three payloads REPLACE device files through the full-backup
-        route, so — exactly like G1/Squair — they must be merged into the
-        live device files. This runs before the staging loop: it captures
-        the three bases (one targeted backup; the
-        .GlobalPreferences.plist is the same file G1 uses) and arms the
-        tweak. The SwiftUI and SpringBoard bases may legitimately be None
-        (file absent on the device — the payload then creates it), but
-        the .GlobalPreferences.plist base is REQUIRED.
-
-        Fail-closed contract mirrors _lgd_prepare_squair: nothing is
-        armed when the tweak is disabled, version-locked, HotLoad-flagged
-        or outside the 26.6.x full-route window; a live file that cannot
-        be obtained or parsed cancels the apply.
-        """
-        from src.tweaks import lg_disable
-        self._lgd_latest_bases = None
-        lt = tweaks.get(TweakID.LGDisableLatest)
-        if lt is not None:
-            try:
-                lt.staged = False
-                lt._lgd_gp_base = None
-                lt._lgd_swiftui_base = None
-                lt._lgd_springboard_base = None
-            except Exception as exc:
-                # Fix Audit 84: was a silent `except: pass` — log it;
-                # behavior unchanged (arming continues unarmed).
-                log_warn(f"Liquid Glass (Latest): could not reset the "
-                         f"tweak's stale state before arming: {exc}")
-        if lt is None or not getattr(lt, "enabled", False):
-            return
-        udid = self.get_current_device_udid()
-        if not udid:
-            raise NuggetException(QCoreApplication.tr(
-                "Liquid Glass (Latest): no device is connected, so the "
-                "device's own preference files cannot be read. Connect "
-                "the device and try again. Nothing was written."))
-        version = self.get_current_device_version()
-        build = self.get_current_device_build()
-        model = self.get_current_device_model()
-        is_iphone = model.startswith("iPhone") if model else True
-        deliverable, reason_code, reason = tweak_deliverability(
-            TweakID.LGDisableLatest, device_version=version,
-            device_build=build, is_iphone=is_iphone, tweak=lt)
-        if not deliverable:
-            log_warn(f"Liquid Glass (Latest) not armed: "
-                     f"{reason_code} — {reason}")
-            return
-        if hotload is not None and (
-                TweakID.LGDisableLatest.name in hotload_hidden_names
-                or hotload.rule_for(TweakID.LGDisableLatest,
-                                    device_version=version,
-                                    device_model=model) is not None):
-            log_warn("Liquid Glass (Latest) not armed: flagged by "
-                     "HotLoad safety rules.")
-            return
-        if not self._lgd_full_route_active():
-            log_warn("Liquid Glass (Latest) not armed: the full-backup "
-                     "route applies only on iOS 26.6.x builds "
-                     "23G82/23G83; this payload cannot ride the "
-                     "partial-restore channel.")
-            return
-
-        update_label(QCoreApplication.tr(
-            "Reading the device's preference files..."))
-        from src.restore.lgd_backup import fetch_device_latest_bases
-        raw = await fetch_device_latest_bases(
-            udid, update_label, self._backup_progress(update_label))
-
-        gp_bytes = raw.get("gp")
-        source = "targeted device backup"
-        try:
-            gp_base = (lg_disable.load_plist_dict(gp_bytes)
-                       if gp_bytes else None)
-        except Exception as exc:
-            raise NuggetException(QCoreApplication.tr(
-                "Liquid Glass (Latest): the .GlobalPreferences.plist "
-                "read from the device could not be parsed (%1). "
-                "Nothing was written.").replace("%1", str(exc)))
-        if not isinstance(gp_base, dict):
-            raise NuggetException(QCoreApplication.tr(
-                "Liquid Glass (Latest): the device's own "
-                ".GlobalPreferences.plist could not be read, and it is "
-                "a required merge base. Nothing was written."))
-
-        def _optional_base(name: str, file_label: str):
-            """Parsed dict, None when the file is absent; fail closed
-            when the device carries it but it cannot be parsed."""
-            data = raw.get(name)
-            if not data:
-                return None
-            try:
-                parsed = lg_disable.load_plist_dict(data)
-            except Exception as exc:
-                raise NuggetException(QCoreApplication.tr(
-                    "Liquid Glass (Latest): the %1 read from the device "
-                    "could not be parsed (%2), so it was NOT written. "
-                    "Nothing was written.").replace(
-                        "%1", file_label).replace("%2", str(exc)))
-            return parsed
-
-        swiftui_base = _optional_base("swiftui", "com.apple.SwiftUI.plist")
-        springboard_base = _optional_base(
-            "springboard", "com.apple.springboard.plist")
-
-        # Same rollback-original hygiene as G1/Squair: first capture
-        # wins, and a real write failure is fatal.
-        try:
-            saved = lg_disable.save_original_if_absent(udid, gp_bytes, {
-                "udid": udid,
-                "ios_version": version,
-                "build": build,
-                "source": source,
-                "key_count": len(gp_base),
-            })
-        except OSError as save_err:
-            raise NuggetException(QCoreApplication.tr(
-                "Liquid Glass (Latest): the device's original "
-                ".GlobalPreferences.plist could not be saved for "
-                "rollback (%1). Nothing was written.").replace(
-                    "%1", str(save_err)))
-        if saved:
-            log_info("Liquid Glass (Latest): saved the device's original "
-                     ".GlobalPreferences.plist for rollback.")
-        lt._lgd_gp_base = gp_base
-        lt._lgd_swiftui_base = swiftui_base
-        lt._lgd_springboard_base = springboard_base
-        self._lgd_latest_bases = {
-            "gp": gp_base, "swiftui": swiftui_base,
-            "springboard": springboard_base,
-        }
-        log_info(f"Liquid Glass (Latest): bases ready (.GlobalPreferences "
-                 f"{len(gp_base)} live keys, source: {source}; SwiftUI "
-                 f"{'present' if swiftui_base is not None else 'absent'}; "
-                 f"SpringBoard "
-                 f"{'present' if springboard_base is not None else 'absent'}).")
-
-    def _lgd_latest_active(self) -> bool:
-        """Whether Liquid Glass (Latest) armed and staged in this pass."""
-        lt = tweaks.get(TweakID.LGDisableLatest)
-        return bool(lt is not None and getattr(lt, "enabled", False)
-                    and getattr(lt, "staged", False))
-
     def _lgd_gp_allowed_keys(self):
         """Keys other enabled tweaks may add to the two GP files."""
         from src.tweaks.lg_disable import GP_KEY
@@ -2565,11 +2419,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # Lock Screen Keys (Test): same live-file base contract as G1
             # for File A; arms only inside the full-backup route window.
             await self._lgd_prepare_squair(
-                update_label, hotload=hotload,
-                hotload_hidden_names=hotload_hidden_names)
-            # Liquid Glass (Latest): same live-file base contract for all
-            # three files; arms only inside the full-backup route window.
-            await self._lgd_prepare_latest(
                 update_label, hotload=hotload,
                 hotload_hidden_names=hotload_hidden_names)
             # set the plist keys
@@ -3051,40 +2900,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 log_info("Lock Screen Keys (Test): payload delivered via "
                          "the iOS 26.6 full-backup route. "
                          + lg_squair.DOMAIN_FILE_NOTE)
-
-            # Liquid Glass (Latest): the tweak never stages through the
-            # sparse pass either (its three whole-file payloads only ride
-            # the full-backup route), so an armed+staged marker here
-            # means: run a gated full-backup pass with the three-file
-            # payload. Delivery is marked only after the route returns —
-            # and, like Squair, the journal never claims more than the
-            # payload was delivered; the on-screen effect is unproven.
-            if self._lgd_latest_active():
-                from src.tweaks import lg_latest
-                latest_bases = getattr(self, "_lgd_latest_bases", None) or {}
-                latest_payloads = lg_latest.plan_latest_apply_payloads(
-                    latest_bases.get("gp"),
-                    latest_bases.get("swiftui"),
-                    latest_bases.get("springboard"))
-                await self._lgd_run_full_route(
-                    latest_payloads, update_label,
-                    reboot=bool(self.pref_manager.auto_reboot
-                                and not files_to_restore),
-                    apply_mode=True, expect_candidate_key=False,
-                    g1_base=latest_bases.get("gp"),
-                    g1_allowed_new=(
-                        set(lg_latest.GP_KEYS)
-                        | self._lgd_gp_allowed_keys()))
-                if journal is not None:
-                    for _entry in journal.data["tweaks"]:
-                        if (_entry.get("tweak_id")
-                                == TweakID.LGDisableLatest.name
-                                and _entry.get("status") == TW_STAGED):
-                            _entry["status"] = TW_DELIVERED
-                            _entry["note"] = lg_latest.APPLY_NOTE
-                log_info("Liquid Glass (Latest): payload delivered via "
-                         "the iOS 26.6 full-backup route. "
-                         + lg_latest.APPLY_NOTE)
 
             # restore to the device
             # include_keychain only when backup encryption is active — iOS rejects

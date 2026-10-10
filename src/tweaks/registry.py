@@ -97,11 +97,6 @@ def _lgd_squair_factory():
     return LGDSquairTweak()
 
 
-def _lgd_latest_factory():
-    from .lg_latest import LGDLatestTweak
-    return LGDLatestTweak()
-
-
 GP = FileLocation.globalPreferences
 
 
@@ -317,6 +312,18 @@ SPECS: tuple[TweakSpec, ...] = (
     # v4 set; see tools/test_wave11_blurr_motion.py).
     _t(TweakID.BlurrMotion, Section.LIQUID_GLASS, "Blurr Motion", GP, "SolariumIncreasedDiffusion",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Research candidate for thicker frost blur on Liquid Glass surfaces: its key was found in the DesignLibrary material cluster in the iOS 23G83 binary, but the effect on a real device is not proven yet. Back up fully first, turn Low Power Mode OFF, apply it on its own, reboot, then judge each surface on its own (Dock, Control Center, notifications, folders, App Switcher, Lock Screen clock). Turning it off and applying again removes the key.")),
+    # === Liquid Glass — firmware-research specs (2026-10-10) ===
+    # Real Apple firmware keys found by diffing iOS 26.1 (23B85)
+    # against iOS 26.6.1 RC (23G82); each reader is verified alive in
+    # the 26.6.1 firmware. NOT part of the frozen v4 set. Effects are
+    # unproven — the descriptions say so, and nothing here claims the
+    # glass is disabled.
+    _t(TweakID.LGForceFallbackUIKit, Section.LIQUID_GLASS, "Force Solarium Fallback (UIKit)", FileLocation.uikit, "UISolariumForceFallback",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes UISolariumForceFallback = true into com.apple.UIKit.plist. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. iOS may ignore UIKit internal preferences on retail builds — if nothing on screen changes, that is a negative result, not a bug. The visual effect is NOT proven on a device; judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
+    _t(TweakID.LGForceFallbackSwiftUI, Section.LIQUID_GLASS, "Force Solarium Fallback (SwiftUI)", FileLocation.swiftui, "SolariumForceFallback",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumForceFallback = true into com.apple.SwiftUI.plist, the file its reader opens. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. Nothing beyond the write is claimed: the visual effect is NOT proven on a device. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
+    _t(TweakID.LGNoBlurReducedFrost, Section.LIQUID_GLASS, "No-Blur Reduced Frost (SwiftUI)", FileLocation.swiftui, "SolariumNoBlurReducedFrost",
+       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumNoBlurReducedFrost = true into com.apple.SwiftUI.plist, the file its reader opens. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. The visual effect is NOT proven on a device. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
     # === Non-glass candidates (audited) ===
     _t(TweakID.CustomLockDate, Section.SPRINGBOARD, "Custom Lock Screen Date", FileLocation.globalPreferencesHomeDomain, "AppleICUDateTimeSymbols",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Custom Lock Screen date format. Device-proven (iOS 26.0-26.7).")),
@@ -375,9 +382,11 @@ SPECS: tuple[TweakSpec, ...] = (
     # The Beta 1 G1/G2 routes were REMOVED from the product in v14.0
     # (user order 2026-10-07: "G1 G2 ga work, hapus") after beta testing
     # showed no device effect. Their TweakIDs stay as tombstones
-    # (REMOVED_TWEAK_IDS in src/tweaks/capabilities.py). The section now
-    # carries the Squair test payload and Liquid Glass (Latest); the
-    # shared payload helpers live on in src/tweaks/lg_disable.py.
+    # (REMOVED_TWEAK_IDS in src/tweaks/capabilities.py). The Liquid
+    # Glass (Latest) / "S8" payload was removed the same way in v15
+    # (user order 2026-10-10). The section now carries only the Squair
+    # test payload; the shared payload helpers live on in
+    # src/tweaks/lg_disable.py.
 
     # === Squair Protocol (test) — test-only payload (2026-10-07) ===
     # TEST-ONLY payload ordered as a device experiment (Squair's two
@@ -394,21 +403,14 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="26.0",
        description=QT_TRANSLATE_NOOP("Nugget", "Test-only — unproven. Surgically merges SBDisallowGlassTime = true and SBDisallowGlassButtons = true into your device's own .GlobalPreferences.plist and injects a FeatureFlags/Domain/SpringBoard.plist (SolariumElasticHUD disabled) through the full-backup route. Whether iOS 26.6.1 honors either write is not proven, and the Domain file is predicted to be skipped silently by the restore channel — its landing can never be claimed without a device read-back. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
 
-    # === Liquid Glass (Latest) — product payload (2026-10-07) ===
-    # The newest audited key set in one payload: SolariumForceFallback
-    # written to its real reader home (com.apple.SwiftUI.plist — the
-    # reader is firmware-verified ALIVE in iOS 26.6.1, audit S8), the
-    # two lock-screen keys merged into the device's own
-    # .GlobalPreferences.plist, and the specular key merged into the
-    # device's own com.apple.springboard.plist, all through the
-    # full-backup route. Payload core and planner live in
-    # src/tweaks/lg_latest.py. The Beta 1 and Squair entries above are
-    # untouched.
-    _t(TweakID.LGDisableLatest, Section.LIQUID_GLASS_DISABLE, "Liquid Glass iOS 26.6.1 RC S8",
-       FileLocation.globalPreferencesHomeDomain, "SBDisallowGlassTime",
-       factory=_lgd_latest_factory,
-       min_version="26.0",
-       description=QT_TRANSLATE_NOOP("Nugget", "Writes Apple's real firmware keys into the files their readers open: SolariumForceFallback = true into your device's com.apple.SwiftUI.plist (its reader is verified alive in the iOS 26.6.1 firmware), SBDisallowGlassTime and SBDisallowGlassButtons = true merged into your own .GlobalPreferences.plist, and SBDisableSpecularEverywhereUsingLSSAssertion = true merged into your own com.apple.springboard.plist. Delivered through the full backup, modify, full restore route with fail-hard checks (100% of your existing keys must survive; nothing is claimed disabled). Whether the glass look actually changes on screen is for an isolated device test to judge (full backup first, Low Power Mode off, reboot after applying).")),
+    # === Liquid Glass (Latest) — REMOVED in v15 (user order
+    # 2026-10-10) === The "Liquid Glass iOS 26.6.1 RC S8" full-backup
+    # payload left the product after the author's own iOS 26.6.1 device
+    # test showed no on-screen effect. Its TweakID stays only as a
+    # tombstone (REMOVED_TWEAK_IDS in src/tweaks/capabilities.py); the
+    # rollback planner lives on in src/tweaks/lg_latest.py so devices
+    # that applied it under v14 can still strip its keys. The Squair
+    # entry above is untouched.
 ) + _FF_SPECS
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}

@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
-"""Offline tests for the Liquid Glass (Latest) payload.
+"""Offline tests for the Liquid Glass (Latest) REMOVAL contract (v15).
 
-Pins the payload contract (see src/tweaks/lg_latest.py):
+The "Liquid Glass (Latest)" full-backup payload — the "Liquid Glass
+iOS 26.6.1 RC S8" switch — was removed from the product in v15 by
+explicit user order (2026-10-10) after the author's own iOS 26.6.1
+device test showed no on-screen effect. This file replaces the old
+apply-protocol suite for that payload and pins the removal instead:
 
-* the registry carries one switch, LGDisableLatest, in the Liquid
-  Glass Disable section, built by its own factory, while the removed
-  Beta 1 G1/G2 routes have NO spec and their IDs are recorded as
-  removed tombstones (v14.0);
-* the apply planner merges the device's own three files: the SwiftUI
-  file gains SolariumForceFallback as a real bool true (created from an
-  empty base when the device does not carry it yet), .GlobalPreferences
-  gains exactly the two lock-screen keys, and the SpringBoard file
-  gains the specular key — the payload bytes are NEVER empty;
-* every merge keeps 100% of the device's original keys, and the plan
-  refuses (NuggetException) without a .GlobalPreferences.plist base;
-* rollback plans from FRESH captures: exactly this payload's keys are
-  removed from the three files, every other key survives, and a file
-  absent from the fresh capture yields no payload;
-* the tweak stages nothing through the sparse dict and fails closed
-  without an armed base.
-
-Delivery honesty (step8 audit S8): the SolariumForceFallback reader is
-firmware-verified alive in iOS 26.6.1, but the on-screen effect is NOT
-proven — these tests pin the payload, never an effect claim.
+* the registry carries NO spec for LGDisableLatest, the Liquid Glass
+  Disable section holds the Squair test payload only, and the Home
+  catalogue no longer surfaces it;
+* the TweakID enum member survives as a tombstone (old presets and
+  journals still parse the name) and is recorded in REMOVED_TWEAK_IDS,
+  so it resolves to removed/skipped — never to a tweak instance;
+* no runtime instance exists and the DeviceManager apply path can no
+  longer arm, stage, or deliver it (the marker bridge is gone);
+* the rollback planner in src/tweaks/lg_latest.py SURVIVES, so a
+  device that applied the payload under v14 can still strip exactly
+  its four keys from fresh captures — removal planning is surgical,
+  keeps every unrelated key, and fails closed without a fresh
+  .GlobalPreferences.plist capture;
+* the three firmware-research specs that replace the hunt
+  (LGForceFallbackUIKit / LGForceFallbackSwiftUI /
+  LGNoBlurReducedFrost) carry the exact firmware keys, the audited
+  reader-home locations, a real bool true, the iOS 26+ gate, and the
+  honest not-proven description grade.
 
 Run: python tools/test_lg_latest_protocol.py
 """
@@ -81,9 +83,9 @@ except Exception:
     _install_pyside_stubs()
 
 from src.exceptions.nugget_exception import NuggetException
-from src.tweaks import lg_disable, lg_latest, tweak_loader
+from src.tweaks import lg_latest, tweak_loader
 from src.tweaks.basic_plist_locations import FileLocation
-from src.tweaks.capabilities import is_removed_tweak, tweak_deliverability
+from src.tweaks.capabilities import is_removed_tweak
 from src.tweaks.registry import (
     SPECS_BY_ID, SPECS_BY_SECTION, Section, home_tweak_catalogue,
 )
@@ -119,127 +121,50 @@ def _parsed(payload):
     return plistlib.loads(payload[2])
 
 
-def test_registry_shape():
-    print("\nregistry shape (+ v14.0 G1/G2 removal)")
-    spec = SPECS_BY_ID[TweakID.LGDisableLatest]
-    check("Latest spec lives in the LGD section",
-          spec.section is Section.LIQUID_GLASS_DISABLE)
-    check("section holds Squair (test) + Latest only",
+def test_removal_shape():
+    print("\nremoval shape (v15: S8/Latest retired)")
+    check("no registry spec for LGDisableLatest",
+          TweakID.LGDisableLatest not in SPECS_BY_ID)
+    check("LGD section holds the Squair test payload only",
           [s.id for s in SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]]
-          == [TweakID.LGDisableSquairTest, TweakID.LGDisableLatest],
+          == [TweakID.LGDisableSquairTest],
           str([s.id.name
                for s in SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]]))
-    check("removed G1/G2 have no registry spec",
+    check("removed G1/G2 still have no registry spec",
           TweakID.LGDisableG1 not in SPECS_BY_ID
           and TweakID.LGDisableG2 not in SPECS_BY_ID)
-    check("G1/G2 are recorded removed tombstones (old names still parse)",
+    check("LGDisableLatest is a recorded removed tombstone",
+          is_removed_tweak(TweakID.LGDisableLatest))
+    check("G1/G2 remain recorded removed tombstones",
           is_removed_tweak(TweakID.LGDisableG1)
-          and is_removed_tweak(TweakID.LGDisableG2)
+          and is_removed_tweak(TweakID.LGDisableG2))
+    check("old names still parse (presets/journals keep loading)",
+          TweakID["LGDisableLatest"] is TweakID.LGDisableLatest
           and TweakID["LGDisableG1"] is TweakID.LGDisableG1)
-    check("Squair + Latest are NOT removed",
-          not is_removed_tweak(TweakID.LGDisableSquairTest)
-          and not is_removed_tweak(TweakID.LGDisableLatest))
-    check("spec mirrors the HomeDomain GP file",
-          spec.location is FileLocation.globalPreferencesHomeDomain)
-    check("declared value is a real bool True", spec.value is True
-          and type(spec.value) is bool)
-    check("gated to iOS 26+", spec.min_version == "26.0")
-    check("description carries the honest device-test grade",
-          "isolated device test" in (spec.description or "").lower()
-          and "verified alive" in (spec.description or "").lower())
+    check("Squair is NOT removed",
+          not is_removed_tweak(TweakID.LGDisableSquairTest))
     ids = {e["id"] for e in home_tweak_catalogue()}
-    check("Home catalogue surfaces Squair + Latest, not G1/G2",
-          {TweakID.LGDisableSquairTest, TweakID.LGDisableLatest} <= ids
+    check("Home catalogue surfaces Squair, not Latest/G1/G2",
+          TweakID.LGDisableSquairTest in ids
+          and TweakID.LGDisableLatest not in ids
           and TweakID.LGDisableG1 not in ids
           and TweakID.LGDisableG2 not in ids)
     tweak_loader.load_plist_tweaks()
-    tweak = tweaks[TweakID.LGDisableLatest]
-    check("factory built the Latest tweak class",
-          isinstance(tweak, lg_latest.LGDLatestTweak))
-    check("no runtime instance exists for the removed routes",
-          TweakID.LGDisableG1 not in tweaks
+    check("no runtime instance exists for any removed route",
+          TweakID.LGDisableLatest not in tweaks
+          and TweakID.LGDisableG1 not in tweaks
           and TweakID.LGDisableG2 not in tweaks)
-    ok, code, _msg = tweak_deliverability(
-        TweakID.LGDisableLatest, device_version="26.6.1",
-        device_build="23G82", is_iphone=True, tweak=tweak)
-    check("deliverable on 26.6.1/23G82", ok and code == "OK", code)
-    ok, code, _msg = tweak_deliverability(
-        TweakID.LGDisableLatest, device_version="25.0",
-        device_build="", is_iphone=True, tweak=tweak)
-    check("locked below iOS 26", not ok and code == "VERSION_BELOW_MIN",
-          code)
-
-
-def test_apply_planner():
-    print("\napply planner (three-file merge)")
-    payloads = lg_latest.plan_latest_apply_payloads(
-        dict(GP_BASE), dict(SWIFTUI_BASE), dict(SB_BASE))
-    check("plan yields exactly three inject tuples", len(payloads) == 3)
-    check("all tuples target HomeDomain with forced metadata",
-          all(p[0] == "HomeDomain" and p[3] == 0o100644
-              and p[4] == 501 and p[5] == 501 for p in payloads))
-
-    swiftui = _payload(payloads, lg_latest.SWIFTUI_REL_PATH)
-    parsed = _parsed(swiftui)
-    check("SwiftUI keeps every device key (superset merge)",
-          all(parsed.get(k) == v for k, v in SWIFTUI_BASE.items()))
-    check("SwiftUI carries SolariumForceFallback",
-          parsed.get("SolariumForceFallback") is True)
-    check("SolariumForceFallback is a real bool (not int 1)",
-          type(parsed.get("SolariumForceFallback")) is bool)
-
-    gp = _payload(payloads, lg_latest.G1_REL_PATH)
-    parsed = _parsed(gp)
-    check(".GlobalPreferences keeps every device key",
-          all(parsed.get(k) == v for k, v in GP_BASE.items()))
-    for key in lg_latest.GP_KEYS:
-        check(f".GlobalPreferences carries {key} as a real bool true",
-              parsed.get(key) is True and type(parsed.get(key)) is bool)
-
-    sb = _payload(payloads, lg_latest.SB_REL_PATH)
-    parsed = _parsed(sb)
-    check("SpringBoard keeps every device key",
-          all(parsed.get(k) == v for k, v in SB_BASE.items()))
-    check("SpringBoard carries the specular key as a real bool true",
-          parsed.get(lg_latest.SB_KEY) is True
-          and type(parsed.get(lg_latest.SB_KEY)) is bool)
-    check("SpringBoard payload bytes are never empty",
-          len(sb[2]) > 0 and isinstance(parsed, dict))
-
-    # SwiftUI file absent on device -> created from an empty base.
-    payloads = lg_latest.plan_latest_apply_payloads(dict(GP_BASE))
-    swiftui = _payload(payloads, lg_latest.SWIFTUI_REL_PATH)
-    check("absent SwiftUI file is created with exactly our key",
-          _parsed(swiftui) == {"SolariumForceFallback": True})
-    sb = _payload(payloads, lg_latest.SB_REL_PATH)
-    check("absent SpringBoard file still yields a non-empty payload",
-          _parsed(sb) == {lg_latest.SB_KEY: True} and len(sb[2]) > 0)
-
-    # extra_inserts ride the GP merge (same-pass deliberate keys).
-    payloads = lg_latest.plan_latest_apply_payloads(
-        dict(GP_BASE), None, None,
-        extra_inserts={"StagedByOtherTweak": True})
-    gp = _payload(payloads, lg_latest.G1_REL_PATH)
-    check("extra_inserts ride the .GlobalPreferences merge",
-          _parsed(gp).get("StagedByOtherTweak") is True)
-
-    # Fail closed: no GP base, no plan.
-    for bad_base in (None, "not-a-dict", 42):
-        try:
-            lg_latest.plan_latest_apply_payloads(bad_base)
-            raised = False
-        except NuggetException:
-            raised = True
-        check(f"plan refuses a missing/unusable GP base ({bad_base!r})",
-              raised)
-    # Fail closed: an unusable SwiftUI base is refused, never dropped.
-    try:
-        lg_latest.plan_latest_apply_payloads(
-            dict(GP_BASE), swiftui_base="not-a-dict")
-        raised = False
-    except NuggetException:
-        raised = True
-    check("plan refuses an unparseable SwiftUI base", raised)
+    check("the Squair instance still loads",
+          TweakID.LGDisableSquairTest in tweaks)
+    dm_path = os.path.join(os.path.dirname(__file__), "..", "src",
+                           "devicemanagement", "device_manager.py")
+    with open(dm_path, encoding="utf-8") as fh:
+        dm_src = fh.read()
+    check("apply path can no longer arm Latest",
+          "_lgd_prepare_latest" not in dm_src
+          and "plan_latest_apply_payloads" not in dm_src)
+    check("rollback planner is still wired into DeviceManager",
+          "plan_latest_rollback_payloads" in dm_src)
 
 
 def test_rollback_planner():
@@ -287,35 +212,42 @@ def test_rollback_planner():
     check("rollback refuses without a fresh GP capture", raised)
 
 
-def test_tweak_staging_contract():
-    print("\ntweak staging contract (never the sparse pass)")
-    tweak = tweaks[TweakID.LGDisableLatest]
-    tweak.set_enabled(True)
-    tweak._lgd_gp_base = None
-    staged = tweak.apply_tweak({})
-    check("unarmed (no device base) stages nothing and is not staged",
-          staged == {} and tweak.staged is False)
-    tweak._lgd_gp_base = dict(GP_BASE)
-    tweak._lgd_swiftui_base = dict(SWIFTUI_BASE)
-    tweak._lgd_springboard_base = dict(SB_BASE)
-    staged = tweak.apply_tweak({})
-    check("armed tweak marks staged without touching the sparse dict",
-          staged == {} and tweak.staged is True)
-    tweak._lgd_gp_base = None
-    tweak._lgd_swiftui_base = None
-    tweak._lgd_springboard_base = None
-    tweak.set_enabled(False)
-    staged = tweak.apply_tweak({})
-    check("disabled tweak is never staged",
-          staged == {} and tweak.staged is False)
+def test_replacement_specs():
+    print("\nfirmware-research replacement specs (2026-10-10)")
+    cases = (
+        (TweakID.LGForceFallbackUIKit, "UISolariumForceFallback",
+         FileLocation.uikit),
+        (TweakID.LGForceFallbackSwiftUI, "SolariumForceFallback",
+         FileLocation.swiftui),
+        (TweakID.LGNoBlurReducedFrost, "SolariumNoBlurReducedFrost",
+         FileLocation.swiftui),
+    )
+    for tid, key, location in cases:
+        spec = SPECS_BY_ID[tid]
+        check(f"{tid.name}: lives in the Liquid Glass section",
+              spec.section is Section.LIQUID_GLASS)
+        check(f"{tid.name}: exact firmware key", spec.key == key,
+              spec.key)
+        check(f"{tid.name}: audited reader-home location",
+              spec.location is location, spec.location.value)
+        check(f"{tid.name}: real bool true", spec.value is True
+              and type(spec.value) is bool)
+        check(f"{tid.name}: gated to iOS 26+", spec.min_version == "26.0")
+        check(f"{tid.name}: not removed",
+              not is_removed_tweak(tid))
+        desc = (spec.description or "").lower()
+        check(f"{tid.name}: description carries the honest grade",
+              "not proven" in desc and "isolated device test" in desc)
+    check("FileLocation.swiftui is the SwiftUI suite file",
+          FileLocation.swiftui.value
+          == "/var/mobile/Library/Preferences/com.apple.SwiftUI.plist")
 
 
 def main():
-    test_registry_shape()
-    test_apply_planner()
+    test_removal_shape()
     test_rollback_planner()
-    test_tweak_staging_contract()
-    print(f"\n{PASS} checks passed")
+    test_replacement_specs()
+    print(f"\nALL {PASS} CHECKS PASSED")
 
 
 if __name__ == "__main__":

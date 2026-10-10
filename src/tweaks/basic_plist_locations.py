@@ -25,6 +25,13 @@ class FileLocation(Enum):
     pasteboard = "/var/Managed Preferences/mobile/com.apple.Pasteboard.plist"
     notes = "/var/Managed Preferences/mobile/com.apple.mobilenotes.plist"
     uikit = "/var/Managed Preferences/mobile/com.apple.UIKit.plist"
+    # HomeDomain SwiftUI preferences file — the same file the
+    # SolariumForceFallback / SolariumNoBlurReducedFrost readers open
+    # (NSUserDefaults suite com.apple.SwiftUI). Used by the 2026-10-10
+    # firmware-research Liquid Glass specs in the registry; delivered
+    # through the same HomeDomain channel as
+    # globalPreferencesHomeDomain.
+    swiftui = "/var/mobile/Library/Preferences/com.apple.SwiftUI.plist"
     # Accessibility (managed). Used by the Liquid Glass "Increase Contrast"
     # mitigation tweak — managed prefs override the HomeDomain copy.
     accessibility = "/var/Managed Preferences/mobile/com.apple.Accessibility.plist"

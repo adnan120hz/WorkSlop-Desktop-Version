@@ -79,7 +79,7 @@ from src.version import App_Version  # noqa: E402
 
 # ---------------------------------------------------------------- version
 print("\nversion is 12 everywhere")
-check("App_Version is 14.0", App_Version == "14.0", App_Version)
+check("App_Version is 15.0", App_Version == "15.0", App_Version)
 check("11.0.1 users get offered 12",
       Version("11.0.1") < Version(App_Version))
 check("11.5 users get offered 12",
@@ -94,13 +94,13 @@ win = MainWindow(device_manager=DeviceManager(),
                  translator=Translator(app, Settings()))
 app.processEvents()
 
-check("classic version label shows 12",
-      "14.0" in win.ui.appVersionLbl.text(), win.ui.appVersionLbl.text())
+check("classic version label shows 15",
+      "15.0" in win.ui.appVersionLbl.text(), win.ui.appVersionLbl.text())
 check("classic version label has no beta/stable wording",
       "beta" not in win.ui.appVersionLbl.text().lower()
       and "stable" not in win.ui.appVersionLbl.text().lower())
-check("iOS sidebar version label is clean 14.0",
-      win.workslop_sidebar._version_lbl.text() == "WorkSlop Desktop v14.0",
+check("iOS sidebar version label is clean 15.0",
+      win.workslop_sidebar._version_lbl.text() == "WorkSlop Desktop v15.0",
       win.workslop_sidebar._version_lbl.text())
 
 # ------------------------------------------------------- backup page UI

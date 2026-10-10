@@ -117,6 +117,13 @@ REMOVED_TWEAK_IDS = frozenset({
     # an audit upgrade.
     TweakID.AIFeatureFlags,            # uncapped dead FeatureFlags channel (>26.1)
     TweakID.AIFeatureFlagsUI,          # uncapped dead FeatureFlags channel (>26.1)
+    # Liquid Glass (Latest) / "S8" full-backup route — removed in v15
+    # (user order 2026-10-10) after the author's own iOS 26.6.1 device
+    # test showed no on-screen effect. Tombstone: old presets/journals
+    # naming it resolve to removed/skipped, never to a payload. The
+    # rollback planner in src/tweaks/lg_latest.py stays reachable so
+    # devices that applied it under v14 can still strip its keys.
+    TweakID.LGDisableLatest,
     # Wave 10 Package 1 audit kills (AUDIT-FINAL-WAVE10 §4). The enum
     # members remain parseable for old presets, but these IDs never resolve
     # to an active spec or payload again.

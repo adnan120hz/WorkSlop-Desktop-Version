@@ -50,7 +50,7 @@ lg = FEATURE_TWEAKS["Liquid Glass"]
 v4 = [s.id.name for s in SPECS_BY_SECTION[Section.LIQUID_GLASS]]
 check("all 32 Liquid Glass v4 specs are members", all(n in lg for n in v4))
 check("Squair/Latest are members; removed G1/G2 are not",
-      "LGDisableSquairTest" in lg and "LGDisableLatest" in lg
+      "LGDisableSquairTest" in lg and "LGDisableLatest" not in lg
       and "LGDisableG1" not in lg and "LGDisableG2" not in lg)
 check("no duplicate members", len(lg) == len(set(lg)))
 
@@ -131,7 +131,7 @@ from src.cli.cmd_tweaks import _coerce_cli_value
 from src.tweaks.registry import SPECS_BY_ID
 from src.tweaks.tweak_names import TweakID
 
-spec = SPECS_BY_ID[TweakID.LGDisableLatest]
+spec = SPECS_BY_ID[TweakID.LGDisableSquairTest]
 v, err = _coerce_cli_value(spec, "false")
 check('switch "false" -> real False', v is False and err is None)
 v, err = _coerce_cli_value(spec, "banana")

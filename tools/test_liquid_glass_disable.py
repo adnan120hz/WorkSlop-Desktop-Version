@@ -119,33 +119,29 @@ def test_registry_shape():
     check("section name is the feature name",
           Section.LIQUID_GLASS_DISABLE.value == "Liquid Glass Disable (Beta 1)")
     specs = SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]
-    check("section holds Squair (test) + Liquid Glass (Latest)",
-          [s.id for s in specs] == [TweakID.LGDisableSquairTest,
-                                    TweakID.LGDisableLatest],
+    check("section holds the Squair test payload only (G1/G2 removed "
+          "in v14.0, Latest removed in v15)",
+          [s.id for s in specs] == [TweakID.LGDisableSquairTest],
           str([s.id.name for s in specs]))
-    check("removed Beta 1 routes have no spec",
+    check("removed Beta 1 / Latest routes have no spec",
           TweakID.LGDisableG2 not in SPECS_BY_ID
-          and TweakID.LGDisableG1 not in SPECS_BY_ID)
+          and TweakID.LGDisableG1 not in SPECS_BY_ID
+          and TweakID.LGDisableLatest not in SPECS_BY_ID)
     sq = SPECS_BY_ID[TweakID.LGDisableSquairTest]
-    lt = SPECS_BY_ID[TweakID.LGDisableLatest]
-    check("both write into the HomeDomain device file",
-          sq.location is FileLocation.globalPreferencesHomeDomain
-          and lt.location is FileLocation.globalPreferencesHomeDomain)
+    check("Squair writes into the HomeDomain device file",
+          sq.location is FileLocation.globalPreferencesHomeDomain)
     check("declared value is a real bool True",
-          sq.value is True and lt.value is True
-          and type(sq.value) is bool and type(lt.value) is bool)
-    check("both are plain switches", sq.kind is Kind.SWITCH
-          and lt.kind is Kind.SWITCH)
-    check("gated to iOS 26+", sq.min_version == "26.0"
-          and lt.min_version == "26.0")
-    check("descriptions carry the honest device-test grade",
-          "unproven" in (sq.description or "").lower()
-          and "isolated device test" in (lt.description or "").lower())
+          sq.value is True and type(sq.value) is bool)
+    check("Squair is a plain switch", sq.kind is Kind.SWITCH)
+    check("gated to iOS 26+", sq.min_version == "26.0")
+    check("description carries the honest device-test grade",
+          "unproven" in (sq.description or "").lower())
     check("feature mapping joins HotLoad's Liquid Glass feature",
           SECTION_FEATURES[Section.LIQUID_GLASS_DISABLE] == "Liquid Glass")
     ids = {e["id"] for e in home_tweak_catalogue()}
-    check("Home catalogue surfaces Squair + Latest, not the removed routes",
-          {TweakID.LGDisableSquairTest, TweakID.LGDisableLatest} <= ids
+    check("Home catalogue surfaces Squair, not the removed routes",
+          TweakID.LGDisableSquairTest in ids
+          and TweakID.LGDisableLatest not in ids
           and TweakID.LGDisableG2 not in ids
           and TweakID.LGDisableG1 not in ids)
 
@@ -347,33 +343,32 @@ def test_gui_smoke():
     page = IOSLiquidGlassDisablePage(window)
     check("page constructs offscreen", page is not None)
     switches = page.content._switches
-    check("page renders the Squair + Latest switches",
-          TweakID.LGDisableSquairTest in switches
-          and TweakID.LGDisableLatest in switches)
-    check("removed G1/G2 switches are gone",
+    check("page renders the Squair switch only",
+          TweakID.LGDisableSquairTest in switches)
+    check("removed G1/G2/Latest switches are gone",
           TweakID.LGDisableG2 not in switches
-          and TweakID.LGDisableG1 not in switches)
+          and TweakID.LGDisableG1 not in switches
+          and TweakID.LGDisableLatest not in switches)
     page.refresh()  # stub device on 23G83: status line, no crash
     check("refresh with a stub device is safe", True)
-    sw = switches[TweakID.LGDisableLatest]
+    sw = switches[TweakID.LGDisableSquairTest]
     sw.setChecked(True)
-    check("toggling the Latest switch enables the registry tweak",
-          tweaks[TweakID.LGDisableLatest].enabled)
+    check("toggling the Squair switch enables the registry tweak",
+          tweaks[TweakID.LGDisableSquairTest].enabled)
     sw.setChecked(False)
     check("toggling it back disables the tweak",
-          not tweaks[TweakID.LGDisableLatest].enabled)
+          not tweaks[TweakID.LGDisableSquairTest].enabled)
     page._apply_btn.click()
     check("Open Apply navigates to the Apply page (index 6)",
           window.shown_pages == [6], str(window.shown_pages))
     page.focus_route("latest")
-    check("Home tile focus marks the Latest route without enabling it",
-          page._focused_route == "latest"
-          and not tweaks[TweakID.LGDisableLatest].enabled)
+    check("the retired Latest focus route is a soft no-op now",
+          page._focused_route is None
+          and not tweaks[TweakID.LGDisableSquairTest].enabled)
     page.focus_route("bogus")
     check("unknown focus route clears the marker",
           page._focused_route is None)
     tweaks[TweakID.LGDisableSquairTest].set_enabled(False)
-    tweaks[TweakID.LGDisableLatest].set_enabled(False)
 
 
 def main():

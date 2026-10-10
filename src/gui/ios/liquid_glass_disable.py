@@ -1,14 +1,17 @@
 """Liquid Glass Disable — dedicated iOS-style page.
 
-The switches are ordinary registry specs (Section
-"Liquid Glass Disable (Beta 1)": the Squair Protocol test payload and
-Liquid Glass (Latest)) rendered by the shared IOSSectionContent, so they
-enable, autosave, count in the pre-apply summary and stage through the
-normal apply pipeline exactly like every other tweak. This page adds
-what a generic switch row cannot: the honest explanation, the device
-status line, and the rollback buttons (each removes exactly its own
+The switch is an ordinary registry spec (Section
+"Liquid Glass Disable (Beta 1)": the Squair Protocol test payload)
+rendered by the shared IOSSectionContent, so it enables, autosaves,
+counts in the pre-apply summary and stages through the normal apply
+pipeline exactly like every other tweak. This page adds what a
+generic switch row cannot: the honest explanation, the device status
+line, and the rollback buttons (each removes exactly its own
 payload's keys from a fresh device capture). The Beta 1 G1/G2 routes
-left the product in v14.0 (user order 2026-10-07).
+left the product in v14.0, and the Liquid Glass (Latest) payload in
+v15 (user orders 2026-10-07 / 2026-10-10, both after device tests
+showed no effect); the "Roll Back Latest" button stays so devices
+that applied that payload under v14 can still strip its keys.
 """
 
 from PySide6.QtCore import Qt, QCoreApplication, QThread, Signal
@@ -83,23 +86,21 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         intro_layout.setContentsMargins(16, 12, 16, 12)
         intro_layout.setSpacing(6)
         intro = QLabel(_tr(
-            "UNPROVEN on screen. This page writes Apple's real firmware "
-            "keys through the full-backup route: Liquid Glass (Latest) "
-            "puts SolariumForceFallback = true into your device's "
-            "com.apple.SwiftUI.plist (its reader is verified alive in "
-            "the iOS 26.6.1 firmware), plus the two lock-screen keys "
-            "into .GlobalPreferences.plist and the specular key into "
-            "com.apple.springboard.plist; the Lock Screen Keys (Test) "
-            "entry is a test-only experiment. Nothing on this page claims the "
-            "glass look is disabled — judge it with an isolated device "
-            "test: full backup first, Low Power Mode off, reboot after "
-            "applying. Every apply is checked by an automatic "
-            "verification gate (payload parses, value is a real bool, "
-            "and 100% of your existing keys must survive) and is "
-            "cancelled if the check fails. "
-            "your original keys) and is cancelled if the check fails. "
+            "UNPROVEN on screen. The Lock Screen Keys (Test) entry "
+            "below is a test-only experiment: it writes Apple's real "
+            "firmware keys through the full-backup route, surgically "
+            "merging SBDisallowGlassTime and SBDisallowGlassButtons = "
+            "true into your device's own .GlobalPreferences.plist and "
+            "injecting a FeatureFlags/Domain/SpringBoard.plist whose "
+            "landing on the device cannot be confirmed. Nothing on "
+            "this page claims the glass look is disabled — judge it "
+            "with an isolated device test: full backup first, Low "
+            "Power Mode off, reboot after applying. Every apply is "
+            "checked by an automatic verification gate (payload "
+            "parses, value is a real bool, and 100% of your existing "
+            "keys must survive) and is cancelled if the check fails. "
             "On iOS 26.6.1 (builds 23G82 and 23G83), Apply delivers "
-            "these routes through a full device backup and restore "
+            "this route through a full device backup and restore "
             "instead of a partial restore, because the partial route "
             "showed no effect in beta testing; the same checks run "
             "first, an encrypted backup is refused, and any failure "
@@ -169,7 +170,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
 
     # -- status ----------------------------------------------------------
     def _device_gate_state(self):
-        """(udid, name, version, build, applicable) for the S8 route.
+        """(udid, name, version, build, applicable) for this route.
 
         ``applicable`` is the backend's exact window (a connected device
         on iOS 26.6.1 build 23G82 or 23G83); the switch lock itself is
@@ -199,16 +200,16 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         if not udid:
             self._status_label.setText(_tr(
                 "No device connected. Connect your iPhone to apply or "
-                "roll back. The switches above stay locked: this S8 "
-                "route is a full backup (all data) for iOS 26.6.1 "
+                "roll back. The switch above stays locked: this route "
+                "is a full backup (all data) for iOS 26.6.1 "
                 "builds 23G82 and 23G83 only — separate from Partial "
                 "Restore (up to iOS 26) and the iOS 27 Full Backup "
                 "route."))
             return
         if not applicable:
             self._status_label.setText(_tr(
-                "Device: %1 (iOS %2, build %3). The switches above are "
-                "locked: this S8 route is a full backup (all data) and "
+                "Device: %1 (iOS %2, build %3). The switch above is "
+                "locked: this route is a full backup (all data) and "
                 "runs only on iOS 26.6.1 builds 23G82 and 23G83 — "
                 "separate from Partial Restore (up to iOS 26) and the "
                 "iOS 27 Full Backup route. Rollback reads your device's "
@@ -218,14 +219,14 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             return
         self._status_label.setText(_tr(
             "Device: %1 (iOS %2, build %3). This build can run the "
-            "S8 full backup (all data) route. Rollback reads your "
+            "full backup (all data) route. Rollback reads your "
             "device's current files and removes only each payload's "
             "own keys.").replace("%1", name or udid).replace(
                 "%2", version or "?").replace("%3", build or "?"))
 
     def rebuild(self):
-        # Device changes rebuild the switches (the S8 gate is evaluated
-        # at build time); refresh the status line to match the new gate.
+        # Device changes rebuild the switch (the route gate is
+        # evaluated at build time); refresh the status line to match.
         super().rebuild()
         if getattr(self, "_status_label", None) is not None:
             self.refresh()
@@ -239,9 +240,10 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         still makes the explicit switch decision on this page.
         """
         route = str(route or "").strip().lower()
-        routes = {
-            "latest": TweakID.LGDisableLatest,
-        }
+        # No route targets remain: the Liquid Glass (Latest) home tile
+        # left the product with the payload in v15. Kept as a no-op so
+        # stale callers fail soft instead of raising.
+        routes = {}
         tweak_id = routes.get(route)
         if tweak_id is None:
             self._focused_route = None

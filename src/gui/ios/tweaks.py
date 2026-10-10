@@ -79,17 +79,18 @@ def _lock_reason(tweak_id: TweakID, device_version: str = "",
             + "; ".join(bits))
 
 
-# --- S8 full-backup route gate (UI only) --------------------------------
-# The two Liquid Glass Disable (Beta 1) payloads ride the S8 full-backup
-# (all-data) route, which the backend only runs on iOS 26.6.1 builds
-# 23G82/23G83 (src.restore.lgd_full.lgd_full_route_applicable, fail-closed).
-# Their registry/deliverability verdict is otherwise "deliverable", so
-# without this UI gate the switches stayed toggleable with no device — or
+# --- full-backup route gate (UI only) -----------------------------------
+# The Lock Screen Keys (Test) payload rides the full-backup (all-data)
+# route, which the backend only runs on iOS 26.6.1 builds 23G82/23G83
+# (src.restore.lgd_full.lgd_full_route_applicable, fail-closed). Its
+# registry/deliverability verdict is otherwise "deliverable", so
+# without this UI gate the switch stayed toggleable with no device — or
 # on a build that can never run the route — and the apply then silently
-# skipped them. Lock the switches here, in the UI layer only; the backend
-# gate is unchanged.
-_S8_ROUTE_TWEAK_IDS = frozenset({
-    TweakID.LGDisableSquairTest, TweakID.LGDisableLatest})
+# skipped it. Lock the switch here, in the UI layer only; the backend
+# gate is unchanged. (The Liquid Glass (Latest) payload that used to
+# share this gate was removed in v15; its ID is a tombstone and can
+# never appear as a switch again.)
+_S8_ROUTE_TWEAK_IDS = frozenset({TweakID.LGDisableSquairTest})
 
 
 def _s8_route_lock_reason(tweak_id, device_version: str = "",

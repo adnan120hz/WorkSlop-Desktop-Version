@@ -157,7 +157,6 @@ class DeviceBarMixin:
             card.setVisible(feat not in hidden)
         self.ios_home.set_statusbar_visible(not statusbar_hidden)
         lg_visible = "Liquid Glass" not in hidden
-        self.ios_home.set_lgd_visible(lg_visible)
         # Parity (audit rounds 21/23, AGENTS.md hide_feature contract):
         # the old Liquid Glass home tile and the WorkSlop sidebar's LGD
         # entry hide with the feature too, not just the G1/G2 tiles.

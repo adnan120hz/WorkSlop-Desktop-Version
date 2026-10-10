@@ -81,20 +81,15 @@ check("log names the failure",
       any("could not reset" in m and "state frozen" in m for m in msgs),
       repr(msgs))
 
-print("Latest state-reset failure is logged, not swallowed")
-msgs = run_prepare("_lgd_prepare_latest", TweakID.LGDisableLatest)
-check("a warning was logged", len(msgs) >= 1, repr(msgs))
-check("log names the failure",
-      any("could not reset" in m and "state frozen" in m for m in msgs),
-      repr(msgs))
-
 print("source no longer swallows the LGD resets silently")
 src = open(os.path.join(os.path.dirname(__file__), "..",
                         "src", "devicemanagement",
                         "device_manager.py")).read()
-for fn in ("_lgd_prepare_squair", "_lgd_prepare_latest"):
+for fn in ("_lgd_prepare_squair",):
     body = src.split(f"async def {fn}", 1)[1].split("\n    async def ", 1)[0]
     check(f"{fn} logs its state-reset failure",
           "could not reset" in body and "log_warn" in body)
+check("the removed Latest prepare bridge is gone from DeviceManager",
+      "_lgd_prepare_latest" not in src)
 
 print(f"\nALL {PASS} CHECKS PASSED")

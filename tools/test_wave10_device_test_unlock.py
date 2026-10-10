@@ -195,7 +195,7 @@ check("ship-candidate delivers OK", ok and code == "OK", code)
 
 print("\napp version is 11.0.1")
 from src.version import App_Version  # noqa: E402
-check("App_Version is 14.0", App_Version == "14.0", App_Version)
+check("App_Version is 15.0", App_Version == "15.0", App_Version)
 
 # ---------------------------------------------------------------- GUI ----
 try:
@@ -437,8 +437,9 @@ for build, ver, expected_locked in (
         _gc.collect()
 check("Home hero is the Apple logo tile (no phone frame)",
       not home._hero_logo.pixmap().isNull() and not hasattr(home, "_phone"))
-check("Home carries the ten feature tiles (G1/G2 removed in v14.0)",
-      len(home._tiles) == 10, str(len(home._tiles)))
+check("Home carries the nine feature tiles (G1/G2 removed in "
+      "v14.0, Latest tile removed in v15)",
+      len(home._tiles) == 9, str(len(home._tiles)))
 
 print("\nGUI: Status Bar page is a normal feature on 23G83 (Wave 11)")
 from src.gui.ios.statusbar import IOSStatusBarPage  # noqa: E402

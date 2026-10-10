@@ -73,7 +73,7 @@ def main():
 
     home = win.ios_home
     cards = list(home.cards_grid._cards)
-    check("Home renders all tiles", len(cards) == 10, str(len(cards)))
+    check("Home renders all tiles", len(cards) == 9, str(len(cards)))
     for card in cards:
         card.mousePressEvent(None)
         app.processEvents()
@@ -84,8 +84,8 @@ def main():
         sidebar.select(menu_id)
         app.processEvents()
     check("every sidebar menu selects", True)
-    check("version label is v14.0",
-          sidebar._version_lbl.text() == "WorkSlop Desktop v14.0",
+    check("version label is v15.0",
+          sidebar._version_lbl.text() == "WorkSlop Desktop v15.0",
           sidebar._version_lbl.text())
 
     print(f"\nALL {PASS} CHECKS PASSED")

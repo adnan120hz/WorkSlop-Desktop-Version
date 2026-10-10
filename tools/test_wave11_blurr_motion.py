@@ -235,10 +235,16 @@ def test_killed_dossier_candidates_stay_dead():
     check("no registry spec writes SolariumTextFrost yet",
           all(s.key != "SolariumTextFrost"
               for s in SPECS if not s.disabled))
-    # Wrong-direction neighbour from the same cluster: reduces frost.
-    check("no registry spec writes SolariumNoBlurReducedFrost",
-          all(s.key != "SolariumNoBlurReducedFrost"
-              for s in SPECS if not s.disabled))
+    # SolariumNoBlurReducedFrost was killed here as a wrong-direction
+    # neighbour of SolariumIncreasedDiffusion — as a BLURR tweak. The
+    # 2026-10-10 firmware research (iOS 26.1 23B85 vs 26.6.1 RC 23G82)
+    # verified its reader alive in DesignLibrary and the user ordered
+    # it in as its own honest experimental Liquid Glass spec instead,
+    # so the key now legitimately exists (LGNoBlurReducedFrost); pin
+    # its shape rather than its absence.
+    check("SolariumNoBlurReducedFrost lives in its own v15 spec",
+          SPECS_BY_ID[TweakID.LGNoBlurReducedFrost].key
+          == "SolariumNoBlurReducedFrost")
 
 
 def main():
