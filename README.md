@@ -16,6 +16,8 @@
   <a href="https://github.com/adnan120hz/WorkSlop-Desktop-Version/releases"><img src="https://img.shields.io/badge/releases-GitHub-black.svg" alt="GitHub Releases"></a>
 </p>
 
+# ⚠️ WARNING: DO NOT USE WORKSLOP DESKTOP v14 ON iOS 27 — IT CAN PUT YOUR iPHONE INTO A BOOTLOOP. v14 IS FOR iOS 26 ONLY. iOS 27 SUPPORT COMES IN THE NEXT BUILD.
+
 ---
 
 ## Download
