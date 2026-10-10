@@ -66,7 +66,7 @@ def main():
                          apply_reset=lambda pages: None)
     boxes = dialog.findChildren(QtWidgets.QCheckBox)
     check("dialog built without a device version",
-          len(boxes) == 8, f"{len(boxes)} checkboxes")
+          len(boxes) == 10, f"{len(boxes)} checkboxes")
     dialog.close()
 
     print("\nbusy: message shown, nothing started, nothing queued")
@@ -105,11 +105,12 @@ def main():
         backup_finished = QtCore.Signal(str)
         instances = []
 
-        def __init__(self, manager=None, settings=None, reset_pages=None):
+        def __init__(self, manager=None, settings=None, reset_pages=None, remove_options=None):
             super().__init__()
             self.manager = manager
             self.settings = settings
             self.reset_pages = reset_pages
+            self.remove_options = remove_options
             self.started = False
             FakeApplyThread.instances.append(self)
 
@@ -129,6 +130,8 @@ def main():
     check("worker got the reset pages",
           worker.reset_pages == [Page.Springboard, Page.Daemons],
           repr(worker.reset_pages))
+    check("worker got no removal options by default",
+          worker.remove_options is None, repr(worker.remove_options))
     check("worker got the window's device manager",
           worker.manager is win.device_manager)
     check("worker was started", worker.started)

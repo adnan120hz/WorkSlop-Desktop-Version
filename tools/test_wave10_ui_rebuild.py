@@ -164,7 +164,7 @@ check("background floaters use the soft v4 tints",
       str(FLOAT_TINTS))
 for key in ("global", "modern_card", "sidebar_nav_button", "nav_bar"):
     check(f"style resolves: {key}", bool(t(key).strip()))
-check("app version is exactly 15.0", App_Version == "15.0", App_Version)
+check("app version is exactly 15.1", App_Version == "15.1", App_Version)
 check("app build adds no release label", App_Build == 0, str(App_Build))
 
 print("\nWorkSlop v4 sidebar (main UI)")
@@ -179,8 +179,8 @@ check("sidebar is the v4 WorkSlop menu set",
           ("themes", "Themes"), ("settings", "Settings"),
           ("liquidglassdisable", "Liquid Glass Disable (Beta 1)")],
       str(MENUS))
-check("sidebar version label is clean v15.0",
-      sidebar._version_lbl.text() == "WorkSlop Desktop v15.0",
+check("sidebar version label is clean v15.1",
+      sidebar._version_lbl.text() == "WorkSlop Desktop v15.1",
       sidebar._version_lbl.text())
 sidebar.select("tweaks")
 check("sidebar select checks Tweaks", sidebar._buttons["tweaks"][0].isChecked())
@@ -500,7 +500,7 @@ check("modern shell is not instantiated",
       and not hasattr(win, "device_panel"))
 check("window version label is branded and clean",
       "WorkSlop" in win.ui.appVersionLbl.text()
-      and "15.0" in win.ui.appVersionLbl.text()
+      and "15.1" in win.ui.appVersionLbl.text()
       and "GoldenNugget" not in win.ui.appVersionLbl.text()
       and "pre-release" not in win.ui.appVersionLbl.text().lower()
       and "beta" not in win.ui.appVersionLbl.text().lower()

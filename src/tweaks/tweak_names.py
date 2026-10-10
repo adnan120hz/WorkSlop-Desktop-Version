@@ -246,5 +246,13 @@ class TweakID(Enum):
     # 26.6.1 firmware. The on-screen effect of every entry here is NOT
     # proven — see their registry descriptions.
     LGForceFallbackUIKit = auto()
-    LGForceFallbackSwiftUI = auto()
+    # Tombstone since v15.1 (user order 2026-10-10): the SwiftUI
+    # enable switch is removed from the product (device-verdict: it
+    # works but could not be switched back off — see the registry
+    # note). The member stays so old presets/journals naming it still
+    # parse; it is recorded in REMOVED_TWEAK_IDS
+    # (src/tweaks/capabilities.py) and must never resolve to an active
+    # spec or payload again. The Remove Tweaks dialog writes its key
+    # back to false instead.
+    LGForceFallbackSwiftUI = auto()  # tombstone: SwiftUI fallback enable (removed v15.1)
     LGNoBlurReducedFrost = auto()

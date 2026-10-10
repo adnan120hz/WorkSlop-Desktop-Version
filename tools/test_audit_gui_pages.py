@@ -84,8 +84,8 @@ def main():
         sidebar.select(menu_id)
         app.processEvents()
     check("every sidebar menu selects", True)
-    check("version label is v15.0",
-          sidebar._version_lbl.text() == "WorkSlop Desktop v15.0",
+    check("version label is v15.1",
+          sidebar._version_lbl.text() == "WorkSlop Desktop v15.1",
           sidebar._version_lbl.text())
 
     print(f"\nALL {PASS} CHECKS PASSED")

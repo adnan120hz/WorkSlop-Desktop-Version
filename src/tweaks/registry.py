@@ -320,8 +320,18 @@ SPECS: tuple[TweakSpec, ...] = (
     # glass is disabled.
     _t(TweakID.LGForceFallbackUIKit, Section.LIQUID_GLASS, "Force Solarium Fallback (UIKit)", FileLocation.uikit, "UISolariumForceFallback",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes UISolariumForceFallback = true into com.apple.UIKit.plist. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. iOS may ignore UIKit internal preferences on retail builds — if nothing on screen changes, that is a negative result, not a bug. The visual effect is NOT proven on a device; judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
-    _t(TweakID.LGForceFallbackSwiftUI, Section.LIQUID_GLASS, "Force Solarium Fallback (SwiftUI)", FileLocation.swiftui, "SolariumForceFallback",
-       min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumForceFallback = true into com.apple.SwiftUI.plist, the file its reader opens. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. Nothing beyond the write is claimed: the visual effect is NOT proven on a device. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
+    # REMOVED in v15.1 (user order 2026-10-10): the "Force Solarium
+    # Fallback (SwiftUI)" enable switch is gone. On the author's own
+    # iOS 26.6.1 device the key WORKED (Liquid Glass turned off) but
+    # could not be taken back: turning a spec off emits no file
+    # (BasicPlistTweak.apply_tweak returns early when disabled) and the
+    # Liquid Glass page reset never rewrites
+    # /var/mobile/Library/Preferences/com.apple.SwiftUI.plist, so
+    # SolariumForceFallback = true was stuck on the device. The ID is a
+    # tombstone now (REMOVED_TWEAK_IDS in src/tweaks/capabilities.py);
+    # the way back is the dedicated "Remove Solarium Fallback
+    # (SwiftUI)" option in the Remove Tweaks dialog, which stages
+    # SolariumForceFallback = false into that exact file.
     _t(TweakID.LGNoBlurReducedFrost, Section.LIQUID_GLASS, "No-Blur Reduced Frost (SwiftUI)", FileLocation.swiftui, "SolariumNoBlurReducedFrost",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumNoBlurReducedFrost = true into com.apple.SwiftUI.plist, the file its reader opens. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. The visual effect is NOT proven on a device. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
     # === Non-glass candidates (audited) ===

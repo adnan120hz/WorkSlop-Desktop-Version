@@ -124,6 +124,14 @@ REMOVED_TWEAK_IDS = frozenset({
     # rollback planner in src/tweaks/lg_latest.py stays reachable so
     # devices that applied it under v14 can still strip its keys.
     TweakID.LGDisableLatest,
+    # Force Solarium Fallback (SwiftUI) — enable switch removed in
+    # v15.1 (user order 2026-10-10). Device verdict on iOS 26.6.1:
+    # the key works (glass off) but the off state emits no file and
+    # the Liquid Glass reset never rewrites com.apple.SwiftUI.plist,
+    # so the true value could not be taken back. Tombstone: presets
+    # naming it resolve to removed/skipped; the Remove Tweaks dialog
+    # carries the dedicated false-writer that undoes it.
+    TweakID.LGForceFallbackSwiftUI,
     # Wave 10 Package 1 audit kills (AUDIT-FINAL-WAVE10 §4). The enum
     # members remain parseable for old presets, but these IDs never resolve
     # to an active spec or payload again.

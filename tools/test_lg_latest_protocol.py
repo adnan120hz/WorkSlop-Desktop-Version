@@ -20,11 +20,14 @@ apply-protocol suite for that payload and pins the removal instead:
   its four keys from fresh captures — removal planning is surgical,
   keeps every unrelated key, and fails closed without a fresh
   .GlobalPreferences.plist capture;
-* the three firmware-research specs that replace the hunt
-  (LGForceFallbackUIKit / LGForceFallbackSwiftUI /
-  LGNoBlurReducedFrost) carry the exact firmware keys, the audited
-  reader-home locations, a real bool true, the iOS 26+ gate, and the
-  honest not-proven description grade.
+* the firmware-research specs that replace the hunt
+  (LGForceFallbackUIKit / LGNoBlurReducedFrost) carry the exact
+  firmware keys, the audited reader-home locations, a real bool
+  true, the iOS 26+ gate, and the honest not-proven description
+  grade. (LGForceFallbackSwiftUI was removed in v15.1: on the
+  author's device the key worked but could not be switched back
+  off; it is a tombstone now, and the Remove Tweaks dialog stages
+  its key = false into com.apple.SwiftUI.plist instead.)
 
 Run: python tools/test_lg_latest_protocol.py
 """
@@ -217,11 +220,18 @@ def test_replacement_specs():
     cases = (
         (TweakID.LGForceFallbackUIKit, "UISolariumForceFallback",
          FileLocation.uikit),
-        (TweakID.LGForceFallbackSwiftUI, "SolariumForceFallback",
-         FileLocation.swiftui),
         (TweakID.LGNoBlurReducedFrost, "SolariumNoBlurReducedFrost",
          FileLocation.swiftui),
     )
+    # v15.1: the SwiftUI enable switch is a tombstone. On the author's
+    # iOS 26.6.1 device the key WORKED (glass off) but could not be
+    # taken back — a disabled spec stages no file, and no page reset
+    # rewrites com.apple.SwiftUI.plist. It must never resolve to an
+    # active spec again; the Remove Tweaks dialog stages
+    # SolariumForceFallback = false into that file instead.
+    check("LGForceFallbackSwiftUI: tombstoned, no active spec",
+          TweakID.LGForceFallbackSwiftUI not in SPECS_BY_ID
+          and is_removed_tweak(TweakID.LGForceFallbackSwiftUI))
     for tid, key, location in cases:
         spec = SPECS_BY_ID[tid]
         check(f"{tid.name}: lives in the Liquid Glass section",

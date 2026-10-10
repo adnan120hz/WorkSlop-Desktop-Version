@@ -195,7 +195,7 @@ check("ship-candidate delivers OK", ok and code == "OK", code)
 
 print("\napp version is 11.0.1")
 from src.version import App_Version  # noqa: E402
-check("App_Version is 15.0", App_Version == "15.0", App_Version)
+check("App_Version is 15.1", App_Version == "15.1", App_Version)
 
 # ---------------------------------------------------------------- GUI ----
 try:

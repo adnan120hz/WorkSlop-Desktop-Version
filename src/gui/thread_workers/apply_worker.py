@@ -62,11 +62,12 @@ class ApplyThread(QThread):
     # would corrupt the device state.
     _PROMPT_TIMEOUT_SEC = 10 * 60
 
-    def __init__(self, manager, settings: QSettings, reset_pages=None):
+    def __init__(self, manager, settings: QSettings, reset_pages=None, remove_options=None):
         super().__init__()
         self.manager = manager
         self.settings = settings
         self.reset_pages = reset_pages
+        self.remove_options = remove_options
         self.success = False
         self._log = None
         self._error_msg: str = ""
@@ -107,7 +108,8 @@ class ApplyThread(QThread):
         import logging
         from src.controllers.nugget_logger import log_context
         self._log = logging.getLogger("WorkSlop.apply")
-        mode = "reset" if self.reset_pages is not None else "apply"
+        mode = "reset" if (self.reset_pages is not None
+                           or self.remove_options) else "apply"
         try:
             log_context(f"START {mode}",
                         name=self.manager.get_current_device_name() or "unknown",
@@ -163,13 +165,15 @@ class ApplyThread(QThread):
         self.alert.emit(msg)
 
     def _do_work(self):
-        if self.reset_pages is None:
+        if self.reset_pages is None and not self.remove_options:
             self.manager.apply_changes(self.update_label, self.alert_window,
                                        self.prompt_password, self.prompt_user_choice,
                                        on_backup_complete=self.backup_finished.emit)
         else:
-            self.manager.reset_tweaks(self.reset_pages, self.settings, self.update_label,
-                                      self.alert_window, self.prompt_user_choice)
+            self.manager.reset_tweaks(self.reset_pages or [], self.settings,
+                                      self.update_label,
+                                      self.alert_window, self.prompt_user_choice,
+                                      remove_options=self.remove_options)
 
 
 class RestoreCacheThread(QThread):

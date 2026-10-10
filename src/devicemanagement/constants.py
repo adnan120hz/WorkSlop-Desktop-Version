@@ -3,6 +3,15 @@ from dataclasses import dataclass
 from packaging.version import Version
 
 
+# Remove-Tweaks options for the v15 firmware-research Solarium keys.
+# The Reset dialog offers them unconditionally; device_manager stages
+# one key = false write per option into the exact file the v15 enable
+# switch wrote (turning a registry spec off emits no file, and the
+# page resets never rewrite those two preference files).
+REMOVE_SOLARIUM_SWIFTUI = "solarium_fallback_swiftui"
+REMOVE_SOLARIUM_UIKIT = "solarium_fallback_uikit"
+
+
 class Device:
     def __init__(self,
                 udid: int, usb: bool, name: str,

@@ -95,11 +95,12 @@ for name, section, location, key, value, vtype, mn, mx in EXPECTED:
 
 # The v4 LG catalogue is exactly these 32 registry rows: 31 LG + 1 FF.
 lg_specs = [s for s in SPECS if s.section is Section.LIQUID_GLASS]
-check("LG section has 31 v4 rows + Blurr Motion + 3 v15 "
-      "firmware-research rows",
-      len(lg_specs) == 35 and any(s.id is TweakID.BlurrMotion for s in lg_specs)
-      and {TweakID.LGForceFallbackUIKit, TweakID.LGForceFallbackSwiftUI,
-           TweakID.LGNoBlurReducedFrost} <= {s.id for s in lg_specs},
+check("LG section has 31 v4 rows + Blurr Motion + 2 remaining v15 "
+      "firmware-research rows (SwiftUI enable removed in v15.1)",
+      len(lg_specs) == 34 and any(s.id is TweakID.BlurrMotion for s in lg_specs)
+      and {TweakID.LGForceFallbackUIKit,
+           TweakID.LGNoBlurReducedFrost} <= {s.id for s in lg_specs}
+      and TweakID.LGForceFallbackSwiftUI not in {s.id for s in lg_specs},
       f"got {len(lg_specs)}")
 check("FEATURE_FLAGS holds only the v4 Solarium row",
       [s.id for s in SPECS if s.section is Section.FEATURE_FLAGS]

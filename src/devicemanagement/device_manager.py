@@ -36,6 +36,7 @@ MAX_TENDIES_PER_RESTORE = 5
 
 from src.devicemanagement.constants import (
     Device, Version, is_device_supported, mobilegestalt_decision,
+    REMOVE_SOLARIUM_SWIFTUI, REMOVE_SOLARIUM_UIKIT,
 )
 from src.tweaks.capabilities import (
     canonical_tweak_id,
@@ -237,6 +238,21 @@ def lg_reset_contents(dev_version) -> bytes:
     if parsed is not None and parsed >= Version("27.0"):
         return plistlib.dumps({})
     return b""
+
+
+# v15.1 Remove-Tweaks options (Reset dialog): each option stages one
+# key = false write into the exact preference file the v15 enable
+# switch wrote. (location, key) pairs — the payload itself is built
+# through BasicPlistTweak in _reset_tweaks so it takes the identical
+# staging-dict -> plist-bytes path as a normal apply.
+SOLARIUM_FALLBACK_REMOVALS = {
+    REMOVE_SOLARIUM_SWIFTUI: (
+        FileLocation.swiftui, "SolariumForceFallback",
+        "Remove Solarium Fallback (SwiftUI)"),
+    REMOVE_SOLARIUM_UIKIT: (
+        FileLocation.uikit, "UISolariumForceFallback",
+        "Remove Solarium Fallback (UIKit)"),
+}
 
 
 # Fix Audit 93 (B): deterministic apply order + duplicate-key conflict log.
@@ -2957,10 +2973,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         log_warn(f"Temp dir cleanup failed: {e}")
 
     ## RESETTING TWEAKS
-    def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+    def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None, remove_options: list = None):
         install_windows_selector_policy()
-        asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice))
-    async def _reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice, remove_options=remove_options))
+    async def _reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None, remove_options: list = None):
         journal = None
         j_page_paths: dict = {}
         final_alert = None
@@ -3216,6 +3232,50 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         page_skip_reasons[page] = "gestalt_base_unavailable"
 
             _direct_total = len(files_to_restore)
+
+            # v15.1: Remove-Tweaks options for the firmware-research
+            # Solarium keys (Reset dialog). Each option stages ONE
+            # key = false write into the exact preference file the v15
+            # enable switch wrote, built through the same
+            # BasicPlistTweak staging construction a normal apply uses
+            # (location -> {key: False} -> plist bytes -> restore
+            # file). This exists because turning a registry spec off
+            # stages nothing (BasicPlistTweak.apply_tweak returns
+            # early when disabled) and the page resets above never
+            # rewrite these two files — a stray SolariumForceFallback
+            # = true otherwise has no way back.
+            for _option_id in (remove_options or []):
+                _removal = SOLARIUM_FALLBACK_REMOVALS.get(_option_id)
+                if _removal is None:
+                    log_warn(f"Remove Tweaks: unknown option {_option_id!r} ignored")
+                    continue
+                _location, _key, _label = _removal
+                from src.tweaks.tweak_classes import BasicPlistTweak
+                _rm_tweak = BasicPlistTweak(
+                    file_location=_location, key=_key, value=False)
+                _rm_tweak.enabled = True
+                _staged: dict = {}
+                _rm_tweak.apply_tweak(_staged)
+                self.concat_file(
+                    contents=plistlib.dumps(_staged[_location]),
+                    path=_location.value,
+                    files_to_restore=files_to_restore
+                )
+                if journal is not None:
+                    journal.add_entry({
+                        "id": f"remove.{_option_id}",
+                        "tweak_id": None,
+                        "name": _label,
+                        "family": "Remove",
+                        "kind": "remove_key",
+                        "requested": True,
+                        "source": "remove_tweaks",
+                        "operation": {
+                            "file": _location.value,
+                            "key": _key,
+                            "value": False,
+                        },
+                    })
 
             # Add the files to null from the list. Wave 10 P0: NEVER stage a
             # zero-byte plist on iOS 26.x (or any other version) for the

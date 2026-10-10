@@ -1677,7 +1677,7 @@ class ApplyMixin:
         guard, Fix Audit 73). See :func:`device_operations_running`."""
         return device_operations_running(self)
 
-    def apply_changes(self, reset_pages: list=None):
+    def apply_changes(self, reset_pages: list=None, remove_options: list=None):
         if self.apply_in_progress:
             # A second apply/reset used to vanish here with no feedback at
             # all: the Reset dialog closed, no restore ran, the device never
@@ -1693,11 +1693,12 @@ class ApplyMixin:
                     "was started."))
             return
         # Applies (not resets) get a what-will-change summary first.
-        if reset_pages is None and not self._confirm_apply_summary():
+        if reset_pages is None and not remove_options \
+                and not self._confirm_apply_summary():
             return
         self.apply_in_progress = True
         self.toggle_thread_btns(disabled=True)
-        self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages)
+        self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages, remove_options=remove_options)
         self.worker_thread.progress.connect(self.update_label)
         self.worker_thread.alert.connect(self.alert_message)
         self.worker_thread.request_text.connect(self.on_password_request)
