@@ -1234,6 +1234,20 @@ class DeviceManager:
                          "(no data protection)")
                 self._protective_backup_skipped = True
             partially_supported = self.get_current_device_partially_supported()
+            if partially_supported:
+                # iOS 27 (user order 2026-10-11): the G1 full-backup route
+                # REPLACES the old protective/sparse/wipe flow entirely:
+                # full backup of all data -> payload adapted to the
+                # enabled tweaks -> inject -> verify -> full restore,
+                # with a 12-minute watchdog and a confirmed risk warning.
+                # The iOS 26 partial-restore path below is untouched.
+                # NOTE: assign to final_alert (not bare return) — the
+                # finally below shows it via show_alert().
+                final_alert = await self._apply_ios27_g1(
+                    update_label, show_alert,
+                    prompt_password=prompt_password,
+                    prompt_choice=prompt_choice)
+                return
             should_prepare = partially_supported and not raw_sparse
             if should_prepare:
                 # On NotEnoughDiskSpaceError the user can choose to continue
@@ -1353,7 +1367,63 @@ class DeviceManager:
                     error=self._journal_error)
             self._current_journal = None
             pb.tendies = original_tendies
+            # WorkSlop bookmark WebClip: auto-generated with every successful
+            # apply (user order 2026-10-11; no toggle, no opt-in). The user
+            # installs the .mobileconfig manually in Settings.
+            self._maybe_write_webclip_bookmark(final_alert)
             show_alert(final_alert)
+
+    # -- WorkSlop bookmark WebClip (auto-generated on successful apply) ----
+    def _is_success_alert(self, alert) -> bool:
+        """True only for the success result alert of an apply."""
+        return (
+            alert is not None
+            and getattr(alert, "title", "") == QCoreApplication.tr("Success!")
+            and getattr(alert, "icon", None) is QMessageBox.Information
+        )
+
+    def _write_webclip_bookmark(self, output_dir=None):
+        """Generate the WorkSlop bookmark WebClip .mobileconfig.
+
+        Returns the written file path, or None on any failure. A failure is
+        logged and never blocks an apply.
+        """
+        try:
+            from src.devicemanagement import managed_profile_webclip as wc
+            from src.restore.storage import protective_base
+            out_dir = output_dir or str(protective_base())
+            os.makedirs(out_dir, exist_ok=True)
+            path = os.path.join(out_dir, "WorkSlop-Bookmark.mobileconfig")
+            profile = wc.build_webclip_profile()
+            wc.write_mobileconfig(profile, path)
+            log_info(f"WorkSlop bookmark profile written to {path}")
+            return path
+        except Exception as e:
+            log_warn(f"WorkSlop bookmark profile generation skipped: {e}")
+            return None
+
+    def _maybe_write_webclip_bookmark(self, final_alert) -> None:
+        """Append the auto-generated bookmark note to a SUCCESS alert only.
+
+        No toggle: runs on every successful apply (user order 2026-10-11).
+        Never raises: a bookmark failure must not block or break an apply.
+        """
+        try:
+            if not self._is_success_alert(final_alert):
+                return
+            path = self._write_webclip_bookmark()
+            if not path:
+                return
+            final_alert.txt = (
+                f"{final_alert.txt}\n\n"
+                "A WorkSlop bookmark profile was also saved to:\n"
+                f"{path}\n\n"
+                "Transfer it to your iPhone and install it via Settings \u2192 "
+                "Profile Downloaded \u2192 Install. A WorkSlop icon will appear on "
+                "your home screen; tap it to open the WorkSlop website."
+            )
+        except Exception as e:
+            log_warn(f"WorkSlop bookmark hook skipped: {e}")
 
     # -- Wave 10 Apply Journal helpers ------------------------------------
     def _journal_device_info(self) -> dict:
@@ -2304,11 +2374,198 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         finally:
             show_alert(final_alert)
 
-    async def _apply_tweak_pass(self, update_label=lambda x: None, templates: list = None, prepared_backup_root=None, prompt_password=None, prompt_choice=None, skip_protective_backup: bool = False):
+    async def _apply_ios27_g1(self, update_label=lambda x: None, show_alert=lambda x: None,
+                              prompt_password=None, prompt_choice=None):
+        """iOS 27 apply via the device-proven G1 truck (user order 2026-10-11).
+
+        Pipeline: full backup of ALL device data -> stage every enabled
+        tweak's files exactly as the normal tweak pass does (multi-tweak
+        adaptation is structural: each tweak contributes its own target
+        files) -> pull each payload file from the backup and modify it
+        (or add it new) -> inject -> verify -> full restore.
+
+        Gates, in order: (1) hard unsupported-device block; (2) the iOS
+        27 eligibility list (27.0 DB1-9 / RC / stable / 27.0.1 — anything
+        else is "Not supported"); (3) the English risk warning, which
+        must be CONFIRMED before anything runs; (4) the 12-minute
+        watchdog, counted from the start of the full backup.
+
+        Returns the final alert (shown by the caller's show_alert).
+        Raises on failure — the _apply_changes wrapper turns it into an
+        error alert and finalizes the journal.
+        """
+        from src.restore.ios27_g1 import (
+            IOS27_WARNING_TEXT, IOS27_WARNING_TITLE, NOT_SUPPORTED_MESSAGE,
+            G1Watchdog, attribute_payloads_to_tweaks,
+            backup_ios27_full, deliver_ios27_payload,
+            is_ios27_g1_supported, plan_g1_payloads,
+        )
+        from src.restore.protective import extract_gp_base_plist
+
+        self._raise_if_unsupported()
+        udid = self.get_current_device_udid()
+        if not udid:
+            raise NuggetException(QCoreApplication.tr("No device connected."))
+        version = self.get_current_device_version()
+        build = self.get_current_device_build()
+
+        # Gate 2: eligibility — only the listed iOS 27 builds/versions.
+        if not is_ios27_g1_supported(version, build):
+            log_warn(f"iOS27-G1: rejecting unsupported device "
+                     f"(version={version!r}, build={build!r})")
+            return ApplyAlertMessage(
+                txt=QCoreApplication.tr(NOT_SUPPORTED_MESSAGE),
+                title=QCoreApplication.tr("Not Supported"),
+                icon=QMessageBox.Warning)
+
+        # Gate 3: the risk warning must be CONFIRMED before the pipeline.
+        # prompt_choice relays to a main-thread Abort/Resume dialog in the
+        # GUI; without a callback (headless/CLI) the honest default is to
+        # abort — never run the risky pipeline unconfirmed.
+        if prompt_choice is None:
+            log_warn("iOS27-G1: no confirmation prompt available — aborting")
+            return ApplyAlertMessage(
+                txt=QCoreApplication.tr(
+                    "iOS 27 apply aborted: the risk warning could not be "
+                    "confirmed (no prompt available). Nothing was applied."),
+                title=QCoreApplication.tr("Apply Aborted"),
+                icon=QMessageBox.Warning)
+        decision = prompt_choice(IOS27_WARNING_TITLE, IOS27_WARNING_TEXT)
+        if decision != "resume":
+            log_info("iOS27-G1: user declined the iOS 27 risk warning — aborting")
+            return ApplyAlertMessage(
+                txt=QCoreApplication.tr(
+                    "iOS 27 apply aborted by you. Nothing was applied."),
+                title=QCoreApplication.tr("Apply Aborted"),
+                icon=QMessageBox.Warning)
+        log_info("iOS27-G1: user confirmed the iOS 27 risk warning")
+
+        watchdog = G1Watchdog()
+        update_label(QCoreApplication.tr(
+            "iOS 27: confirmed — starting the full-backup route..."))
+
+        # Phase A: full backup of ALL data (the watchdog clock starts here).
+        backup_root = await backup_ios27_full(
+            udid,
+            update_label=update_label,
+            backup_progress=self._backup_progress(update_label),
+            watchdog=watchdog)
+
+        # The HomeDomain .GlobalPreferences.plist merge base comes from
+        # THIS backup (B1 safety: never write a tweak-only dict over the
+        # user's live settings). Without a base the staging pass skips
+        # the HomeDomain copy with a warning, exactly as before.
+        self._gp_base_plist = None
+        try:
+            import tempfile as _tf
+            with _tf.TemporaryDirectory(prefix="workslop_ios27_g1_gpbase_") as tmp_dir:
+                dest = os.path.join(tmp_dir, "GlobalPreferences.plist")
+                extracted = extract_gp_base_plist(backup_root, udid, dest)
+                if extracted is not None:
+                    with open(extracted, "rb") as f:
+                        base = plistlib.load(f)
+                    if isinstance(base, dict):
+                        self._gp_base_plist = base
+                        log_info(f"iOS27-G1: GP merge base loaded "
+                                 f"({len(base)} keys) from the full backup")
+        except Exception as e:
+            log_warn(f"iOS27-G1: GP merge base unavailable ({e}); "
+                     "the HomeDomain copy will be skipped by the staging pass")
+
+        # Stage every enabled tweak's files (no restore — stage_only).
+        _alert, files_to_restore = await self._apply_tweak_pass(
+            update_label,
+            templates=tweaks[TweakID.Templates].templates,
+            prompt_choice=prompt_choice,
+            stage_only=True)
+
+        # Build the payload adapted to the enabled tweaks, merging each
+        # plist payload onto the backup's own copy (pulled from the
+        # backup and modified) or adding it new.
+        payloads, skipped, manifest = plan_g1_payloads(
+            files_to_restore, backup_root=backup_root, udid=udid)
+        for s in skipped:
+            log_warn(f"iOS27-G1: payload file skipped: {s['rel_path']} "
+                     f"({s['reason']})")
+        log_info(f"iOS27-G1: payload planned — {len(payloads)} file(s), "
+                 f"{len(skipped)} skipped")
+
+        # Tweak -> file attribution for the log/audit trail (derived from
+        # the Apply Journal's registry spec locations, never hardcoded).
+        try:
+            journal = getattr(self, "_current_journal", None)
+            entries = []
+            if journal is not None:
+                for _elist in (journal.data.get("tweaks") or []):
+                    entries.append(_elist)
+            attributed = attribute_payloads_to_tweaks(payloads, entries)
+            for a in attributed:
+                log_info(f"iOS27-G1 payload: {a['domain']}/{a['rel_path']} "
+                         f"<- {', '.join(a['tweaks'])}")
+        except Exception as e:
+            log_warn(f"iOS27-G1: payload attribution failed ({e})")
+
+        # Phases B-D: inject, verify, full restore (watchdog-bounded).
+        def _g1_restore_progress(value):
+            if isinstance(value, str):
+                update_label(value)
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
+                pass
+            else:
+                update_label(QCoreApplication.tr(
+                    "iOS 27: restoring... ({0:.1f}%)").format(value))
+        backup_root, timed_out = await deliver_ios27_payload(
+            backup_root, udid, payloads,
+            update_label=update_label,
+            restore_progress=_g1_restore_progress,
+            watchdog=watchdog,
+            reboot=bool(self.pref_manager.auto_reboot))
+
+        # Mark the journal delivered + finalize success (mirrors the
+        # start_restore success path in _apply_tweak_pass).
+        try:
+            journal = getattr(self, "_current_journal", None)
+            if journal is not None and not journal.finalized:
+                for _entry in journal.data["tweaks"]:
+                    if _entry["status"] == TW_STAGED:
+                        _entry["status"] = TW_DELIVERED
+                _partial = any(
+                    _entry["status"] in (TW_FAILED, TW_NOT_DELIVERED)
+                    for _entry in journal.data["tweaks"])
+                self._finish_journal(
+                    journal, "partial" if _partial else "success")
+        except Exception as e:
+            log_warn(f"iOS27-G1: journal finalize failed ({e})")
+
+        update_label(QCoreApplication.tr("Success!"))
+        timeout_note = ""
+        if timed_out:
+            timeout_note = QCoreApplication.tr(
+                "\n\nNote: the restore finished past the 12-minute safety "
+                "limit. It was allowed to complete (interrupting a restore "
+                "is unsafe); your device was fully restored.")
+        if self.pref_manager.auto_reboot:
+            _done_msg = QCoreApplication.tr(
+                "Your device will now restart.\n\nRemember to turn Find My back on!")
+        else:
+            _done_msg = QCoreApplication.tr(
+                "Please restart your device to see changes.")
+        return ApplyAlertMessage(
+            txt=QCoreApplication.tr("All done! ") + _done_msg + timeout_note,
+            title=QCoreApplication.tr("Success!"),
+            icon=QMessageBox.Information)
+
+    async def _apply_tweak_pass(self, update_label=lambda x: None, templates: list = None, prepared_backup_root=None, prompt_password=None, prompt_choice=None, skip_protective_backup: bool = False, stage_only: bool = False):
         """Generate all tweak files and restore them to the device in one pass.
 
         Returns (alert, files_to_restore) so the caller can surface the result
         and keep the file list for error reporting.
+
+        ``stage_only=True`` (iOS 27 G1 route, user order 2026-10-11): stage
+        every tweak's files exactly as usual but do NOT restore — return
+        ``(None, files_to_restore)`` so the caller can deliver them through
+        the full-backup route instead. The journal entries stay STAGED; the
+        G1 delivery marks them delivered itself.
         """
         if templates is None:
             templates = tweaks[TweakID.Templates].templates
@@ -2921,6 +3178,17 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # include_keychain only when backup encryption is active — iOS rejects
             # keychain entries in an unencrypted backup, and the keychain is what
             # preserves Apple Watch pairing / iMessage identity across the wipe.
+            #
+            # iOS 27 G1 route (user order 2026-10-11): stage only — the
+            # caller delivers files_to_restore through the full-backup
+            # route (full backup -> inject -> verify -> full restore) and
+            # finalizes the journal itself.
+            if stage_only:
+                # Audit 100x (2026-10-11): log_info takes ONE arg — the
+                # old %-style two-arg call raised TypeError here.
+                log_info(f"iOS27-G1: staging complete, {len(files_to_restore)} "
+                         "file(s) staged; delivery via the full-backup route")
+                return None, files_to_restore
             try:
                 final_alert = await self.start_restore(
                     files_to_restore, update_label, backup_password=backup_password,

@@ -58,6 +58,73 @@ def _auto_retheme(widget):
         guard.on_theme_changed)
 
 
+# --- stylesheet hoisting for row-heavy pages ----------------------------
+# An iOS Tweaks page builds ~150 IOSCards, each calling setStyleSheet in
+# __init__. Every call re-polishes the widget subtree, so construction
+# (and every theme change) pays ~150 polishes for identical sheets.
+# The card/collapsible-header sheets are pure class/id selectors
+# (``IOSCard { ... }``, ``QPushButton#iosCollapsibleHeader { ... }``), so
+# applying them ONCE at a hoist root renders byte-identically to N
+# per-widget calls. A widget marks itself a root with
+# ``_ws_hoist_root = True`` and owns ``_ws_hoisted`` (dict key -> sheet);
+# widgets used outside a hoist root keep the old per-widget path, so
+# dialogs and other pages are untouched.
+def _hoist_root(widget):
+    w = widget
+    while w is not None:
+        if getattr(w, "_ws_hoist_root", False):
+            return w
+        w = w.parentWidget()
+    return None
+
+
+# --- deferred initial styling -------------------------------------------
+# During a page build each component styles itself in __init__, before it
+# has a parent — so hoisting cannot apply yet and ~150 per-widget polishes
+# happen anyway. Wrap page construction in defer_component_styles(): the
+# initial _retheme is skipped and the hoist root applies everything once
+# afterwards (see IOSSectionContent._hoist_all). Later _retheme calls
+# (theme changes, rebuilds) are unaffected.
+import contextlib as _contextlib
+
+_defer_depth = 0
+
+
+@_contextlib.contextmanager
+def defer_component_styles():
+    global _defer_depth
+    _defer_depth += 1
+    try:
+        yield
+    finally:
+        _defer_depth -= 1
+
+
+def _defer_active():
+    return _defer_depth > 0
+
+
+def _hoisted_apply(widget, style_key, target=None):
+    """Record the *style_key* sheet for *widget* at its hoist root.
+
+    Record-only: the root's sheets are applied in one setStyleSheet call
+    by the page (see _prepend_global_qss), so this never polishes by
+    itself. Widgets outside a hoist root keep the old per-widget path,
+    applied to *target* (defaults to *widget*) — identical to the old
+    eager styling.
+    """
+    sheet = t(style_key)
+    root = _hoist_root(widget)
+    if root is None:
+        tgt = target if target is not None else widget
+        if tgt.styleSheet() != sheet:
+            tgt.setStyleSheet(sheet)
+        return
+    hoisted = root._ws_hoisted
+    if hoisted.get(style_key) != sheet:
+        hoisted[style_key] = sheet
+
+
 class TextInputDialog(QDialog):
     """iOS-style text input dialog."""
     def __init__(self, title: str, current_value: str = "", parent=None):
@@ -269,15 +336,15 @@ class IOSCard(QFrame):
         super().__init__(parent)
         self.setObjectName("iosCard")
         self.setFrameShape(QFrame.StyledPanel)
-        self._retheme()
+        if not _defer_active():
+            self._retheme()
         _auto_retheme(self)
         # Don't create a default layout - let the caller decide
 
     def _retheme(self):
-        # Audit 91: same skip-if-identical as IOSSectionHeader.
-        sheet = t("card")
-        if self.styleSheet() != sheet:
-            self.setStyleSheet(sheet)
+        # Perf: hoisted to the page's section content when available
+        # (identical rendering, one polish instead of ~150).
+        _hoisted_apply(self, "card")
 
 
 class IOSCollapsibleSection(QWidget):
@@ -321,7 +388,8 @@ class IOSCollapsibleSection(QWidget):
 
         # No toggled() emission here: the state was handed in by the caller.
         self.set_expanded(self._expanded)
-        self._retheme()
+        if not _defer_active():
+            self._retheme()
         _auto_retheme(self)
 
     @property
@@ -345,7 +413,10 @@ class IOSCollapsibleSection(QWidget):
         self.set_expanded(not self._expanded)
 
     def _retheme(self):
-        self.header.setStyleSheet(t("collapsible_header"))
+        # Perf: the header sheet is an id selector; hoist it like cards.
+        # Outside a hoist root it lands on the header button exactly as
+        # the old eager path did (Audit 100x 2026-10-11).
+        _hoisted_apply(self, "collapsible_header", target=self.header)
 
 
 class IOSNavBar(QWidget):

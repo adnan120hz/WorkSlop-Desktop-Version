@@ -3,8 +3,8 @@
 The actions reuse the exact flows already wired in the Settings page —
 this page only gives them a dedicated home under the Backup sidebar menu.
 Where backups are kept is chosen when a backup starts (folder picker);
-the choice is remembered and the automatic protective backup before an
-apply uses it too.
+the choice is remembered and the automatic backup before an apply
+uses it too.
 """
 import os
 import re
@@ -44,24 +44,12 @@ class IOSBackupPage(QWidget):
 
         self._content_layout.addWidget(IOSSectionHeader(tr("Backup")))
 
-        # Safety notice: protective != full.
+        # Safety notice: only a full backup protects everything.
         self._content_layout.addWidget(self._make_notice_card(
             tr("For maximum safety, use Full Backup"),
-            tr("The protective backup below only saves your photos, messages, "
-               "contacts, Apple ID / settings data and the keychain — not "
-               "everything on the iPhone. If you want to be fully safe before "
+            tr("A Full Backup below saves everything on the iPhone — the "
+               "way iTunes/Finder does. If you want to be fully safe before "
                "applying tweaks, run a Full Backup first.")))
-
-        self._content_layout.addWidget(self._make_card(
-            tr("Protective Backup"),
-            tr("A selective backup of the things the tweak flow needs to "
-               "restore: photos, messages, contacts, Apple ID and settings "
-               "data, plus the keychain when the device backup is encrypted.\n\n"
-               "This is NOT a full backup — app data and the rest of the "
-               "iPhone are not included. On iOS 27 this backup runs "
-               "automatically before tweaks are applied."),
-            tr("Start Protective Backup"),
-            self._on_protective_backup))
 
         self._content_layout.addWidget(self._make_apply_card())
 
@@ -70,15 +58,14 @@ class IOSBackupPage(QWidget):
             tr("Create a complete backup of the iPhone, the way iTunes/Finder "
                "does. Make sure this computer has enough free storage — the "
                "backup can be as large as the used storage on the iPhone — "
-               "and note this takes much longer than the protective backup."),
+               "and note this can take a long time on a full device."),
             tr("Start Full Backup"),
             self._on_full_backup))
 
         self._content_layout.addWidget(self._make_card(
             tr("Restore Backup"),
-            tr("Restore a backup to the iPhone. Two formats are supported: a "
-               "standard full-backup folder (iTunes/Finder format), or the "
-               "protective backup this app keeps on this computer."),
+            tr("Restore a standard full-backup folder (iTunes/Finder format) "
+               "to the iPhone."),
             tr("Restore..."),
             self._on_restore))
 
@@ -194,17 +181,14 @@ class IOSBackupPage(QWidget):
         lay.addWidget(title_lbl)
         desc_lbl = QLabel(tr(
             "Apply the tweaks you enabled on the other pages.\n\n"
-            # HONESTY-AUDIT FIX (#7): the old text described the classic
-            # wipe flow as if it always runs. The default merged flow
-            # (merge_phases=True) applies tweaks and restores the
-            # protective backup in one session WITHOUT wiping. The wipe
-            # only happens with GOLDENNUGGET_NO_MERGE_PHASES=1 or when a
-            # tweak forces iOS into security-recovery (automatic fallback).
-            "On iOS 27 the protective backup runs automatically first, then "
-            "the tweaks are applied and your photos / messages / contacts / "
-            "settings are put back — normally without wiping the iPhone. "
-            "A full wipe-and-restore only runs if a tweak forces iOS into "
-            "security recovery.\n\n"
+            # HONESTY-AUDIT FIX (#7, revised 2026-10-11): iOS 27 now uses
+            # the G1 full-backup route — a full backup runs first, tweaks
+            # are written into it, the whole backup is restored; no wipe.
+            # The Protective Backup menu was removed by user order, so the
+            # text no longer mentions it.
+            "On iOS 27 a full backup of all your data runs automatically "
+            "first — your tweaks are written into that backup, then the "
+            "whole backup is restored to the iPhone. No wipe is involved.\n\n"
             "On iOS 26 the tweaks apply directly, without a wipe."))
         desc_lbl.setWordWrap(True)
         desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")
@@ -252,8 +236,8 @@ class IOSBackupPage(QWidget):
     # There is no fixed "backup location" shown on this page any more:
     # when a backup starts, the user picks the folder themselves. The
     # choice is remembered (``backup_storage_dir`` — the same pref the
-    # backup storage root resolves from), so the protective backup that
-    # runs automatically before an apply lands in the picked place too.
+    # backup storage root resolves from), so the automatic backup that
+    # runs before an apply lands in the picked place too.
     # With nothing picked, the pipeline's historical default is used and
     # created on demand, as before.
     _PREF_KEY = "backup_storage_dir"
@@ -281,23 +265,6 @@ class IOSBackupPage(QWidget):
         return folder
 
     # -- actions (same flows as Settings) -------------------------------
-    def _on_protective_backup(self):
-        reply = QMessageBox.warning(
-            self.window, tr("Protective Backup"),
-            tr("This creates a SELECTIVE backup: photos, messages, contacts, "
-               "Apple ID and settings data, plus the keychain when the "
-               "device backup is encrypted.\n\n"
-               "It is NOT a full backup. For maximum safety, run a Full "
-               "Backup too.\n\n"
-               "Continue?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes)
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        if not self._choose_backup_folder("Choose backup folder"):
-            return
-        self.window._start_protective_backup()
-
     def _on_apply_tweaks(self):
         self.window.apply_tweaks_clicked()
 
@@ -311,7 +278,7 @@ class IOSBackupPage(QWidget):
                "iTunes/Finder does.\n\n"
                "Make sure this computer has enough free storage — the backup "
                "can be as large as the used storage on the iPhone — and note "
-               "this takes much longer than the protective backup.\n\n"
+               "this can take a long time on a full device.\n\n"
                "Continue?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
@@ -323,23 +290,9 @@ class IOSBackupPage(QWidget):
         self.window._start_full_backup(folder)
 
     def _on_restore(self):
-        mbox = QMessageBox(self.window)
-        mbox.setWindowTitle(tr("Restore Backup"))
-        mbox.setText(tr("Choose the backup format to restore:"))
-        mbox.setInformativeText(
-            tr("Full Backup: a standard iPhone backup folder in iTunes/Finder "
-               "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
-               "Protective Backup: the selective protective backup this app "
-               "keeps on this computer (only restorable from this app)."))
-        full_btn = mbox.addButton(tr("Full Backup..."), QMessageBox.ButtonRole.ActionRole)
-        prot_btn = mbox.addButton(tr("Protective Backup"), QMessageBox.ButtonRole.ActionRole)
-        mbox.addButton(QMessageBox.StandardButton.Cancel)
-        mbox.exec()
-        clicked = mbox.clickedButton()
-        if clicked == full_btn:
-            self._on_restore_full()
-        elif clicked == prot_btn:
-            self._on_restore_protective()
+        # Only the full-backup format remains (the Protective Backup menu
+        # was removed by user order 2026-10-11); go straight to it.
+        self._on_restore_full()
 
     def _on_restore_full(self):
         folder = QFileDialog.getExistingDirectory(
@@ -356,18 +309,6 @@ class IOSBackupPage(QWidget):
         if reply != QMessageBox.StandardButton.Yes:
             return
         self.window._start_full_backup_restore(folder)
-
-    def _on_restore_protective(self):
-        reply = QMessageBox.question(
-            self.window, tr("Restore Data From Backup?"),
-            tr("This restores photos, messages, contacts and settings from "
-               "the last protective backup on this computer.\n\n"
-               "Applied tweaks and wallpapers are KEPT.\n\n"
-               "Make sure the iPhone is connected, unlocked and awake, "
-               "then do you want to continue?"))
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        self.window._start_cache_restore()
 
     # -- helpers --------------------------------------------------------
     def refresh(self):

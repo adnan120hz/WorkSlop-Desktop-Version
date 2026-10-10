@@ -826,30 +826,10 @@ class IOSSettingsPage(QWidget):
             )
 
     def _on_restore_data_clicked(self):
-        # WorkSlop: Restore Backup menu — 2 formats.
-        mbox = QMessageBox(self.window)
-        mbox.setWindowTitle(QCoreApplication.translate("Nugget", "Restore Backup"))
-        mbox.setText(QCoreApplication.translate(
-            "Nugget", "Choose the backup format to restore:"))
-        mbox.setInformativeText(QCoreApplication.translate(
-            "Nugget",
-            "Full Backup: a standard iPhone backup folder in iTunes/Finder "
-            "format (Manifest.db/Manifest.plist + Info.plist).\n\n"
-            "WorkSlop Backup: the selective protective backup this app "
-            "keeps on this computer (only restorable from this app)."))
-        full_btn = mbox.addButton(
-            QCoreApplication.translate("Nugget", "Full Backup..."),
-            QMessageBox.ButtonRole.ActionRole)
-        gn_btn = mbox.addButton(
-            QCoreApplication.translate("Nugget", "WorkSlop Backup"),
-            QMessageBox.ButtonRole.ActionRole)
-        mbox.addButton(QMessageBox.StandardButton.Cancel)
-        mbox.exec()
-        clicked = mbox.clickedButton()
-        if clicked == full_btn:
-            self._on_restore_full_backup_clicked()
-        elif clicked == gn_btn:
-            self._on_restore_workslop_backup_clicked()
+        # WorkSlop: Restore Backup — only the full-backup format remains
+        # (the Protective Backup menu was removed by user order
+        # 2026-10-11); go straight to it.
+        self._on_restore_full_backup_clicked()
 
     def _on_restore_full_backup_clicked(self):
         folder = QFileDialog.getExistingDirectory(
@@ -873,23 +853,6 @@ class IOSSettingsPage(QWidget):
             return
         self.window._start_full_backup_restore(folder)
 
-    def _on_restore_workslop_backup_clicked(self):
-        # Original GoldenNugget protective-backup restore, unchanged.
-        reply = QMessageBox.question(
-            self.window,
-            QCoreApplication.translate("Nugget", "Restore Data From Backup?"),
-            QCoreApplication.translate(
-                "Nugget",
-                "This restores photos, messages, contacts and settings from the "
-                "last protective backup on this computer.\n\n"
-                "Applied tweaks and wallpapers are KEPT.\n\n"
-                "Make sure the iPhone is connected, unlocked and awake, "
-                "then do you want to continue?"),
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        self.window._start_cache_restore()
-
     def _on_full_backup_clicked(self):
         # WorkSlop: real full backup, the iTunes way (mobilebackup2 full).
         reply = QMessageBox.warning(
@@ -901,7 +864,7 @@ class IOSSettingsPage(QWidget):
                 "iTunes/Finder does.\n\n"
                 "Make sure this computer has enough free storage — the backup "
                 "can be as large as the used storage on the iPhone — and note "
-                "this takes much longer than the protective backup.\n\n"
+                "this can take a long time on a full device.\n\n"
                 "Continue?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

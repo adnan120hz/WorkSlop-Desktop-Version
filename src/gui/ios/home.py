@@ -248,6 +248,12 @@ class IOSHomePage(QWidget):
         reset_btn.clicked.connect(self.reset_tweaks)
         actions.addWidget(reset_btn, 1)
 
+        # Experimental FeatureFlags .mobileconfig generator (dialog only,
+        # honest labels; nothing is installed silently).
+        profile_btn = QPushButton(self.tr("Managed Profile (Experimental)"))
+        profile_btn.clicked.connect(self.open_managed_profile)
+        actions.addWidget(profile_btn, 1)
+
         layout.addLayout(actions)
 
         self.preset_widget = PresetWidget(
@@ -375,6 +381,11 @@ class IOSHomePage(QWidget):
     def reset_tweaks(self):
         from src.gui.dialogs.reset_dialog import ResetDialog
         dialog = ResetDialog(device_manager=self.window.device_manager, apply_reset=self.window.apply_changes)
+        dialog.exec()
+
+    def open_managed_profile(self):
+        from src.gui.dialogs.managed_profile_dialog import ManagedProfileDialog
+        dialog = ManagedProfileDialog(parent=self)
         dialog.exec()
 
     def show_process_status(self, text: str, success: bool = None):

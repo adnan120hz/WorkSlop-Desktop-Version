@@ -209,6 +209,11 @@ class IOSSectionContent(QWidget):
         self.sections = sections
         self._switch_labels = []
         self._solarium_visible: bool = None
+        # Perf: stylesheet hoist root for the ~150 row cards/labels built
+        # below (see _hoisted_apply in components.py). Rendering is
+        # identical; only the number of setStyleSheet/polish calls drops.
+        self._ws_hoist_root = True
+        self._ws_hoisted = {}
 
         # Load tweaks (idempotent) so the sections below actually populate
         load_plist_tweaks()
@@ -326,12 +331,12 @@ class IOSSectionContent(QWidget):
                 ROW_CARD_HMARGIN, ROW_CARD_VMARGIN, ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
             row_layout.setSpacing(12)
 
-            c = ColorThemeManager.instance().colors
             label = QLabel(title)
             label.setWordWrap(True)
-            label.setStyleSheet(
-                f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
-                " background-color: transparent;")
+            # Perf: the title style is hoisted to this content widget in
+            # _retheme (one QLabel#tweakTitle rule) instead of an inline
+            # sheet per label.
+            label.setObjectName("tweakTitle")
             self._switch_labels.append(label)
             # Wave 11 (user order 2026-10-03): no UNPROVEN / device-test
             # badge or extra tooltip warning on any row. Tweaks that passed
@@ -583,12 +588,10 @@ class IOSSectionContent(QWidget):
             ROW_CARD_HMARGIN, ROW_CARD_VMARGIN,
             ROW_CARD_HMARGIN, ROW_CARD_VMARGIN)
         row_layout.setSpacing(12)
-        c = ColorThemeManager.instance().colors
         label = QLabel(QCoreApplication.translate("Nugget", title))
         label.setWordWrap(True)
-        label.setStyleSheet(
-            f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
-            " background-color: transparent;")
+        # Perf: hoisted like the switch labels (see _retheme).
+        label.setObjectName("tweakTitle")
         self._switch_labels.append(label)
         row_layout.addWidget(label, 1)
         return card, row_layout
@@ -709,12 +712,40 @@ class IOSSectionContent(QWidget):
         if self.force_solarium_fallback_card is not None:
             self.force_solarium_fallback_card.setVisible(visible)
 
-    def _retheme(self):
+    def _tweak_title_rule(self):
         c = ColorThemeManager.instance().colors
-        for lbl in self._switch_labels:
-            lbl.setStyleSheet(
-                f"color: {c.text_primary}; font-size: {ROW_LABEL_FONT_PX}px;"
-                " background-color: transparent;")
+        return (f"QLabel#tweakTitle {{ color: {c.text_primary}; "
+                f"font-size: {ROW_LABEL_FONT_PX}px; "
+                f"background-color: transparent; }}")
+
+    def _retheme(self):
+        # Perf: the QLabel#tweakTitle rule is recorded at the hoist root;
+        # the page applies it together with the global rules in one
+        # setStyleSheet call (see _prepend_global_qss). Identical
+        # rendering: the id selector wins over the global sheet's bare
+        # QLabel rule exactly like the old inline sheets did.
+        rule = self._tweak_title_rule()
+        hoisted = self._ws_hoisted
+        if hoisted.get("tweak_title") != rule:
+            hoisted["tweak_title"] = rule
+
+    def _hoist_all(self):
+        """Record every hoistable row style (after a deferred build).
+
+        Called by the window after constructing the page inside
+        defer_component_styles(): cards/collapsible headers skipped their
+        initial _retheme, so this records them; the following
+        _prepend_global_qss applies everything in one polish.
+        """
+        from src.gui.theme import t as _t
+        hoisted = self._ws_hoisted
+        for key in ("card", "collapsible_header"):
+            sheet = _t(key)
+            if hoisted.get(key) != sheet:
+                hoisted[key] = sheet
+        rule = self._tweak_title_rule()
+        if hoisted.get("tweak_title") != rule:
+            hoisted["tweak_title"] = rule
 
     def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
         if not self._current_compatible(tweak_id):

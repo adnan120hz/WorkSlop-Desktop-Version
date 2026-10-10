@@ -546,10 +546,59 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                         retheme()
                     except Exception:
                         pass
+                # Perf: hoisted row styles are recorded, not applied, by
+                # the deferred component guards — refresh the records here
+                # so _prepend_global_qss below applies the current theme.
+                try:
+                    for _root in page.findChildren(QtWidgets.QWidget):
+                        _hoist_all = getattr(_root, "_hoist_all", None)
+                        if callable(_hoist_all):
+                            _hoist_all()
+                except Exception:
+                    pass
                 self._ios_page_theme_gen[attr] = self._theme_gen
                 self._prepend_global_qss(page, attr)
             return page
-        page = self._build_ios_page(index)
+        # Perf: freeze paint/polish while a page's hundreds of widgets are
+        # constructed; one relayout happens on re-enable instead of one
+        # per addWidget/setStyleSheet. Visual result is identical.
+        # Component initial styling is deferred too (see
+        # defer_component_styles): the hoist roots then apply the row
+        # styles once instead of ~150 per-widget polishes.
+        from src.gui.ios.components import (
+            IOSCard, IOSCollapsibleSection, _hoist_root, defer_component_styles,
+        )
+        # Perf: the app-level event filter (F11/ESC/back-button) otherwise
+        # sees tens of thousands of construction events in Python. The
+        # build is synchronous — no input can arrive mid-build — so it is
+        # detached and reinstalled here. Visual result is identical.
+        _app = QtWidgets.QApplication.instance()
+        _app.removeEventFilter(self)
+        self.setUpdatesEnabled(False)
+        try:
+            with defer_component_styles():
+                page = self._build_ios_page(index)
+        finally:
+            self.setUpdatesEnabled(True)
+            _app.installEventFilter(self)
+        for _root in page.findChildren(QtWidgets.QWidget):
+            _hoist_all = getattr(_root, "_hoist_all", None)
+            if callable(_hoist_all):
+                _hoist_all()
+        # Audit 100x (2026-10-11): components built inside
+        # defer_component_styles() skipped their initial _retheme. Hoist
+        # roots recorded theirs via _hoist_all above, but cards/headers
+        # OUTSIDE any hoist root (Backup, Home, Settings, ...) never got
+        # styled — without this they keep an empty styleSheet until the
+        # next theme change. Apply their per-widget sheets now, exactly
+        # as the old eager path did.
+        for _w in page.findChildren(QtWidgets.QWidget):
+            if isinstance(_w, (IOSCard, IOSCollapsibleSection)) \
+                    and not _w.styleSheet() and _hoist_root(_w) is None:
+                try:
+                    _w._retheme()
+                except Exception:
+                    pass
         self._ios_page_objs[attr] = page
         self._ios_page_theme_gen[attr] = self._theme_gen
         placeholder = self._ios_placeholders.pop(index, None)
@@ -557,16 +606,14 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             self.ios_pages.removeWidget(placeholder)
             placeholder.deleteLater()
         self.ios_pages.insertWidget(index, page)
-        # Replay device-driven state collected while this page did not
-        # exist yet (device selected before first navigation).
-        if attr in self._ios_pages_need_rebuild:
-            self._ios_pages_need_rebuild.discard(attr)
-            rebuild = getattr(page, "rebuild", None)
-            if callable(rebuild):
-                try:
-                    rebuild()
-                except Exception:
-                    pass
+        # Perf: the page was just constructed above, and its build reads
+        # the live device state (device_manager.get_current_device_* at
+        # rebuild time) — so a device event that arrived before first
+        # navigation is already reflected. Discard the pending flag
+        # without redoing the identical rebuild (it used to build every
+        # row twice on first open). Pages built before a device event
+        # still rebuild directly in updateInterfaceForNewDevice.
+        self._ios_pages_need_rebuild.discard(attr)
         if attr == "ios_tweaks":
             pending_sf = getattr(
                 self, "_pending_force_solarium_visible", None)
@@ -943,6 +990,21 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             base = current
         css = t("global")
         sheet = css + ("\n" + base if base.strip() else "")
+        # Perf: fold row styles hoisted by section contents into the same
+        # single application — one polish for the whole page instead of
+        # ~150 per-widget ones. The hoisted selectors are class/id based
+        # (IOSCard, QLabel#tweakTitle, QPushButton#iosCollapsibleHeader),
+        # so rendering is identical to per-widget application.
+        try:
+            _extra = []
+            for _root in widget.findChildren(QtWidgets.QWidget):
+                _hoisted = getattr(_root, "_ws_hoisted", None)
+                if _hoisted:
+                    _extra.extend(_hoisted.values())
+            if _extra:
+                sheet += "\n" + "\n".join(_extra)
+        except Exception:
+            pass
         store[key] = (base, sheet)
         # Audit 91: re-setting an identical sheet re-polishes the page's
         # whole subtree for nothing (the plain re-show path, where the

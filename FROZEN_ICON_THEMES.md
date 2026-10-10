@@ -12,15 +12,34 @@ overhaul — so its code and data are pinned.
 ## Frozen files
 
 Pinned by SHA-256 in `tools/test_icon_themes_frozen.py`
-(104 files total):
+(205 files total):
 
 | File(s) | What it is |
 |---|---|
-| `src/gui/ios/icon_themes.py` | The Icon Themes page: themes list, bundled iOS 18 two side-by-side tables (Light/Dark), each with per-row Add + its own Add All, "Import Icon Pack (.zip)..." |
+| `src/gui/ios/icon_themes.py` | The Icon Themes page: themes list, bundled iOS 18 four side-by-side tables (Light/Dark/Light Rounded/Dark Rounded), each with per-row Add + its own Add All, "Import Icon Pack (.zip)..." |
 | `src/tweaks/icon_themes/icon_themes_tweak.py` | The model: `IconThemesTweak`, WebClip builder (`WorkSlop_<bundleID>,<displayName>` folders), hash-matched ZIP pack import (`import_pack_zip_matched`, `build_pack_hash_index`) |
 | `src/gui/dialogs/icon_pack_downloader.py` | The "Download Icon Packs" dialog the page opens and imports through |
 | `files/ios18_icons/Light/*.png` (51) | Bundled catwithabaloon catalog, Light artwork |
 | `files/ios18_icons/Dark/*.png` (50) | Bundled catwithabaloon catalog, Dark artwork |
+| `files/ios18_icons/Rounded-Light/*.png` (51) | Circle-masked variants of the Light artwork (transparent outside, glyph-safe padding), generated 2026-10-11 by explicit user order |
+| `files/ios18_icons/Rounded-Dark/*.png` (50) | Circle-masked variants of the Dark artwork, same generation |
+
+## Ordered exceptions on record
+
+1. Fix Audit 4 + 88 (explicit fix order): changed ONLY the zip-caller
+   block of `src/gui/ios/icon_themes.py` and the download/import
+   caller of `src/gui/dialogs/icon_pack_downloader.py`; their two
+   hashes were regenerated in the same change. The frozen tweak model
+   and the icon catalog stayed byte-identical.
+2. 2026-10-11 (explicit user order): added "Light Rounded" and "Dark
+   Rounded" tables to the iOS 18 gallery. New assets in
+   `files/ios18_icons/Rounded-{Light,Dark}/` (generated from the
+   Light/Dark PNGs — originals byte-identical); the page now threads a
+   `rounded` variant through the same Add/Add All/WebClip machinery;
+   the Light/Dark tables, the tweak model, the ZIP hash index and the
+   target paths are unchanged. Manifest extended in the same change
+   (101 new icon hashes + new `icon_themes.py` hash; all 103 old
+   entries untouched).
 
 The two main modules also carry a `# FROZEN 2026-10-09 (user order)`
 header comment.

@@ -1,10 +1,13 @@
-"""Offscreen proof for the dual-table iOS 18 Add All (user order 2026-10-09).
+"""Offscreen proof for the iOS 18 Add All tables (user order 2026-10-09,
+extended 2026-10-11 with the Light Rounded / Dark Rounded tables).
 
 Run from repo root with QT_QPA_PLATFORM=offscreen.
-Proves: Add All Dark adds exactly the 50 dark-artwork apps (Shortcuts
-has no Dark asset and is skipped); Add All Light then adds only the
-still-missing Shortcuts (Light); a second Add All adds nothing; every
-stored theme's icon path matches the variant chosen.
+Proves: four tables exist with exact button names; Add All Dark adds
+exactly the 50 dark-artwork apps (Shortcuts has no Dark asset and is
+skipped); Add All Light then adds only the still-missing Shortcuts
+(Light); a second Add All adds nothing; Add All Light Rounded / Dark
+Rounded add the rounded assets with byte identity; every stored theme's
+icon path matches the variant chosen.
 """
 import hashlib
 import os
@@ -41,12 +44,19 @@ def check(name, cond, extra=""):
         print(f"  FAIL {name} {extra}")
 
 
-# Structure: two tables, two add-all buttons.
-check("two tables built", len(page._ios18_tables) == 2)
-check("two add-all buttons", len(page._ios18_add_all_buttons) == 2)
+# Structure: four tables (Light, Dark, Light Rounded, Dark Rounded),
+# four add-all buttons, exact object names, 51 rows each.
+check("four tables built", len(page._ios18_tables) == 4)
+check("four add-all buttons", len(page._ios18_add_all_buttons) == 4)
 names = {b.objectName() for b in page._ios18_add_all_buttons}
-check("add-all object names", names == {"ios18AddAllLight", "ios18AddAllDark"}, str(names))
-check("row counts 51/51", [t.rowCount() for t in page._ios18_tables] == [51, 51])
+check("add-all object names", names == {
+    "ios18AddAllLight", "ios18AddAllDark",
+    "ios18AddAllLightRounded", "ios18AddAllDarkRounded"}, str(names))
+check("row counts 51/51/51/51",
+      [t.rowCount() for t in page._ios18_tables] == [51, 51, 51, 51])
+labels = [t.horizontalHeaderItem(0).text() for t in page._ios18_tables]
+check("table header labels", labels == [
+    "Light", "Dark", "Light Rounded", "Dark Rounded"], str(labels))
 
 tweak.themes = []
 
@@ -85,6 +95,35 @@ check("light-first adds 51", len(tweak.themes) == 51, f"got {len(tweak.themes)}"
 check("stored bytes == Light assets", all(
     sha256_of(t.icon_path) == sha256_of(icon_asset_path(slug_by_bundle[t.bundle_id], False))
     for t in tweak.themes))
+
+# 5) Fresh state: Add All Light Rounded adds all 51 rounded assets.
+tweak.themes = []
+page._use_all_icons(dark=False, rounded=True)
+check("light-rounded adds 51", len(tweak.themes) == 51, f"got {len(tweak.themes)}")
+check("stored bytes == Light Rounded assets", all(
+    sha256_of(t.icon_path) == sha256_of(icon_asset_path(slug_by_bundle[t.bundle_id], False, True))
+    for t in tweak.themes))
+check("status mentions Light Rounded",
+      "(Light Rounded)" in page._ios18_status.text(), page._ios18_status.text())
+
+# 6) Fresh state: Add All Dark Rounded adds 50 (no Dark Shortcuts art).
+tweak.themes = []
+page._use_all_icons(dark=True, rounded=True)
+check("dark-rounded adds 50", len(tweak.themes) == 50, f"got {len(tweak.themes)}")
+check("stored bytes == Dark Rounded assets", all(
+    sha256_of(t.icon_path) == sha256_of(icon_asset_path(slug_by_bundle[t.bundle_id], True, True))
+    for t in tweak.themes))
+check("shortcuts absent after dark-rounded",
+      all(t.bundle_id != "com.apple.shortcuts" for t in tweak.themes))
+check("status mentions Dark Rounded",
+      "(Dark Rounded)" in page._ios18_status.text(), page._ios18_status.text())
+
+# 7) Rounded tables show the rounded artwork in their thumbnails.
+pix = page._pixmap("camera", False, True)
+check("rounded thumbnail loads", not pix.isNull())
+pix2 = page._pixmap("camera", False, False)
+check("plain thumbnail differs from rounded",
+      pix.toImage() != pix2.toImage())
 
 tweak.themes = []
 print(f"\n{passed} passed, {failed} failed")

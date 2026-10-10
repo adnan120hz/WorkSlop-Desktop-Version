@@ -11,9 +11,10 @@ Covers ONLY the v11.0.1 scope, against a real offscreen MainWindow:
   bottom of the page and is driven by the real worker progress text
   (percent -> determinate bar, phase-only -> indeterminate, never an
   invented number).
-* Starting a Full / Protective Backup asks where to save it (native
+* Starting a Full Backup asks where to save it (native
   folder picker); the pick is created if missing, remembered in the
   ``backup_storage_dir`` pref, and cancelling starts nothing.
+  (The Protective Backup menu was removed by user order 2026-10-11.)
 * The backup storage root resolves to the remembered folder (so the
   automatic protective backup before an apply lands there too).
 * Themes page blends with Full Nugget (UI-3) dark palette; themed
@@ -214,9 +215,7 @@ class FakeWindow:
 
     def _start_full_backup(self, folder):
         self.started.append(("full", folder))
-
-    def _start_protective_backup(self):
-        self.started.append(("protective",))
+    # NOTE 2026-10-11: _start_protective_backup fake removed with the menu.
 
     def _build_apply_summary(self):
         return ([], 0)
@@ -284,17 +283,13 @@ try:
     picker_result[0] = ""
     fake_win.started.clear()
     picker_page._on_full_backup()
-    picker_page._on_protective_backup()
     check("cancelling the picker starts nothing",
           fake_win.started == [], str(fake_win.started))
-
-    prot_target = os.path.join(tempfile.gettempdir(), "workslop-v1101-prot")
-    picker_result[0] = prot_target
-    picker_page._on_protective_backup()
-    check("protective backup asks for its folder too (same flow)",
-          fake_win.started == [("protective",)])
-    check("protective pick updates the remembered folder",
-          fake_win.settings.store.get("backup_storage_dir") == prot_target)
+    # NOTE 2026-10-11: the "Start Protective Backup" menu was removed by
+    # user order — _on_protective_backup no longer exists on the page.
+    # The remembered-folder mechanism itself is still covered above.
+    check("protective-backup menu is gone (user order 2026-10-11)",
+          not hasattr(picker_page, "_on_protective_backup"))
     picker_page.deleteLater()
 finally:
     backup_mod.QMessageBox = real_mb
@@ -306,6 +301,10 @@ from pathlib import Path  # noqa: E402
 
 from src.restore.storage import cache_base, protective_base  # noqa: E402
 
+# The automatic protective-backup mechanism is untouched by the menu
+# removal (user order 2026-10-11) — its storage root still resolves to
+# the remembered folder, and that is what this section pins.
+prot_target = os.path.join(tempfile.gettempdir(), "workslop-v1101-prot")
 real_settings = Settings()
 real_settings.setValue("backup_storage_dir", prot_target)
 real_settings.sync()

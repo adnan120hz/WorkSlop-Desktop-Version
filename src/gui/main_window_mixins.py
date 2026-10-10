@@ -108,15 +108,21 @@ class DeviceBarMixin:
         # only correct when re-evaluated against the real connected device.
         # Pages are lazy now: an unbuilt page is flagged instead of built,
         # and _ensure_ios_page replays the rebuild when it is constructed.
-        for page in ("ios_tweaks", "ios_springboard", "ios_internal", "ios_liquidglass", "ios_lgd"):
-            section_page = self._ios_page_objs.get(page)
-            if section_page is not None:
-                try:
-                    section_page.rebuild()
-                except Exception:
-                    pass
-            else:
-                self._ios_pages_need_rebuild.add(page)
+        # Perf: the row rebuilds run deferred (see defer_component_styles)
+        # so the ~100 rebuilt cards/headers skip per-widget _retheme; the
+        # hoisted row styles stay valid because the device change does not
+        # alter the theme — the page's applied sheet already covers them.
+        from src.gui.ios.components import defer_component_styles
+        with defer_component_styles():
+            for page in ("ios_tweaks", "ios_springboard", "ios_internal", "ios_liquidglass", "ios_lgd"):
+                section_page = self._ios_page_objs.get(page)
+                if section_page is not None:
+                    try:
+                        section_page.rebuild()
+                    except Exception:
+                        pass
+                else:
+                    self._ios_pages_need_rebuild.add(page)
 
 
     def _apply_hidden_feature_gating(self):
