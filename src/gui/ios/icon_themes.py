@@ -11,13 +11,16 @@
 # from the Light/Dark PNGs (transparent outside, glyph-safe padding).
 # Same Add/Add All structure; Light/Dark artwork, builder and target
 # paths unchanged; the frozen manifest was extended in the same change.
-# Change log (explicit user order, 2026-10-11, revision): the Tinted
-# tables were removed (user judged the circle-masked result ugly) and
-# replaced with a single "iOS 18 Tinted" table — monochrome duotone
-# variants generated from the Light PNGs (iOS 18 tinted style, no
-# leftover background). Same Add/Add All structure; Light/Dark
-# artwork, builder and target paths unchanged; the frozen manifest
-# was updated in the same change.
+# Change log (explicit user order, 2026-10-11, revision 2): the
+# whole catalog was replaced with the official "iOS 18 App Icons by
+# catwithabaloon" 2.0 pack (203 files, byte-identical; the
+# self-generated duotone Tinted set was deleted). The Tinted table now
+# ships the pack's official Tinted artwork. 17 new apps from the pack
+# were added as rows (68 Light / 68 Dark / 67 Tinted). Same Add/Add
+# All structure; the frozen manifest was regenerated in the same
+# change. Also fixed: the old Dark/phone.png and Dark/passwords.png
+# were swapped with each other (user-reported: dark apply showed the
+# wrong icon).
 import os
 
 from PySide6.QtCore import Qt, QCoreApplication, QSize, QTimer
@@ -62,10 +65,12 @@ def _tr(text: str) -> str:
 # (https://github.com/catwithabaloon/iOS-18-icon-pack) — see Credits.
 # PNGs live in files/ios18_icons/{Light,Dark,Tinted}/
 # and ship with the app via compile.py's ``--add-data=files/:files``.
-# Artwork that could not be identified with certainty is not shipped,
-# exactly as on mobile. The Tinted set is generated locally (see
-# /tmp/gen_tinted.py, kept out of the repo) — only its output PNGs
-# are pinned by the frozen manifest.
+# Since 2026-10-11 (explicit user order) every PNG is byte-identical
+# from the pack's official 2.0 release asset
+# (iOS.18.App.Icons.by.catwithabaloon.zip: Light = "App Icon-1..68",
+# Dark = "App Icon-69..136", Tinted = "App Icon-137..203"; the earlier
+# duotone Tinted set we generated ourselves was deleted at the user's
+# order). Nothing is generated or invented.
 
 # (display name, bundle id, asset slug) — identical to IOS18IconCatalog
 # in the mobile app (WorkSlop/IOS18Icons.swift), bundle IDs verified
@@ -122,6 +127,34 @@ IOS18_ICONS = [
     ("Apple Sports", "com.apple.sports", "apple-sports"),
     ("TV", "com.apple.tv", "tv"),
     ("Shazam", "com.shazam.Shazam", "shazam"),
+    # 2026-10-11 (explicit user order): the whole catalog was replaced
+    # with the official "iOS 18 App Icons by catwithabaloon" 2.0 pack
+    # (release asset iOS.18.App.Icons.by.catwithabaloon.zip, 203 files:
+    # Light 1-68, Dark 69-136, Tinted 137-203). 17 apps below are new
+    # rows from that pack. Bundle IDs for Apple apps are the real ones;
+    # com.workslop.* IDs mark non-app artwork (placeholders / system
+    # icons with no App Store bundle id) so nothing is invented as
+    # Apple's. "iOS 18" has no Tinted artwork in the pack — its Tinted
+    # Add button disables itself with an explanatory tooltip (existing
+    # behavior, Audit 50).
+    ("Blank (Spacer)", "com.workslop.blank", "blank"),
+    ("Bloom", "com.workslop.bloom", "bloom"),
+    ("Infinity", "com.workslop.infinity", "infinity"),
+    ("Freeform", "com.apple.Freeform", "freeform"),
+    ("Journal", "com.apple.Journal", "journal"),
+    ("Game Center", "com.apple.gamecenter", "game-center"),
+    ("Feedback", "com.apple.FeedbackAssistant", "feedback"),
+    ("Image Playground", "com.apple.ImagePlayground", "image-playground"),
+    ("Final Cut Camera", "com.apple.FinalCutCamera", "final-cut-camera"),
+    ("iCloud", "com.workslop.icloud", "icloud"),
+    ("Sleep", "com.workslop.sleep", "sleep"),
+    ("Battery", "com.workslop.battery", "battery"),
+    ("Screen Time", "com.workslop.screen-time", "screen-time"),
+    ("Screen Time Widget", "com.workslop.screen-time-widget",
+     "screen-time-widget"),
+    ("Apple Account", "com.workslop.apple-account", "apple-account"),
+    ("Maps Navigation", "com.workslop.maps-navigation", "maps-navigation"),
+    ("iOS 18", "com.workslop.ios-18", "ios-18"),
 ]
 
 
@@ -134,8 +167,9 @@ def icon_asset_path(slug: str, dark: bool, tinted: bool = False) -> str:
 
 # The three iOS 18 tables, in display order: (label, dark, tinted).
 # Light and Dark stay first so table indices used elsewhere
-# (e.g. _ios18_tables[1] == Dark) keep working. The Tinted table is
-# generated from the Light PNGs (monochrome duotone, iOS 18 style).
+# (e.g. _ios18_tables[1] == Dark) keep working. The Tinted table
+# ships the pack's official Tinted artwork (replaces the earlier
+# self-generated duotone set, deleted 2026-10-11 by user order).
 IOS18_VARIANTS = (
     ("Light", False, False),
     ("Dark", True, False),

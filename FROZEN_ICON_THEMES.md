@@ -59,6 +59,21 @@ Pinned by SHA-256 in `tools/test_icon_themes_frozen.py`
    Custom Icons no longer freezes navigation (~9 s of synchronous PNG
    loads). No visual or behavioral change to the menu itself; manifest
    `icon_themes.py` hash regenerated in the same change.
+5. 2026-10-11 (explicit user order, revision 2): the ENTIRE catalog
+   was replaced with the official catwithabaloon 2.0 pack release
+   asset (`iOS.18.App.Icons.by.catwithabaloon.zip`, sent by the user):
+   68 Light (`App Icon-1..68`), 68 Dark (`App Icon-69..136`, 18 of
+   them byte-identical to their Light twin), 67 Tinted
+   (`App Icon-137..203`; app #68 has no Tinted artwork in the pack).
+   The self-generated duotone Tinted set was deleted. 17 new apps
+   added as table rows (68 Light / 68 Dark / 67 Tinted); same Add/Add
+   All structure, same WebClip machinery. Bug fixed in the same
+   change: the old `Dark/phone.png` and `Dark/passwords.png` were
+   swapped with each other (user-reported: applying Dark showed the
+   wrong icon). Every PNG is byte-identical from the pack — nothing
+   generated or invented. Manifest regenerated in the same change
+   (206 entries). Proof contact sheets:
+   `~/workspace/goals/workslop-desktop/hidden_files/revisi-2026-10-11/samples-resmi/`.
 
 The two main modules also carry a `# FROZEN 2026-10-09 (user order)`
 header comment.
@@ -79,7 +94,7 @@ header comment.
    guard keeps passing and the freeze stays meaningful.
 
 Related coverage that must stay green:
-`tools/test_icon_pack_zip_import.py` (51-app hash import against the
+`tools/test_icon_pack_zip_import.py` (68-app hash import against the
 real pack) and `tools/test_audit_gui_pages.py`.
 
 Credit: the bundled artwork is the

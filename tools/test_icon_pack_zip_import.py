@@ -5,17 +5,22 @@ The pack ("iOS 18 App Icons by catwithabaloon") ships generic file
 names (``App Icon-37.png``) with no bundle id in them, so the old
 name-based importer could only invent bogus themes. The matched
 importer (IconThemesTweak.import_pack_zip_matched) sha256-matches
-every file against the bundled 51-app catalog instead.
+every file against the bundled 68-app catalog instead.
+
+The 2.0 pack holds 206 files: Light ``App Icon-1..68``, Dark
+``App Icon-69..136`` (18 of them byte-identical to their Light
+twin), Tinted ``App Icon-137..203``, plus ``App Icon.png`` (a
+duplicate of #136), ``itunes-store-2017-09-26 (1).png`` and
+``my-shortcuts.png``. The hash index covers Light+Dark only, so the
+67 Tinted files and the 2 extras come back unmatched — by name, never
+as invented bundle ids.
 
 Locks, against the user's actual ZIP:
-* all 51 catalog apps are imported, one theme each, stored on disk;
-* Light wins when both variants match; Shortcuts (Light-only in the
-  pack) still imports;
+* all 68 catalog apps are imported, one theme each, stored on disk;
+* Light wins when both variants match;
 * NO theme is ever created from a file name ("App Icon-*" bundle ids);
 * the files that match nothing are counted as unmatched, by name —
-  105 of them (206 files - 101 matched; the investigation report's
-  "118" subtracted the 88 unique digests instead of matched files,
-  double-counting the 13 byte-duplicate Light/Dark entries);
+  69 of them (67 Tinted + 2 extras);
 * re-import skips already-present apps instead of clobbering them;
 * a synthetic renamed icon still maps by content, and a corrupt zip
   reports archive_ok=False.
@@ -65,18 +70,19 @@ def main():
     ]
     index = build_pack_hash_index(catalog)
     print("\nhash index over the bundled catalog files")
-    check("101 bundled files hash to 88 unique digests", len(index) == 88,
+    check("136 bundled files hash to 118 unique digests", len(index) == 118,
           str(len(index)))
 
     if os.path.isfile(REAL_ZIP):
         pack_zip = REAL_ZIP
+        expected_unmatched = 69  # 67 Tinted + 2 extras (iTunes Store, my-shortcuts)
         print(f"\nusing the user's real ZIP: {REAL_ZIP}")
     else:
         # CI has no user files: synthesize an equivalent pack from the
         # bundled catalog itself (every bundled PNG under a nonsense
         # name, Light first) plus 105 junk PNGs. Content-hash matching
         # then faces exactly the same semantics as the real pack:
-        # 51 apps imported, 101 catalog files matched, 105 unmatched.
+        # 68 apps imported, 136 catalog files matched, 105 unmatched.
         pack_zip = os.path.join(
             tempfile.mkdtemp(prefix="workslop-icon-pack-"), "synthetic.zip")
         with zipfile.ZipFile(pack_zip, "w") as zf:
@@ -92,18 +98,19 @@ def main():
             for i in range(105):
                 zf.writestr(f"junk-{i:03d}.png",
                             b"\x89PNG\r\n\x1a\n" + bytes([i]) * 32)
+        expected_unmatched = 105
         print(f"\nreal ZIP absent; using synthetic equivalent: {pack_zip}")
 
-    print("\npack ZIP: 51 apps by content, 105 files unmatched")
+    print(f"\npack ZIP: 68 apps by content, {expected_unmatched} files unmatched")
     tweak = IconThemesTweak()
     result = tweak.import_pack_zip_matched(pack_zip, index)
     check("archive read ok", result["archive_ok"])
     imported = result["imported"]
-    check("51 apps imported", len(imported) == 51, str(len(imported)))
+    check("68 apps imported", len(imported) == 68, str(len(imported)))
     check("imported bundle ids are exactly the catalog",
           {b for b, _, _ in imported}
           == {bid for _, bid, _ in IOS18_ICONS})
-    check("51 themes on the tweak", len(tweak.themes) == 51)
+    check("68 themes on the tweak", len(tweak.themes) == 68)
     check("no theme was invented from a file name",
           not any(t.bundle_id.startswith("App Icon")
                   for t in tweak.themes))
@@ -111,8 +118,9 @@ def main():
           result["already_present"] == [])
     check("no icon failed to store", result["store_failed"] == [],
           repr(result["store_failed"]))
-    check("105 unmatched files, counted and named",
-          len(result["unmatched"]) == 105, str(len(result["unmatched"])))
+    check(f"{expected_unmatched} unmatched files, counted and named",
+          len(result["unmatched"]) == expected_unmatched,
+          str(len(result["unmatched"])))
     check("unmatched entries are named pack files",
           all(n.endswith(".png") for n in result["unmatched"]),
           repr(result["unmatched"][:2]))
@@ -130,11 +138,12 @@ def main():
     print("\nre-import: present apps skipped, never clobbered")
     again = tweak.import_pack_zip_matched(pack_zip, index)
     check("second import adds nothing", again["imported"] == [])
-    check("all 51 reported already present",
-          len(again["already_present"]) == 51,
+    check("all 68 reported already present",
+          len(again["already_present"]) == 68,
           str(len(again["already_present"])))
-    check("unmatched still counted", len(again["unmatched"]) == 105)
-    check("theme count unchanged", len(tweak.themes) == 51)
+    check("unmatched still counted",
+          len(again["unmatched"]) == expected_unmatched)
+    check("theme count unchanged", len(tweak.themes) == 68)
 
     print("\nsynthetic zip: content wins over nonsense names")
     tmp = tempfile.mkdtemp(prefix="workslop-icon-syn-")

@@ -52,14 +52,17 @@ for dark_i, table in enumerate(page._ios18_tables):
     check(f"table {dark_i} all rows toolTipped", not bad, str(bad[:3]))
 
 print("\nAudit 50: disabled Add explains itself")
-dark_table = page._ios18_tables[1]
+# The official 2.0 pack ships no Tinted artwork for the "iOS 18" promo
+# icon (revision 2, 2026-10-11), so its Tinted Add button is the live
+# example of a disabled Add that must explain itself.
+tinted_table = page._ios18_tables[2]
 row = next(i for i, (_n, b, _s) in enumerate(IOS18_ICONS)
-           if b == "com.apple.shortcuts")
-btn = dark_table.cellWidget(row, 3).findChild(QPushButton)
-check("shortcuts dark has no asset",
-      not os.path.isfile(icon_asset_path("shortcuts", True)))
+           if b == "com.workslop.ios-18")
+btn = tinted_table.cellWidget(row, 3).findChild(QPushButton)
+check("ios-18 tinted has no asset",
+      not os.path.isfile(icon_asset_path("ios-18", False, True)))
 check("add button disabled", not btn.isEnabled())
-check("add button tooltip explains", "Dark" in btn.toolTip(),
+check("add button tooltip explains", "Tinted" in btn.toolTip(),
       repr(btn.toolTip()))
 check("add button out of tab chain",
       btn.focusPolicy() == Qt.FocusPolicy.NoFocus)
