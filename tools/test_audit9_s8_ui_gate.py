@@ -167,8 +167,12 @@ for label, udid, version, build, expect_enabled in CASES:
             check(f"{label}: {tid.name} toggle back disables it",
                   not tweaks[tid].enabled)
         else:
+            # Locked: the tooltip must carry a reason — either the S8
+            # route window ("23G82") or, since audit N35 capped this
+            # test-only tweak at max 26.9, the version-cap reason.
             check(f"{label}: {tid.name} locked switch carries the reason",
-                  "23G82" in sw.toolTip(), sw.toolTip()[:60])
+                  "23G82" in sw.toolTip() or "26.9" in sw.toolTip(),
+                  sw.toolTip()[:60])
             sw.setChecked(True)  # programmatic: guarded, must not enable
             check(f"{label}: {tid.name} cannot be enabled while locked",
                   not tweaks[tid].enabled and not sw.isChecked())

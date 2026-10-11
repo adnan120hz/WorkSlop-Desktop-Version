@@ -128,10 +128,53 @@ def test_phase3_single_attempt():
           counter["n"] == 1, f"attempts={counter['n']}")
 
 
+def test_retry_opens_fresh_session():
+    print("\nAudit M12: retries open a fresh lockdown session")
+    import src.devicemanagement.session as session_mod
+    real_ls = session_mod.lockdown_session
+    fresh_sessions = {"n": 0}
+
+    class FakeSession:
+        async def __aenter__(self):
+            return object()
+
+        async def __aexit__(self, *a):
+            return False
+
+    def fake_lockdown_session(udid):
+        fresh_sessions["n"] += 1
+        return FakeSession()
+
+    counter = {"n": 0}
+
+    class FakeMB2(FakeMB):
+        async def restore(self, *a, **k):
+            counter["n"] += 1
+            if counter["n"] == 1:
+                raise ConnectionTerminatedError("dropped")
+            return None
+
+    real_mb2 = restore_mod._start_mobilebackup2
+    restore_mod._start_mobilebackup2 = lambda lc: FakeMB2(counter)
+    session_mod.lockdown_session = fake_lockdown_session
+    try:
+        asyncio.run(restore_mod._restore_protective_backup(
+            object(), tempfile.mkdtemp(prefix="gn_auditm12_"), "UDIDM12",
+            False, lambda v: None))
+    finally:
+        restore_mod._start_mobilebackup2 = real_mb2
+        session_mod.lockdown_session = real_ls
+    check("restore succeeded after one transient failure",
+          counter["n"] == 2, f"attempts={counter['n']}")
+    check("exactly one fresh session opened (for the retry, not attempt 1)",
+          fresh_sessions["n"] == 1, f"fresh={fresh_sessions['n']}")
+
+
 def main():
     test_classifiers()
     test_retry_loop_stops()
     test_phase3_single_attempt()
+    test_retry_opens_fresh_session()
     print(f"\nPASS {PASS} checks")
 
 

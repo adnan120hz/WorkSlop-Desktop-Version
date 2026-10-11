@@ -21,6 +21,8 @@ from typing import Optional
 
 from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 
+from src.utils.udid_sanitize import sanitize_udid
+
 _logger = logging.getLogger("GoldenNugget.inject")
 
 
@@ -174,8 +176,10 @@ def _build_mbdir_blob(relative_path: str, mode: int = 16877) -> bytes:
 
     Mirrors what BackupAgent2 writes for flag=2 rows (dump of the device's
     own SystemPreferencesDomain dir rows): no digest, size 0, S_IFDIR mode,
-    root-owned. The device's real rows carry a real inode, so a unique one
-    must be stamped by the caller.
+    mobile-owned (501:501, like the injected file blobs — audit N76; the old
+    root:root here was inconsistent with the M1 ownership fix). The device's
+    real rows carry a real inode, so a unique one must be stamped by the
+    caller.
     """
     now = int(time.time())
     objects = [
@@ -185,8 +189,8 @@ def _build_mbdir_blob(relative_path: str, mode: int = 16877) -> bytes:
             "LastModified": now,
             "LastStatusChange": now,
             "Flags": 0,
-            "GroupID": 0,
-            "UserID": 0,
+            "GroupID": 501,
+            "UserID": 501,
             "Mode": mode,
             "ProtectionClass": 4,
             "Size": 0,
@@ -346,7 +350,9 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
     Phase 3 restore agent fails to decrypt it (MBErrorDomain/205). Injection
     is skipped for encrypted backups rather than corrupting the restore.
     """
-    device_dir = Path(backup_dir) / udid
+    # M4: the UDID is device-reported over USB — sanitize it before it
+    # becomes a path segment, so a hostile UDID cannot walk above the pool.
+    device_dir = Path(backup_dir) / sanitize_udid(udid)
     if not device_dir.is_dir():
         # Tolerate backup_dir already pointing at the device directory.
         if (Path(backup_dir) / "Manifest.db").exists():
@@ -381,7 +387,17 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
         donor_cache: dict = {}
         dir_donor_cache: dict = {}
         known_dirs: set = set()
+        dir_rows_added = 0
         for domain, relative_path, contents, mode, owner, group in files:
+            # N75: a ".." segment in the payload path would plant a manifest
+            # row the restore agent resolves outside the intended tree —
+            # refuse it loudly. It is not counted as injected/unchanged, so
+            # it lands in "failed" and the caller aborts the apply.
+            if ".." in Path(str(relative_path or "")).parts:
+                _logger.error(
+                    f"refusing to inject path with '..' segment: "
+                    f"{domain}/{relative_path}")
+                continue
             file_id = hashlib.sha1(f"{domain}-{relative_path}".encode("utf-8")).hexdigest()
 
             # The restore agent skips a file whose parent directory rows are
@@ -389,9 +405,11 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
             dir_path, _ = os.path.split(relative_path)
             if domain not in dir_donor_cache:
                 dir_donor_cache[domain] = _directory_donor_blob(conn, domain)
+            inode_before_dirs = next_inode
             next_inode = _ensure_directory_rows(
                 conn, domain, dir_path, next_inode, known_dirs,
                 dir_donor_cache[domain])
+            dir_rows_added += next_inode - inode_before_dirs
 
             # The restore agent validates the blob and deduplicates by inode:
             # pick a donor the agent accepts, then stamp a unique inode so the
@@ -408,11 +426,15 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
             if donor is None:
                 blob = _build_mbfile_blob(
                     relative_path, contents,
-                    mode=safe_mode, owner=owner or 501, group=group or 501)
+                    mode=safe_mode,
+                    owner=owner if owner is not None else 501,
+                    group=group if group is not None else 501)
             else:
                 blob = _patch_donor_blob(
                     donor, relative_path, contents,
-                    mode=safe_mode, owner=owner or 501, group=group or 501)
+                    mode=safe_mode,
+                    owner=owner if owner is not None else 501,
+                    group=group if group is not None else 501)
             patched = plistlib.loads(blob)
             patched["$objects"][1]["InodeNumber"] = unique_inode
             blob = plistlib.dumps(patched, fmt=plistlib.FMT_BINARY)
@@ -448,7 +470,14 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
     finally:
         conn.close()
 
-    return injected, unchanged, len(files) - injected - unchanged
+    # N28: success-path accounting — before this the injector was silent
+    # unless something failed, leaving forensics to guess what landed.
+    failed = len(files) - injected - unchanged
+    _logger.info(
+        f"inject: {injected} file row(s) written, {unchanged} unchanged, "
+        f"{dir_rows_added} directory row(s) ensured, {failed} failed "
+        f"in {manifest_db}")
+    return injected, unchanged, failed
 
 
 def inject_file_into_backup(backup_dir: "str | Path", udid: str, domain: str,

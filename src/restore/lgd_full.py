@@ -45,7 +45,6 @@ when the caller asks for one.
 """
 
 import asyncio
-import hashlib
 import os
 import plistlib
 import tempfile
@@ -88,19 +87,6 @@ def _inject_tuple(domain: str, rel_path: str, data: bytes):
     return (domain, rel_path, bytes(data), _FILE_MODE, _OWNER, _OWNER)
 
 
-def device_dir_for(backup_root, udid) -> Path:
-    """Resolve the device folder of a backup root (both layouts)."""
-    candidate = Path(backup_root) / str(udid)
-    if candidate.is_dir():
-        return candidate
-    return Path(backup_root)
-
-
-def payload_disk_path(backup_root, udid, domain: str, rel_path: str) -> Path:
-    file_id = hashlib.sha1(f"{domain}-{rel_path}".encode("utf-8")).hexdigest()
-    return device_dir_for(backup_root, udid) / file_id[:2] / file_id
-
-
 def verify_injected_payloads(backup_root, udid, payloads,
                              g1_base: Optional[dict] = None,
                              g1_allowed_new=(),
@@ -111,9 +97,13 @@ def verify_injected_payloads(backup_root, udid, payloads,
 
     Returns a list of problems ([] = the restore may proceed). This is a
     HARD gate: the caller must abort on any problem, before the device
-    is touched — unlike the log-only payload check in the iOS 27 flow.
+    is touched — like the hard verification gate in the iOS 27 G1 flow
+    (``_verify_injected_files``); the "log-only" era of that flow is over
+    (audit N66).
     """
-    from src.restore.protective import verify_backup_payloads
+    # N63/N64: device-dir + fileID helpers live in protective.py now —
+    # shared with the iOS 27 route instead of duplicated here.
+    from src.restore.protective import payload_disk_path, verify_backup_payloads
     problems = []
     missing = verify_backup_payloads(backup_root, udid)
     if missing:
@@ -196,8 +186,8 @@ LGD_INCOMPLETE_RUN_MAX_AGE_SEC = 7 * 24 * 3600
 
 def lgd_backup_base(udid: str) -> Path:
     from src.restore.protective import protective_persistent_base
-    safe = "".join(c for c in str(udid or "unknown") if c.isalnum() or c in "._-")
-    return protective_persistent_base() / f"{safe}-lgd-full"
+    from src.utils.udid_sanitize import sanitize_udid
+    return protective_persistent_base() / f"{sanitize_udid(udid)}-lgd-full"
 
 
 def new_lgd_backup_dir(udid: str) -> str:
@@ -212,11 +202,11 @@ def new_lgd_backup_dir(udid: str) -> str:
 
 
 def _lgd_run_is_complete(run_dir: Path, udid: str) -> bool:
-    for candidate in (run_dir / "device_backup" / str(udid),
-                      run_dir / "device_backup"):
-        if (candidate / "Manifest.db").is_file():
-            return True
-    return False
+    # Shared sanitized device-dir resolution (audit M4) — same both-layout
+    # tolerance as before, minus the raw-UDID path join.
+    from src.restore.protective import device_dir_for
+    device_dir = device_dir_for(run_dir / "device_backup", udid)
+    return (device_dir / "Manifest.db").is_file()
 
 
 def prune_lgd_backups(udid: str, keep: int = LGD_BACKUP_KEEP) -> int:
@@ -277,8 +267,9 @@ async def run_full_backup_route(udid: str, payloads: list, *,
     from src.devicemanagement.session import lockdown_session
     from src.restore.inject import _is_encrypted_backup, inject_files_into_backup
     from src.restore.protective import (
-        check_disk_space_for_backup, extract_backup_file,
-        extract_gp_base_plist, verify_backup_payloads,
+        check_disk_space_for_backup, device_dir_for, extract_backup_file,
+        extract_gp_base_plist, inject_accounting_ok, merge_plist_dicts,
+        verify_backup_payloads,
     )
     from src.restore.restore import _restore_protective_backup, _start_mobilebackup2
     from src.utils.stall_watchdog import run_with_stall_watchdog
@@ -435,8 +426,9 @@ async def run_full_backup_route(udid: str, payloads: list, *,
                         if isinstance(staged_parsed, dict):
                             g2_device_base = g2_parsed
                             g2_staged_keys = list(staged_parsed.keys())
-                            merged = dict(g2_parsed)
-                            merged.update(staged_parsed)
+                            # N65: shared shallow-merge core (parse-failure
+                            # handling stays route-local on purpose).
+                            merged = merge_plist_dicts(g2_parsed, staged_parsed)
                             payloads[g2_index] = _inject_tuple(
                                 lg_disable.G2_DOMAIN,
                                 lg_disable.G2_REL_PATH,
@@ -451,7 +443,8 @@ async def run_full_backup_route(udid: str, payloads: list, *,
         "Liquid Glass Disable: writing the payload into the backup..."))
     injected, unchanged, failed = await asyncio.to_thread(
         inject_files_into_backup, backup_root, udid, payloads)
-    if failed or injected + unchanged != len(payloads):
+    # M15: accounting gate shared with the iOS 27 route.
+    if not inject_accounting_ok(injected, unchanged, failed, len(payloads)):
         raise NuggetException(QCoreApplication.translate(
             "Nugget",
             "Liquid Glass Disable (Beta 1): the payload could not be "

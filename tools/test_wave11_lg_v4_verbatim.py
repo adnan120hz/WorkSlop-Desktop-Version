@@ -59,7 +59,6 @@ EXPECTED = [
     ("DisableLockScreenSpecular", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisableLockScreenSpecular", True, bool, "26.0", None),
     ("DisableClockSpecular", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisableClockSpecular", True, bool, "26.0", None),
     ("DisableGlassLockScreen", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisableGlassLockScreen", True, bool, "26.0", None),
-    ("DisableCompactChrome", Section.LIQUID_GLASS, FileLocation.globalPreferences, "DisableSolariumCompactChrome", True, bool, "27.0", None),
     ("DisableGlassDI", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisableGlassDynamicIsland", True, bool, "26.0", None),
     ("DisallowGlassDI", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisallowGlassDynamicIsland", True, bool, "26.0", None),
     ("DisableIslandSpecular", Section.LIQUID_GLASS, FileLocation.globalPreferences, "SBDisableIslandSpecular", True, bool, "26.0", None),
@@ -93,11 +92,13 @@ for name, section, location, key, value, vtype, mn, mx in EXPECTED:
           == (section, location, key, value, vtype, mn, mx),
           f"got {(spec.section, spec.location, spec.key, spec.value, type(spec.value), spec.min_version, spec.max_version)}")
 
-# The v4 LG catalogue is exactly these 32 registry rows: 31 LG + 1 FF.
+# The v4 LG catalogue is exactly these 31 registry rows: 30 LG + 1 FF
+# (DisableCompactChrome removed by audit M8, 2026-10-11: unverified key).
 lg_specs = [s for s in SPECS if s.section is Section.LIQUID_GLASS]
-check("LG section has 31 v4 rows + Blurr Motion + 2 remaining v15 "
-      "firmware-research rows (SwiftUI enable removed in v15.1)",
-      len(lg_specs) == 34 and any(s.id is TweakID.BlurrMotion for s in lg_specs)
+check("LG section has 30 v4 rows + Blurr Motion + 2 remaining v15 "
+      "firmware-research rows (SwiftUI enable removed in v15.1; "
+      "DisableCompactChrome removed by audit M8)",
+      len(lg_specs) == 33 and any(s.id is TweakID.BlurrMotion for s in lg_specs)
       and {TweakID.LGForceFallbackUIKit,
            TweakID.LGNoBlurReducedFrost} <= {s.id for s in lg_specs}
       and TweakID.LGForceFallbackSwiftUI not in {s.id for s in lg_specs},
@@ -142,16 +143,16 @@ for name, *_ in EXPECTED:
 check("26.6.1: v4 LG rows deliverable (OK)",
       all(tweak_deliverability(TweakID[n], "26.6.1")[1] == "OK"
           for n, *_ in EXPECTED
-          if n not in ("LGLPMGestalt", "SolariumFeatureFlags", "DisableCompactChrome")))
+          if n not in ("LGLPMGestalt", "SolariumFeatureFlags")))
 check("26.6.1: max_version 26.1 rows stay version-locked (v4 gate)",
       tweak_deliverability(TweakID.LGLPMGestalt, "26.6.1")[1] == "VERSION_ABOVE_MAX"
       and tweak_deliverability(TweakID.SolariumFeatureFlags, "26.6.1")[1] == "VERSION_ABOVE_MAX")
 check("26.0/26.1: capped rows deliverable",
       tweak_deliverability(TweakID.LGLPMGestalt, "26.1")[1] == "OK"
       and tweak_deliverability(TweakID.SolariumFeatureFlags, "26.0")[1] == "OK")
-check("DisableCompactChrome keeps its v4 iOS 27 gate",
-      tweak_deliverability(TweakID.DisableCompactChrome, "26.6.1")[1] == "VERSION_BELOW_MIN"
-      and tweak_deliverability(TweakID.DisableCompactChrome, "27.0")[1] == "OK")
+check("DisableCompactChrome removed (audit M8: unverified key)",
+      tweak_deliverability(TweakID.DisableCompactChrome, "26.6.1")[1] == "REMOVED_TWEAK"
+      and tweak_deliverability(TweakID.DisableCompactChrome, "27.0")[1] == "REMOVED_TWEAK")
 
 # No Wave 10 "UNPROVEN — device test" wording anywhere in the LG section
 # (v4 descriptions are restored verbatim; the Wave 10 badge text is gone).

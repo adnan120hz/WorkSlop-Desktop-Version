@@ -200,6 +200,26 @@ def is_ios27_build(build: str) -> bool:
     return _norm_build(build).startswith("24")
 
 
+def is_ios27_device(version, build) -> bool:
+    """Single "is this an iOS 27 device" predicate for GUI gating.
+
+    Version-compare is authoritative (build trains can be re-cut or
+    misreported); the 24-train build prefix is only the fallback when the
+    version string is missing or unparsable. Replaces the two competing
+    predicates (build-prefix ``is_ios27_build`` vs version-compare) so the
+    GUI cannot disagree with itself on edge cases (Fix N40).
+
+    NOTE: intentionally no upper bound here — the Status Bar menu this
+    guards is locked on iOS 27 *and anything newer* ("open on iOS 26 and
+    below"), so an upper bound would wrongly unlock it on iOS 28.
+    """
+    try:
+        parsed = Version(str(version or "").strip())
+        return parsed >= Version("27.0")
+    except Exception:
+        return is_ios27_build(build or "")
+
+
 # WorkSlop Desktop explicit per-build support list.
 # Every iOS 17.0 -> iOS 27.2 build from the user's verified list (2026-09-30),
 # plus the verified iOS 16.x range and the 26.2 beta 1 MobileGestalt boundary

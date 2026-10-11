@@ -198,8 +198,8 @@ def test_registry_kills_and_tombstones():
         check(f"{tid.name} restored: delivers on target",
               ok and code == "OK", code)
     ok, code, _ = tweak_deliverability(TweakID.DisableCompactChrome, **TARGET)
-    check("DisableCompactChrome restored but v4-gated to iOS 27",
-          not ok and code == "VERSION_BELOW_MIN", code)
+    check("DisableCompactChrome removed (audit M8: unverified key)",
+          not ok and code == "REMOVED_TWEAK", code)
 
 
 def test_duplicate_aliases_have_one_writer():

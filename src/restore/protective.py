@@ -29,6 +29,7 @@ encrypted at rest and iOS rejects them in an unencrypted backup.
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -190,6 +191,7 @@ async def check_disk_space_for_backup(lockdown_client=None, path: str = None,
 _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 
 from src.utils.log_util import log_info, log_warn, log_error, log_debug
+from src.utils.udid_sanitize import sanitize_udid
 
 # --- DeviceLink protocol constants (from pymobiledevice3.services.device_link) ---
 
@@ -895,6 +897,65 @@ WORKING_COPY_PREFIX = "nugget_working_"
 PROTECTIVE_KEEP_RUNS = 1
 
 
+# --- shared backup-layout helpers (audit M14/M15) ---------------------------
+# Pure helpers that were duplicated between the iOS 27 G1 route
+# (``src/restore/ios27_g1.py``: ``_device_dir_for``, inline fileID math)
+# and the LGD full-backup route (``src/restore/lgd_full.py``:
+# ``device_dir_for``, ``payload_disk_path``). Both routes import from here;
+# keep these free of I/O and device calls so they stay unit-testable.
+
+def device_dir_for(backup_root, udid) -> Path:
+    """Resolve the device folder of a backup root (both layouts).
+
+    Tolerates ``backup_root`` already pointing at the device directory.
+    The UDID is allowlist-sanitized (audit M4): it is device-reported over
+    USB, so a hostile UDID must never become a ``..`` path segment.
+    """
+    candidate = Path(backup_root) / sanitize_udid(udid)
+    if candidate.is_dir():
+        return candidate
+    return Path(backup_root)
+
+
+def backup_file_id(domain: str, rel_path: str) -> str:
+    """Apple backup fileID: ``SHA1("<domain>-<relativePath>")`` as hex.
+
+    The payload bytes live at ``<device_dir>/<file_id[:2]>/<file_id>`` —
+    the first two hex chars form the hash subdirectory (Apple backup
+    layout; ``fileID`` is also the Manifest.db primary key).
+    """
+    return hashlib.sha1(f"{domain}-{rel_path}".encode("utf-8")).hexdigest()
+
+
+def payload_disk_path(backup_root, udid, domain: str, rel_path: str) -> Path:
+    """On-disk location of one payload inside a backup root."""
+    file_id = backup_file_id(domain, rel_path)
+    return device_dir_for(backup_root, udid) / file_id[:2] / file_id
+
+
+def merge_plist_dicts(base: dict, overlay: dict) -> dict:
+    """Shallow-merge two parsed plists: the overlay wins per top-level key.
+
+    Pure core of the "rebase the staged payload onto the device's own file"
+    pattern (audit N65). Callers keep their own parse-failure handling —
+    the two routes deliberately differ there, so only the merge itself is
+    shared.
+    """
+    merged = dict(base)
+    merged.update(overlay)
+    return merged
+
+
+def inject_accounting_ok(injected: int, unchanged: int, failed: int,
+                         total: int) -> bool:
+    """True when every payload was accounted for by the injector.
+
+    Shared by the G1/LGD inject gates (audit M15): ``failed`` must be zero
+    and injected + byte-identical-unchanged must cover the whole batch.
+    """
+    return not failed and injected + unchanged == total
+
+
 def protective_persistent_base() -> Path:
     """Per-user folder holding live protective backups that survive reboots."""
     from src.restore.storage import protective_base
@@ -1133,12 +1194,8 @@ def verify_backup_payloads(backup_dir: "str | Path", udid: str,
     the manifest is decrypted locally first (``manifest_password``) so the same
     check still runs instead of being silently skipped.
     """
-    device_dir = Path(backup_dir) / udid
-    if not device_dir.is_dir():
-        if (Path(backup_dir) / "Manifest.db").is_file():
-            device_dir = Path(backup_dir)
-        else:
-            return []
+    # M4: UDID sanitized inside device_dir_for (USB-facing, device-reported).
+    device_dir = device_dir_for(backup_dir, udid)
     manifest_db = device_dir / "Manifest.db"
     if not manifest_db.exists():
         return []
@@ -1337,13 +1394,11 @@ def extract_backup_file(backup_root: "str | Path", udid: str, domain: str,
     Returns the destination path, or None when the backup does not carry
     the file (encrypted manifest, incomplete backup, absent row/payload).
     """
-    device_dir = Path(backup_root) / udid
-    if not device_dir.is_dir():
-        if (Path(backup_root) / "Manifest.db").is_file():
-            device_dir = Path(backup_root)
-        else:
-            log_debug(f"extract_backup_file: no device dir and no Manifest.db under {backup_root}")
-            return None
+    # M4: UDID sanitized inside device_dir_for (USB-facing, device-reported).
+    device_dir = device_dir_for(backup_root, udid)
+    if device_dir == Path(backup_root) and not (device_dir / "Manifest.db").is_file():
+        log_debug(f"extract_backup_file: no device dir and no Manifest.db under {backup_root}")
+        return None
     manifest_db = device_dir / "Manifest.db"
     if not _validate_sqlite_db(manifest_db):
         log_warn("extract_backup_file: Manifest.db missing/encrypted/invalid "

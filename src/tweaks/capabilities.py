@@ -157,9 +157,12 @@ REMOVED_TWEAK_IDS = frozenset({
     TweakID.DisableSearchingWebsites,     # wrong value/type
     TweakID.SiriTriggerPhrase,            # wrong value/type
     TweakID.SiriVocab,                    # wrong value/type
-    # The specular/shadow/refraction v4 Liquid Glass rows and
-    # DisableCompactChrome also left this set with the 2026-10-03 verbatim
-    # v4 restoration (see the note at the top of this set).
+    # The specular/shadow/refraction v4 Liquid Glass rows also left this
+    # set with the 2026-10-03 verbatim v4 restoration (see the note at the
+    # top of this set). DisableCompactChrome, which the restoration had
+    # brought back with a min_version 27.0 gate, left again on 2026-10-11
+    # (audit M8: unverified key) — its tombstone is recorded at the end of
+    # this set.
     TweakID.ClockAnim,                    # dead FeatureFlags channel on target
     TweakID.Lockscreen,                   # dead FeatureFlags channel on target
     TweakID.PhotoUI,                      # dead FeatureFlags channel on target
@@ -182,6 +185,12 @@ REMOVED_TWEAK_IDS = frozenset({
     # are the Squair test payload and Liquid Glass (Latest).
     TweakID.LGDisableG2,                  # removed v14.0 (Beta 1 G2 route)
     TweakID.LGDisableG1,                  # removed v14.0 (Beta 1 G1 route)
+    # Audit M8 (2026-10-11): DisableCompactChrome cut from the active
+    # registry — its key "DisableSolariumCompactChrome" is an unverified
+    # hypothesis (no firmware reader evidence), and user doctrine forbids
+    # invented keys. Tombstone only: old presets naming it resolve to
+    # removed/skipped; it is never applied again.
+    TweakID.DisableCompactChrome,
 })
 
 # Backwards-compatible aliases for the five redundant duplicate rows in
@@ -453,11 +462,13 @@ def tweak_deliverability(tweak_id, device_version: str = "",
     Returns ``(deliverable, reason_code, user_message)``. ``reason_code`` is
     a stable machine-readable string: a ``MobileGestaltDecision`` reason for
     capability failures, or ``VERSION_BELOW_MIN`` / ``VERSION_ABOVE_MAX`` /
-    ``IPHONE_ONLY`` / ``IPAD_ONLY`` / ``OK``.
+    ``REMOVED_TWEAK`` / ``IPHONE_ONLY`` / ``IPAD_ONLY`` / ``OK``.
 
     Unknown device evidence never blocks ordinary tweaks (the registry's
     historical "no version yet" behaviour), but it always blocks
-    MobileGestalt-backed tweaks: unknown is fail-closed there.
+    MobileGestalt-backed tweaks: unknown is fail-closed there. The Daemons
+    page (non-registry, ``spec is None``) is blocked outright on iOS 27+
+    (audit M7); on iOS <= 26 or unknown version it is unchanged.
     """
     canonical = canonical_tweak_id(tweak_id)
     if is_removed_tweak(canonical) or is_removed_tweak(tweak_id):
@@ -465,6 +476,36 @@ def tweak_deliverability(tweak_id, device_version: str = "",
                 "Removed from WorkSlop v10 by user order; it is never applied.")
     spec = SPECS_BY_ID.get(canonical)
 
+    if (canonical == TweakID.Daemons or tweak_id == TweakID.Daemons) and spec is None:
+        # Audit M7: the Daemons page is a non-registry family
+        # (AdvancedPlistTweak, no registry spec), so the registry version
+        # checks below never ran for it. On iOS 27 disabling system daemons
+        # (thermalmonitord, OTA, Location, iCloud, HealthKit, Spotlight) is
+        # an untested-OS bootloop/hardware risk, so the whole page is
+        # blocked there. iOS <= 26 is untouched; an unknown version keeps
+        # the historical fail-open (the Daemons tweak carries no version
+        # cap). VoiceControl stays hard-blocked separately via
+        # BLOCKED_DAEMONS in daemons_tweak.py (Audit 12) — not touched.
+        if device_version:
+            try:
+                if Version(device_version) >= Version("27.0"):
+                    return (False, "VERSION_ABOVE_MAX",
+                            "Daemons is not available on iOS 27 and later: "
+                            "disabling system daemons on an untested OS risks "
+                            "bootloops and hardware issues.")
+            except Exception:
+                pass
+
+    # N34 was reverted 2026-10-11: fail-closed-on-unknown-version for
+    # max_version-capped specs contradicted the documented design
+    # ("Unknown device evidence never blocks ordinary tweaks",
+    # src/gui/ios/compat.py) and broke the no-device UI contract pinned
+    # by test_wave10_gating_matrix / test_audit76_preset_manager /
+    # test_audit9_s8_ui_gate. Rationale: an unknown/empty version only
+    # occurs with no device connected (or before detection), where the
+    # backend "No device connected" gate already prevents any apply;
+    # the residual risk (stale-but-wrong version) is N55, fixed by
+    # re-detecting the version at apply time instead.
     if spec is not None and device_version:
         try:
             if spec.min_version and Version(device_version) < Version(spec.min_version):

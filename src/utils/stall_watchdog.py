@@ -136,8 +136,22 @@ async def run_with_stall_watchdog(
             if state["seen"] and progress_callback is not None:
                 try:
                     progress_callback(state["last_value"])
-                except Exception:
-                    # A heartbeat must never kill a healthy transfer.
+                except Exception as hb_err:
+                    # A heartbeat must never kill a healthy transfer on an
+                    # incidental callback error — EXCEPT when the callback
+                    # raised the route's own watchdog-abort signal. The iOS
+                    # 27 backup callback raises G1WatchdogExpired past its
+                    # deadline; swallowing it here would mislabel the abort
+                    # as a stall instead of the honest timeout (audit N13),
+                    # so it is re-raised. Lazy import: ios27_g1 imports this
+                    # module, so a module-level import would be circular.
+                    try:
+                        from src.restore.ios27_g1 import (
+                            G1WatchdogExpired as _G1Expired)
+                    except Exception:
+                        _G1Expired = ()
+                    if isinstance(hb_err, _G1Expired):
+                        raise
                     pass
             log_info(f"{operation} heartbeat: device silent for "
                      f"{silent:.0f}s (limit {stall:.0f}s)")

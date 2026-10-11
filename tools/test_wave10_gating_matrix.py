@@ -73,6 +73,21 @@ class _DeviceManager:
     def get_current_device_udid(self):
         return "STUB" if self.devices else None
 
+    def get_current_device_version(self):
+        if not self.devices:
+            raise AttributeError("no device")
+        return self.devices[0].version
+
+    def get_current_device_build(self):
+        if not self.devices:
+            raise AttributeError("no device")
+        return self.devices[0].build
+
+    def get_current_device_model(self):
+        if not self.devices:
+            raise AttributeError("no device")
+        return self.devices[0].model
+
 
 class _Window:
     def __init__(self, version="", build=""):

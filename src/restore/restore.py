@@ -369,10 +369,26 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
                                       udid: str, reboot: bool,
                                       progress_callback, backup_password: str = "",
                                       skip_apps: bool = True) -> None:
-    """Phase 3: restore the pruned protective backup.
+    """Restore a backup directory to the device, with stall watchdog + retry.
 
-    Retries while SpringBoard / mobilebackup2 are still coming up after the
-    security recovery (they can take minutes on iOS 27).
+    Restores whatever ``backup_root`` points at: a filtered protective
+    backup (iOS 26 three-phase flow) or a complete full backup (iOS 27 G1
+    route and the LGD full-backup route). The function itself does no
+    pruning — the old docstring's "Phase 3" framing only described one of
+    its callers (audit N15).
+
+    Each attempt runs under a stall watchdog (no device progress for the
+    stall limit aborts the attempt). The first attempt reuses the
+    caller-handed session; every RETRY opens a fresh lockdown session, so
+    a dead/replugged cable cannot burn all retries on a dead socket
+    (audit M12). Retries (default 18) happen only for transient
+    connection-class errors — disk-full and other fatal errors propagate
+    immediately, unchanged.
+
+    ``skip_apps`` (default True) only skips the post-restore App Store
+    re-install trigger (``RestoreApplications.plist``); app DATA in the
+    backup is still restored either way. The user will need to re-download
+    their apps from the App Store afterwards (audit N73).
 
     The progress_callback is already pre-scaled by the caller.
     """
@@ -404,8 +420,17 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
         stall_seconds = 300.0
     _watch = {"last_progress_at": None, "last_cb": None}
 
+    # M12 attempt counter: the caller-handed ``lc`` is fresh on the first
+    # attempt, so attempt 1 reuses it (no redundant reconnect, and unit
+    # tests can stub the session chain). From attempt 2 on, each attempt
+    # opens a FRESH lockdown session — the old socket may be dead (cable
+    # unplugged/replugged mid-restore) and retrying on it would burn all
+    # 18 attempts identically.
+    _attempt = {"n": 0}
+
     async def _restore_once():
         import time as _time
+        _attempt["n"] += 1
         _watch["last_progress_at"] = _time.monotonic()
         _watch["last_cb"] = None
 
@@ -415,15 +440,29 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
             progress_callback(cb_arg)
 
         async def _do_restore():
-            async with _start_mobilebackup2(lc) as mb:
-                await mb.restore(
-                    backup_root,
-                    system=True, copy=True, remove=False,
-                    reboot=reboot, source=udid,
-                    skip_apps=skip_apps,
-                    progress_callback=_tracking_callback,
-                    password=backup_password,
-                )
+            # M12: fresh lockdown session per RETRY attempt (see the
+            # _attempt counter above). A fresh create_using_usbmux on an
+            # already-paired device reconnects silently (no Trust prompt),
+            # so a replugged cable actually recovers instead of burning
+            # all retries on a dead socket. Retry classification is
+            # untouched: only transient connection-class errors reach the
+            # next attempt.
+            if _attempt["n"] <= 1:
+                import contextlib as _cl
+                session_cm = _cl.nullcontext(lc)
+            else:
+                from src.devicemanagement.session import lockdown_session
+                session_cm = lockdown_session(udid)
+            async with session_cm as attempt_lc:
+                async with _start_mobilebackup2(attempt_lc) as mb:
+                    await mb.restore(
+                        backup_root,
+                        system=True, copy=True, remove=False,
+                        reboot=reboot, source=udid,
+                        skip_apps=skip_apps,
+                        progress_callback=_tracking_callback,
+                        password=backup_password,
+                    )
 
         task = asyncio.ensure_future(_do_restore())
         try:
@@ -1277,7 +1316,10 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
         "UniqueDeviceID", "SerialNumber", "DeviceName") if k in values}
 
     from src.devicemanagement.constants import Version as _V
-    device_ver = _V(lockdown_client.product_version)
+    # N53: product_version can be None on a half-answering device —
+    # Version(None) would raise. Treat unknown as "not 27" (fail-closed
+    # toward the legacy iOS 26 sparse path, never the iOS 27 route).
+    device_ver = _V(lockdown_client.product_version or "0")
     # iOS 26.x mobilebackup2 expects the legacy MBDB backup format
     # (Status.plist 2.4 / Manifest.mbdb / Manifest.plist 9.1/20.0); iOS 27+
     # uses the modern sqlite format (3.3 / Manifest.db / 10.0/24.0). Gated on
@@ -1327,9 +1369,20 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                                             progress_callback,
                                             prompt_choice=prompt_choice)
                 log_info("Raw sparse: skipping setup panes via MobileConfigService")
-                await skip_all_setup27(lc, lockdown_client.udid,
-                                       supervised=supervised,
-                                       organization_name=organization_name)
+                try:
+                    await skip_all_setup27(lc, lockdown_client.udid,
+                                           supervised=supervised,
+                                           organization_name=organization_name)
+                except CloudConfigurationAlreadyPresentError:
+                    # M16: raw-sparse mode never wipes, so a cloud
+                    # configuration is almost always already present — the
+                    # setup panes are already handled. Treat it as
+                    # idempotent success (like Phase 5 does) instead of
+                    # reporting the apply as failed when the tweak payload
+                    # was already delivered.
+                    log_info("Raw sparse: device already has a cloud "
+                             "configuration — setup already handled, "
+                             "nothing to skip")
                 progress_callback(95)
         else:
             # iOS 27 era: three-phase protective backup + restore

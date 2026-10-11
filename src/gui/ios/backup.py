@@ -186,9 +186,13 @@ class IOSBackupPage(QWidget):
             # are written into it, the whole backup is restored; no wipe.
             # The Protective Backup menu was removed by user order, so the
             # text no longer mentions it.
-            "On iOS 27 a full backup of all your data runs automatically "
-            "first — your tweaks are written into that backup, then the "
-            "whole backup is restored to the iPhone. No wipe is involved.\n\n"
+            # N41: version-neutral wording — 27.x outside the G1 allowlist
+            # (e.g. 27.1/27.2) is rejected at apply time, so the text must
+            # not promise the route to every iOS 27 device.
+            "On supported iOS 27 versions a full backup of all your data "
+            "runs automatically first — your tweaks are written into that "
+            "backup, then the whole backup is restored to the iPhone. "
+            "No wipe is involved.\n\n"
             "On iOS 26 the tweaks apply directly, without a wipe."))
         desc_lbl.setWordWrap(True)
         desc_lbl.setStyleSheet(t("value_label") + " background-color: transparent;")

@@ -45,7 +45,8 @@ def main():
     check("lgd_full has no G2 pool write",
           "save_g2_original_if_absent" not in body)
     check("lgd_full rebase merge intact",
-          "g2_device_base" in body and "merged.update" in body)
+          "g2_device_base" in body
+          and "merge_plist_dicts(g2_parsed, staged_parsed)" in body)
 
     # No pool file is produced by merely exercising the module/store.
     check("no .g2-original.plist in the store",

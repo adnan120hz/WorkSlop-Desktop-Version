@@ -150,7 +150,28 @@ class IOSApplyPage(QWidget):
             self.progress_bar.show()
 
     def set_busy(self, busy: bool):
-        self.apply_btn.setEnabled(not busy)
+        self._busy = bool(busy)
+        self._refresh_apply_button_state()
+
+    def set_ios27_eligibility(self, eligible: bool, reason: str = ""):
+        """N43: pre-gate the Apply button on the iOS 27 allowlist.
+
+        When the connected device is iOS 27 but outside the supported
+        set, the button is disabled with an explanatory tooltip so the
+        rejection lands here instead of after the summary dialog. The
+        backend eligibility gate remains the backstop — this is UX
+        timing only.
+        """
+        self._ios27_eligible = bool(eligible)
+        self._ios27_eligibility_tip = reason or ""
+        self._refresh_apply_button_state()
+
+    def _refresh_apply_button_state(self):
+        busy = getattr(self, "_busy", False)
+        eligible = getattr(self, "_ios27_eligible", True)
+        self.apply_btn.setEnabled(not busy and eligible)
+        tip = getattr(self, "_ios27_eligibility_tip", "")
+        self.apply_btn.setToolTip(tip if not eligible else "")
         self.remove_btn.setEnabled(not busy)
 
     # ---------- Full Nugget palette (third interface) ----------

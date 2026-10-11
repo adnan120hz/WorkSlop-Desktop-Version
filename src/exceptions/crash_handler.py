@@ -143,6 +143,16 @@ _UDID_PATTERNS = (
     re.compile(r"\b[0-9A-Fa-f]{24,25}\b"),
 )
 
+# Home-dir username components: /Users/<name>, C:\Users\<name>. Caught
+# explicitly because the generic path redactor keeps the basename — a bare
+# home dir would otherwise leak the username as "<path>/<name>". Only
+# fires when the username is the LAST component (end of string or
+# punctuation/whitespace follows); longer paths are already collapsed
+# cleanly by the generic path patterns below.
+_HOME_USER_RE = re.compile(
+    r"(?i)(/Users/|C:\\Users\\|C:/Users/)[^/\\\s\"'<>]+(?=$|[\s\"'<>),;:.])"
+)
+
 # Absolute paths: Windows drive paths, then Unix paths. The basename is kept
 # (it carries the useful debug signal: which file/line failed) while every
 # directory component — including the username — is dropped.
@@ -160,6 +170,9 @@ def _redact_sensitive(text: str) -> str:
     """Strip UDIDs and absolute local paths from outgoing report text."""
     if not text:
         return text
+    # Usernames first: a bare home dir would otherwise survive the generic
+    # path redaction as "<path>/<username>".
+    text = _HOME_USER_RE.sub(r"\1<redacted>", text)
     for pattern in _UDID_PATTERNS:
         text = pattern.sub("<UDID>", text)
     text = _WIN_PATH_RE.sub(_path_placeholder, text)

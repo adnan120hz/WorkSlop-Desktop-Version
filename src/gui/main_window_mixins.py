@@ -8,13 +8,14 @@ NavigationMixin, ApplyMixin)``.
 
 from typing import Optional
 import os
+import time
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.devicemanagement.constants import (
-    Version, is_ios27_build, mobilegestalt_decision,
+    Version, is_ios27_device, mobilegestalt_decision,
 )
 from src.tweaks.capabilities import clear_unsupported_mobilegestalt_state
 from src.gui.dialogs import AboutProgramDialog
@@ -497,7 +498,15 @@ class DeviceBarMixin:
                 "26.0": [self.ui.liquidGlassPageBtn],
             }
 
-            device_ver = Version(self.device_manager.data_singleton.current_device.version)
+            # N53: version may be None/garbage when the device record is
+            # stale — a bare Version() would crash the GUI thread. Treat
+            # unknown as "0" (comparisons stay valid; build-prefix
+            # fallback in is_ios27_device still locks correctly).
+            _raw_ver = self.device_manager.data_singleton.current_device.version
+            try:
+                device_ver = Version(str(_raw_ver).strip()) if _raw_ver else Version("0")
+            except Exception:
+                device_ver = Version("0")
             device_build = self.device_manager.data_singleton.current_device.build or ""
             # MobileGestalt menu stays visible but auto-locks on unsupported
             # builds: open on iOS 16.0 -> iOS 26.2 beta 1, locked after that.
@@ -536,10 +545,12 @@ class DeviceBarMixin:
                 self.workslop_sidebar.set_gestalt_locked(
                     not gestalt_ok,
                     gestalt_tip_ok if gestalt_ok else gestalt_tip_locked)
-            # Status Bar menu: locked on any iOS 27 build, open on iOS 26
+            # Status Bar menu: locked on any iOS 27 device, open on iOS 26
             # and below. It stays visible (like MobileGestalt) so the user
-            # sees why it is unavailable.
-            statusbar_locked = is_ios27_build(device_build)
+            # sees why it is unavailable. N40: one shared predicate
+            # (version-compare authoritative, build-prefix fallback) so the
+            # GUI cannot disagree with itself on edge cases.
+            statusbar_locked = is_ios27_device(device_ver, device_build)
             statusbar_tip = (
                 "Status Bar"
                 if not statusbar_locked else
@@ -550,6 +561,32 @@ class DeviceBarMixin:
             self.ui.statusBarPageBtn.setToolTip(statusbar_tip)
             if hasattr(self, "ios_home"):
                 self.ios_home.set_statusbar_locked(statusbar_locked)
+            # N43: pre-gate the Apply button on the iOS 27 allowlist. An
+            # ineligible iOS 27.x device (e.g. 27.1/27.2) gets the rejection
+            # at the button instead of after the summary dialog + worker
+            # start. The backend eligibility gate stays as the backstop.
+            # NOTE: read _ios_page_objs directly — self.ios_apply is a lazy
+            # property whose getter would force-build the page here.
+            _apply_page = getattr(self, "_ios_page_objs", {}).get("ios_apply")
+            if _apply_page is not None:
+                try:
+                    from src.restore.ios27_g1 import is_ios27_g1_supported
+                    if is_ios27_device(device_ver, device_build):
+                        _eligible = bool(is_ios27_g1_supported(
+                            str(device_ver), device_build))
+                        _apply_page.set_ios27_eligibility(
+                            _eligible,
+                            "" if _eligible else
+                            "Not supported on this iOS version")
+                    else:
+                        _apply_page.set_ios27_eligibility(True)
+                except Exception:
+                    # Never break device switching on a gating lookup
+                    # failure — the backend gate still rejects safely.
+                    try:
+                        _apply_page.set_ios27_eligibility(True)
+                    except Exception:
+                        pass
             # toggle option visibility for the minimum versions
             for version, views in MinTweakVersions.items():
                 # show views if the version is higher
@@ -593,6 +630,16 @@ class DeviceBarMixin:
             # MobileGestalt: stale ON state must not survive into a summary
             # or AutoSave.
             clear_unsupported_mobilegestalt_state(mobilegestalt_decision("", ""))
+            # N43: no device → lift any stale iOS 27 ineligibility lock so
+            # the Apply button is not stuck disabled after unplug. (Direct
+            # _ios_page_objs read: the ios_apply property getter would
+            # force-build the lazy page.)
+            _apply_page = getattr(self, "_ios_page_objs", {}).get("ios_apply")
+            if _apply_page is not None:
+                try:
+                    _apply_page.set_ios27_eligibility(True)
+                except Exception:
+                    pass
 
         # update the interface
         self.updateInterfaceForNewDevice()
@@ -1346,13 +1393,34 @@ class ApplyMixin:
     # backup cache from the pre-apply summary (QDialog.Accepted=1/Rejected=0).
     _SUMMARY_UPDATE_CACHE = 2
 
+    # M10: the progress chain used to push every device tick verbatim into
+    # the UI thread (2x setStyleSheet + 3x setText + regex per tick), which
+    # stutters during long full backup/restore runs. Throttle here — the
+    # single choke point before the three surfaces — without touching the
+    # determinate/indeterminate progress-bar logic downstream.
+    _UPDATE_LABEL_MIN_INTERVAL = 0.2  # max ~5 heavy updates/sec
+
     def update_label(self, txt: str):
         # Mirror progress into the iOS surfaces (home indicator + Apply page)
         try:
-            if txt:
-                self.ios_home.show_process_status(txt)
-                self.ios_apply.set_status(txt)
-                self.ios_backup.set_process_status(txt)
+            if not txt:
+                return
+            # (a) dedup: identical text changes nothing on screen.
+            if txt == getattr(self, "_update_label_last_txt", None):
+                return
+            # (b) rate-limit the expensive per-tick restyle. Phase lines
+            # carry no "%" and always pass through, so the phase label
+            # stays accurate; percent ticks are capped at ~5/sec.
+            now = time.monotonic()
+            if "%" in txt:
+                last_ts = getattr(self, "_update_label_last_ts", 0.0)
+                if (now - last_ts) < self._UPDATE_LABEL_MIN_INTERVAL:
+                    return
+            self._update_label_last_txt = txt
+            self._update_label_last_ts = now
+            self.ios_home.show_process_status(txt)
+            self.ios_apply.set_status(txt)
+            self.ios_backup.set_process_status(txt)
         except Exception:
             pass
 
@@ -1586,7 +1654,12 @@ class ApplyMixin:
             # (audit round 23).
             from packaging.version import Version as _V
             try:
-                _ios27 = _V(self.device_manager.get_current_device_version() or "0") >= _V("27.0")
+                # N54: pure GUI wording predicate — bound above so iOS 28+
+                # (rejected later by the backend allowlist gate) is not
+                # promised the iOS 27 full-backup route here.
+                _ios27 = _V("27.0") <= _V(
+                    self.device_manager.get_current_device_version() or "0"
+                ) < _V("28.0")
             except Exception:
                 _ios27 = False
             dlg = IOSSummaryDialog(
@@ -1595,7 +1668,9 @@ class ApplyMixin:
                 muted=(QCoreApplication.translate(
                     "Nugget",
                     "Your device reboots when it's done — remember to turn Find My "
-                    "back on afterwards. A protective backup runs first.")
+                    # N42: the G1 route takes a FULL backup of all device
+                    # data, not a "protective" backup (legacy term).
+                    "back on afterwards. A full backup of all your data runs first.")
                     if _ios27 else
                     QCoreApplication.translate(
                         "Nugget",
@@ -1698,6 +1773,25 @@ class ApplyMixin:
                     "the current apply to finish, then try again — nothing "
                     "was started."))
             return
+        # N44: no device → say so immediately instead of opening the
+        # summary dialog (which degrades gracefully and would only fail
+        # later, after the user already confirmed). Applies only: the
+        # reset/remove path keeps its historical behavior (worker starts
+        # and reports "No device connected" itself).
+        if reset_pages is None and not remove_options:
+            try:
+                _no_device = not (self.device_manager.devices or [])
+            except Exception:
+                _no_device = True
+            if _no_device:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    QCoreApplication.translate("Nugget", "No Device"),
+                    QCoreApplication.translate(
+                        "Nugget",
+                        "No device is connected. Connect your iPhone or iPad "
+                        "first, then try again."))
+                return
         # Applies (not resets) get a what-will-change summary first.
         if reset_pages is None and not remove_options \
                 and not self._confirm_apply_summary():

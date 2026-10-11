@@ -127,12 +127,14 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Sets custom text shown at the bottom of the Lock Screen below the time. Long text is cut off — keep it short. Leave empty to remove.")),
     _t(TweakID.WatchOSCompatibility, Section.SPRINGBOARD, "Allow pairing with any watchOS version",
        FileLocation.nanoregistry, "", factory=_watchos_compatibility,
+       max_version="26.9",  # cap at 26.x: untested NanoRegistry values, blocked from iOS 27 (audit N33)
        description=QT_TRANSLATE_NOOP("Nugget", "Removes the minimum watchOS pairing check in NanoRegistry so you can pair an Apple Watch running any watchOS version with your iPhone.")),
     _t(TweakID.AirDropDisableTimeLimit, Section.SPRINGBOARD, "Disable AirDrop Time Limit for Everyone Option",
        FileLocation.airdrop, "OverrideTimeLimitEveryoneMode",
        description=QT_TRANSLATE_NOOP("Nugget", "Unlocks the hidden 'Everyone' AirDrop receiving option that would normally be limited to a 10-minute time window.")),
     _t(TweakID.SBDontLockAfterCrash, Section.SPRINGBOARD, "Disable Lock After Respring",
        FileLocation.springboard, "SBDontLockAfterCrash",
+       max_version="26.9",  # cap at 26.x: skips the post-crash passcode on an untested OS = risk (audit N36)
        description=QT_TRANSLATE_NOOP("Nugget", "Prevents the screen from locking right after a respring — the phone won't ask for a passcode immediately after the UI reloads.")),
     _t(TweakID.SBDontDimOrLockOnAC, Section.SPRINGBOARD, "Disable Screen Dimming While Charging",
        FileLocation.springboard, "SBDontDimOrLockOnAC",
@@ -288,8 +290,13 @@ SPECS: tuple[TweakSpec, ...] = (
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Remove specular from LS clock. Predicted.")),
     _t(TweakID.DisableGlassLockScreen, Section.LIQUID_GLASS, "Disable Glass on LS (Predicted)", GP, "SBDisableGlassLockScreen",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Lock Screen. Predicted.")),
-    _t(TweakID.DisableCompactChrome, Section.LIQUID_GLASS, "Disable Compact Chrome", GP, "DisableSolariumCompactChrome",
-       min_version="27.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable Solarium compact chrome. Gate 27.0.")),
+    # REMOVED (audit M8, 2026-10-11): DisableCompactChrome is cut from the
+    # active registry. Its key "DisableSolariumCompactChrome" is unverified
+    # (hypothesis with no firmware reader evidence); user doctrine forbids
+    # invented keys, so it may not ship as a normal toggle. The TweakID
+    # stays only as a tombstone in
+    # src/tweaks/capabilities.py::REMOVED_TWEAK_IDS — old presets naming it
+    # resolve to removed/skipped, never to an applied tweak.
     _t(TweakID.DisableGlassDI, Section.LIQUID_GLASS, "Disable Glass on DI (Predicted)", GP, "SBDisableGlassDynamicIsland",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Disable glass on Dynamic Island. Predicted.")),
     _t(TweakID.DisallowGlassDI, Section.LIQUID_GLASS, "Disallow Glass on DI (Predicted)", GP, "SBDisallowGlassDynamicIsland",
@@ -335,6 +342,11 @@ SPECS: tuple[TweakSpec, ...] = (
     _t(TweakID.LGNoBlurReducedFrost, Section.LIQUID_GLASS, "No-Blur Reduced Frost (SwiftUI)", FileLocation.swiftui, "SolariumNoBlurReducedFrost",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Writes SolariumNoBlurReducedFrost = true into com.apple.SwiftUI.plist, the file its reader opens. A real Apple firmware key; its reader is verified alive in the iOS 26.6.1 (23G82) firmware. The visual effect is NOT proven on a device. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
     # === Non-glass candidates (audited) ===
+    # NOTE (audit N39): CustomLockDate writes a bool (true) for
+    # AppleICUDateTimeSymbols, while Apple's key normally carries an ICU
+    # date-format string. The written type is unverified — this entry stays
+    # research-only and its value is NOT changed here (changing it would
+    # alter behaviour on iOS <=26, which is not the safe move).
     _t(TweakID.CustomLockDate, Section.SPRINGBOARD, "Custom Lock Screen Date", FileLocation.globalPreferencesHomeDomain, "AppleICUDateTimeSymbols",
        min_version="26.0", description=QT_TRANSLATE_NOOP("Nugget", "Custom Lock Screen date format. Device-proven (iOS 26.0-26.7).")),
     _t(TweakID.AnimDragCoeff, Section.SPRINGBOARD, "Animation Speed Coefficient", GP, "UIAnimationDragCoefficient", value=0.5,
@@ -411,6 +423,7 @@ SPECS: tuple[TweakSpec, ...] = (
        FileLocation.globalPreferencesHomeDomain, "SBDisallowGlassTime",
        factory=_lgd_squair_factory,
        min_version="26.0",
+       max_version="26.9",  # cap at 26.x: test-only payload, untested on iOS 27 (audit N35)
        description=QT_TRANSLATE_NOOP("Nugget", "Test-only — unproven. Surgically merges SBDisallowGlassTime = true and SBDisallowGlassButtons = true into your device's own .GlobalPreferences.plist and injects a FeatureFlags/Domain/SpringBoard.plist (SolariumElasticHUD disabled) through the full-backup route. Whether iOS 26.6.1 honors either write is not proven, and the Domain file is predicted to be skipped silently by the restore channel — its landing can never be claimed without a device read-back. Judge it with an isolated device test (full backup first, Low Power Mode off, reboot after applying).")),
 
     # === Liquid Glass (Latest) — REMOVED in v15 (user order

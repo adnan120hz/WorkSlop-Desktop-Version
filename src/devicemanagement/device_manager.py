@@ -1231,7 +1231,9 @@ class DeviceManager:
                 # no-protection path.
                 log_warn("WORKSLOP_NO_PROTECTIVE_BACKUP=1 — raw sparse: "
                          "skipping Phase 0 protective backup entirely "
-                         "(no data protection)")
+                         "(no data protection) — iOS 26 route only; the "
+                         "iOS 27 G1 route always takes a full backup and "
+                         "ignores this switch")
                 self._protective_backup_skipped = True
             partially_supported = self.get_current_device_partially_supported()
             if partially_supported:
@@ -1239,7 +1241,8 @@ class DeviceManager:
                 # REPLACES the old protective/sparse/wipe flow entirely:
                 # full backup of all data -> payload adapted to the
                 # enabled tweaks -> inject -> verify -> full restore,
-                # with a 12-minute watchdog and a confirmed risk warning.
+                # with a stall watchdog (fires only when the device goes
+                # quiet) and a confirmed risk warning.
                 # The iOS 26 partial-restore path below is untouched.
                 # NOTE: assign to final_alert (not bare return) — the
                 # finally below shows it via show_alert().
@@ -2387,8 +2390,9 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         Gates, in order: (1) hard unsupported-device block; (2) the iOS
         27 eligibility list (27.0 DB1-9 / RC / stable / 27.0.1 — anything
         else is "Not supported"); (3) the English risk warning, which
-        must be CONFIRMED before anything runs; (4) the 12-minute
-        watchdog, counted from the start of the full backup.
+        must be CONFIRMED before anything runs; (4) the stall watchdog,
+        which fires only when the route goes quiet (no progress for 10
+        minutes) — a healthy backup is never cut off.
 
         Returns the final alert (shown by the caller's show_alert).
         Raises on failure — the _apply_changes wrapper turns it into an
@@ -2408,6 +2412,33 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             raise NuggetException(QCoreApplication.tr("No device connected."))
         version = self.get_current_device_version()
         build = self.get_current_device_build()
+
+        # N55: re-detect the version/build LIVE before gating. The cached
+        # Device may be stale (app was open while the iPhone updated
+        # 26.x -> 27.0): without this, a stale "26.x" would route an
+        # iOS 27 device into the iOS 26 sparse-restore path — the exact
+        # bootloop scenario the G1 route exists to avoid. A failed
+        # re-detection falls back to the cached values (the gate below
+        # is fail-closed on garbage anyway).
+        try:
+            from src.devicemanagement.session import lockdown_session
+            # Short pair timeout: the device was already detected (hence
+            # paired); a full trust wait belongs to the backup phase.
+            async with lockdown_session(udid, pair_timeout=15) as _lc:
+                _vals = _lc.all_values
+                _live_version = _vals.get("ProductVersion") if isinstance(
+                    _vals, dict) else None
+                _live_build = _vals.get("BuildVersion") if isinstance(
+                    _vals, dict) else None
+            if _live_version:
+                if _live_version != version or _live_build != build:
+                    log_info(f"iOS27-G1: version re-detected at apply time: "
+                             f"{version!r}/{build!r} -> "
+                             f"{_live_version!r}/{_live_build!r}")
+                version, build = _live_version, _live_build or build
+        except Exception as e:
+            log_warn(f"iOS27-G1: live version re-detection failed ({e}); "
+                     f"using cached {version!r}/{build!r}")
 
         # Gate 2: eligibility — only the listed iOS 27 builds/versions.
         if not is_ios27_g1_supported(version, build):
@@ -2430,7 +2461,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     "confirmed (no prompt available). Nothing was applied."),
                 title=QCoreApplication.tr("Apply Aborted"),
                 icon=QMessageBox.Warning)
-        decision = prompt_choice(IOS27_WARNING_TITLE, IOS27_WARNING_TEXT)
+        # N26: prompt_choice() is a synchronous main-thread-dialog relay;
+        # call it off the worker event loop (the 10-minute timeout still
+        # lives in the GUI-side queue).
+        decision = await asyncio.to_thread(
+            prompt_choice, IOS27_WARNING_TITLE, IOS27_WARNING_TEXT)
         if decision != "resume":
             log_info("iOS27-G1: user declined the iOS 27 risk warning — aborting")
             return ApplyAlertMessage(
@@ -2444,7 +2479,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         update_label(QCoreApplication.tr(
             "iOS 27: confirmed — starting the full-backup route..."))
 
-        # Phase A: full backup of ALL data (the watchdog clock starts here).
+        # Phase A: full backup of ALL data (the stall watchdog starts here).
         backup_root = await backup_ios27_full(
             udid,
             update_label=update_label,
@@ -2454,7 +2489,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         # The HomeDomain .GlobalPreferences.plist merge base comes from
         # THIS backup (B1 safety: never write a tweak-only dict over the
         # user's live settings). Without a base the staging pass skips
-        # the HomeDomain copy with a warning, exactly as before.
+        # without a base the staging pass skips the HomeDomain copy with a
+        # warning, exactly as before. Not silent anymore (N46): show what
+        # is happening while the indeterminate progress runs.
+        update_label(QCoreApplication.tr(
+            "iOS 27: reading your current settings..."))
         self._gp_base_plist = None
         try:
             import tempfile as _tf
@@ -2505,7 +2544,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         except Exception as e:
             log_warn(f"iOS27-G1: payload attribution failed ({e})")
 
-        # Phases B-D: inject, verify, full restore (watchdog-bounded).
+        # Phases B-D: inject, verify, full restore (stall-watchdog-bounded).
         def _g1_restore_progress(value):
             if isinstance(value, str):
                 update_label(value)
@@ -2514,12 +2553,74 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             else:
                 update_label(QCoreApplication.tr(
                     "iOS 27: restoring... ({0:.1f}%)").format(value))
-        backup_root, timed_out = await deliver_ios27_payload(
-            backup_root, udid, payloads,
-            update_label=update_label,
-            restore_progress=_g1_restore_progress,
-            watchdog=watchdog,
-            reboot=bool(self.pref_manager.auto_reboot))
+        # N29: forensic marker — the restore starts here, at the point of
+        # no return (the only write to the device). Distinguishes
+        # "restore never started" from "restore hung" in the log.
+        log_info("iOS27-G1: starting full restore of the modified backup "
+                 f"(point of no return; backup kept at {backup_root})")
+        try:
+            _deliver_result = await deliver_ios27_payload(
+                backup_root, udid, payloads,
+                update_label=update_label,
+                restore_progress=_g1_restore_progress,
+                watchdog=watchdog,
+                reboot=bool(self.pref_manager.auto_reboot))
+        except Exception as e:
+            _msg = str(e)
+            if ("not changed" in _msg or "nothing was restored" in _msg
+                    or "NOTHING was written" in _msg):
+                # Phase B/C failure (or the pre-restore watchdog stop):
+                # nothing was written to the device. Keep the current
+                # honest abort — re-raise so the _apply_changes wrapper
+                # shows the (already device-not-changed) error.
+                log_warn(f"iOS27-G1: pre-restore failure, device not changed "
+                         f"({type(e).__name__}: {e})")
+                raise
+            # M3a/M3b: the restore itself (phase D) failed. The full backup
+            # is still on this PC and can be used for a manual restore.
+            # Do NOT attempt an automatic re-restore here — on a device in
+            # an unknown state that is the risky action. Give the user an
+            # honest error instead: what failed, the exact backup
+            # location, manual Finder/iTunes recovery steps, and the
+            # device-state warning.
+            log_error(f"iOS27-G1: RESTORE FAILED ({type(e).__name__}: {e}); "
+                      f"device state may be inconsistent; backup retained "
+                      f"at {backup_root}")
+            self._journal_error = f"RestoreFailed: {type(e).__name__}: {e}"
+            return ApplyAlertMessage(
+                txt=QCoreApplication.tr(
+                    "The restore of the modified backup FAILED — it did "
+                    "not complete.\n\n"
+                    "What failed: the full restore to your device (your "
+                    "tweaks may or may not have been applied). Your device "
+                    "may be in an INCONSISTENT state — do not assume your "
+                    "data is intact or the tweaks are active.\n\n"
+                    "Your full backup is still kept on this PC and can be "
+                    "used for a manual restore:\n%1\n\n"
+                    "Recovery steps:\n"
+                    "1. Put the iPhone into Recovery mode (or DFU mode if "
+                    "it will not boot), then restore it in Finder (Mac) or "
+                    "iTunes / Apple Devices (Windows) from the backup "
+                    "folder above.\n"
+                    "2. Keep the device connected by cable and make sure "
+                    "this PC does not sleep during the restore.\n\n"
+                    "No automatic retry was attempted: re-running a "
+                    "restore on a device in an unknown state is unsafe. "
+                    "If the device does not come back, use the manual "
+                    "steps above.").replace("%1", str(backup_root)),
+                title=QCoreApplication.tr("Restore Failed"),
+                icon=QMessageBox.Critical,
+                backup_path=str(backup_root),
+                exc_type=type(e), exc_value=e)
+        # deliver_ios27_payload returns (backup_root, boot_verified):
+        #   True  = the device came back online after the reboot,
+        #   False = it did NOT come back (bootloop risk),
+        #   None  = no reboot was requested on this run.
+        # The legacy bare-backup-root return shape is tolerated too.
+        if isinstance(_deliver_result, tuple) and len(_deliver_result) == 2:
+            backup_root, boot_verified = _deliver_result
+        else:
+            backup_root, boot_verified = _deliver_result, None
 
         # Mark the journal delivered + finalize success (mirrors the
         # start_restore success path in _apply_tweak_pass).
@@ -2537,13 +2638,36 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         except Exception as e:
             log_warn(f"iOS27-G1: journal finalize failed ({e})")
 
+        # M2: never claim success before the boot is verified. The restore
+        # itself succeeded (journal finalized above), but if the device
+        # did not come back online after the reboot it may be in a
+        # bootloop — the user must see a warning, not "Success!".
+        if boot_verified is False:
+            log_error("iOS27-G1: restore finished but the device did NOT "
+                      f"come back online after the reboot (possible "
+                      f"bootloop); backup retained at {backup_root}")
+            update_label(QCoreApplication.tr("Warning: device offline"))
+            return ApplyAlertMessage(
+                txt=QCoreApplication.tr(
+                    "The restore finished, but your device did NOT come "
+                    "back online after the reboot — it may be in a "
+                    "bootloop.\n\n"
+                    "Your full backup is still kept on this PC at:\n%1\n\n"
+                    "Recovery steps:\n"
+                    "1. Force-restart the iPhone (press and quickly release "
+                    "Volume Up, then Volume Down, then hold the Side button "
+                    "until the Apple logo appears). If it still does not "
+                    "boot, put it in Recovery or DFU mode.\n"
+                    "2. Restore it in Finder (Mac) or iTunes / Apple "
+                    "Devices (Windows) from the backup folder above.\n\n"
+                    "This is NOT reported as a success — check the device "
+                    "before applying anything again.").replace(
+                        "%1", str(backup_root)),
+                title=QCoreApplication.tr("Device Did Not Reconnect"),
+                icon=QMessageBox.Warning,
+                backup_path=str(backup_root))
+
         update_label(QCoreApplication.tr("Success!"))
-        timeout_note = ""
-        if timed_out:
-            timeout_note = QCoreApplication.tr(
-                "\n\nNote: the restore finished past the 12-minute safety "
-                "limit. It was allowed to complete (interrupting a restore "
-                "is unsafe); your device was fully restored.")
         if self.pref_manager.auto_reboot:
             _done_msg = QCoreApplication.tr(
                 "Your device will now restart.\n\nRemember to turn Find My back on!")
@@ -2551,7 +2675,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             _done_msg = QCoreApplication.tr(
                 "Please restart your device to see changes.")
         return ApplyAlertMessage(
-            txt=QCoreApplication.tr("All done! ") + _done_msg + timeout_note,
+            txt=QCoreApplication.tr("All done! ") + _done_msg,
             title=QCoreApplication.tr("Success!"),
             icon=QMessageBox.Information)
 
