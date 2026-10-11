@@ -1,7 +1,7 @@
-"""Liquid Glass Disable — dedicated iOS-style page.
+"""Lock Screen iOS 18 (Experimental) — dedicated iOS-style page.
 
 The switch is an ordinary registry spec (Section
-"Liquid Glass Disable (Beta 1)": the Squair Protocol test payload)
+"Lock Screen iOS 18 (Experimental)": the Squair Protocol test payload)
 rendered by the shared IOSSectionContent, so it enables, autosaves,
 counts in the pre-apply summary and stages through the normal apply
 pipeline exactly like every other tweak. This page adds what a
@@ -36,7 +36,7 @@ def _tr(text: str) -> str:
 
 
 class LGDRollbackThread(QThread):
-    """Background runner for one Beta 1 rollback (device restore)."""
+    """Background runner for one lock-screen-keys rollback (device restore)."""
 
     progress = Signal(str)
     alert = Signal(object)
@@ -69,7 +69,7 @@ class LGDRollbackThread(QThread):
 
 
 class IOSLiquidGlassDisablePage(IOSSectionPage):
-    """Section page for Liquid Glass Disable (Beta 1) + rollback controls."""
+    """Section page for Lock Screen iOS 18 (Experimental) + rollback controls."""
 
     PAGE_INDEX = 16  # appended last in MainWindow.ios_pages; never renumber
 
@@ -80,7 +80,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
 
         layout = self.layout()
 
-        # --- honest Beta 1 explanation (top, always visible) ---
+        # --- honest experimental explanation (top, always visible) ---
         intro_card = IOSCard(self)
         intro_layout = QVBoxLayout(intro_card)
         intro_layout.setContentsMargins(16, 12, 16, 12)
@@ -279,7 +279,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
     def _confirm_rollback(self, which: str):
         if getattr(self.window, "apply_in_progress", False):
             QMessageBox.information(
-                self, _tr("Liquid Glass Disable (Beta 1)"),
+                self, _tr("Lock Screen iOS 18 (Experimental)"),
                 _tr("An apply or reset is already running. Wait for it "
                     "to finish first."))
             return
@@ -292,7 +292,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             udid = ""
         if not udid:
             QMessageBox.warning(
-                self, _tr("Liquid Glass Disable (Beta 1)"),
+                self, _tr("Lock Screen iOS 18 (Experimental)"),
                 _tr("No device connected. Connect your iPhone first."))
             return
         if which == "latest":
@@ -319,7 +319,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
         else:
             return
         reply = QMessageBox.question(
-            self, _tr("Liquid Glass Disable (Beta 1)"), text,
+            self, _tr("Lock Screen iOS 18 (Experimental)"), text,
             QMessageBox.Yes | QMessageBox.Cancel,
             QMessageBox.StandardButton.Cancel)
         if reply != QMessageBox.StandardButton.Yes:
@@ -339,7 +339,7 @@ class IOSLiquidGlassDisablePage(IOSSectionPage):
             # A failed rollback must reach the user; swallowing the
             # error made a failed restore look like success (round 21).
             QMessageBox.warning(
-                self, _tr("Liquid Glass Disable (Beta 1)"),
+                self, _tr("Lock Screen iOS 18 (Experimental)"),
                 _tr("The rollback did not complete: %1").replace(
                     "%1", err or _tr("unknown error")))
         # The rollback turned the route's switch off in the model; rebuild

@@ -9,6 +9,10 @@ Performance notes:
   * Every floater pixmap is pre-rendered once (size + tint + opacity baked in)
     so paintEvent is just blits — no per-frame rasterization.
   * The timer skips work while the widget is hidden.
+  * 60 fps via a 16 ms timer plus a real elapsed-time delta (QElapsedTimer),
+    so frame pacing does not drift or stutter when the event loop is busy.
+  * Logos are seeded across the left / center / right thirds of the width
+    so the background never looks empty on one side.
 """
 
 from __future__ import annotations
@@ -16,7 +20,7 @@ from __future__ import annotations
 import math
 import random
 
-from PySide6.QtCore import Qt, QRectF, QTimer
+from PySide6.QtCore import Qt, QRectF, QTimer, QElapsedTimer
 from PySide6.QtGui import QColor, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QWidget
@@ -30,7 +34,10 @@ BASE_BG = "#F2F7FF"
 # Soft blue tints for the drifting background logos (light enough to never
 # fight with page content drawn above).
 FLOAT_TINTS = ["#BFD9FA", "#A9CBF7", "#C9DFFB", "#9DC2F2", "#D4E4FC"]
-FLOAT_COUNT = 16
+FLOAT_COUNT = 30
+
+# Target frame budget: 60 fps.
+FRAME_INTERVAL_MS = 16
 
 
 def _tinted_apple(size: int, color_hex: str, opacity: float,
@@ -87,8 +94,9 @@ class SkyBackground(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, False)
         self._floaters: list[_Floater] = []
         self._t = 0.0
+        self._clock = QElapsedTimer()
         self._timer = QTimer(self)
-        self._timer.setInterval(33)  # ~30 fps
+        self._timer.setInterval(FRAME_INTERVAL_MS)  # ~60 fps
         self._timer.timeout.connect(self._tick)
         self._seed_floaters()
 
@@ -96,6 +104,7 @@ class SkyBackground(QWidget):
 
     def start(self):
         if not self._timer.isActive():
+            self._clock.start()
             self._timer.start()
 
     def stop(self):
@@ -106,14 +115,16 @@ class SkyBackground(QWidget):
     def _seed_floaters(self):
         rng = random.Random(20260930)
         dpr = 1.0
-        for _ in range(FLOAT_COUNT):
+        thirds = [(0.02, 0.33), (0.335, 0.665), (0.67, 0.98)]
+        for i in range(FLOAT_COUNT):
             size = rng.randint(26, 92)
             tint = rng.choice(FLOAT_TINTS)
             opacity = rng.uniform(0.35, 0.75)
             pm = _tinted_apple(size, tint, opacity, dpr)
+            lo, hi = thirds[i % 3]  # spread evenly: left / center / right
             self._floaters.append(_Floater(
                 pixmap=pm,
-                rx=rng.random(),
+                rx=rng.uniform(lo, hi),
                 ry=rng.random(),
                 speed=rng.uniform(0.008, 0.028),
                 phase=rng.uniform(0, 2 * math.pi),
@@ -122,10 +133,15 @@ class SkyBackground(QWidget):
 
     def _tick(self):
         if not self.isVisible():
+            self._clock.restart()
             return
-        self._t += 0.033
+        # Real elapsed seconds since the last tick — keeps motion smooth
+        # even when the event loop delivers ticks late (no fixed-step drift).
+        dt = self._clock.restart() / 1000.0
+        dt = min(dt, 0.1)  # clamp: a long stall must not teleport logos
+        self._t += dt
         for f in self._floaters:
-            f.ry -= f.speed * 0.033
+            f.ry -= f.speed * dt
             if f.ry < -0.12:
                 f.ry = 1.12
         self.update()

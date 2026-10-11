@@ -177,7 +177,7 @@ check("sidebar is the v4 WorkSlop menu set",
           ("gestalt", "MobileGestalt"), ("wallpaper", "Wallpaper"),
           ("backup", "Backup"), ("appdata", "App Data"),
           ("themes", "Themes"), ("settings", "Settings"),
-          ("liquidglassdisable", "Liquid Glass Disable (Beta 1)")],
+          ("liquidglassdisable", "Lock Screen iOS 18 (Experimental)")],
       str(MENUS))
 check("sidebar version label is clean v15.1",
       sidebar._version_lbl.text() == "WorkSlop Desktop v15.1",

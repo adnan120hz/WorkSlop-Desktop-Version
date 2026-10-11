@@ -115,9 +115,9 @@ def _gate(files, **kwargs):
 
 
 def test_registry_shape():
-    print("\nregistry shape (post-v14.0 removal)")
+    print("\nregistry shape (post-2026-10-11 rename)")
     check("section name is the feature name",
-          Section.LIQUID_GLASS_DISABLE.value == "Liquid Glass Disable (Beta 1)")
+          Section.LIQUID_GLASS_DISABLE.value == "Lock Screen iOS 18 (Experimental)")
     specs = SPECS_BY_SECTION[Section.LIQUID_GLASS_DISABLE]
     check("section holds the Squair test payload only (G1/G2 removed "
           "in v14.0, Latest removed in v15)",

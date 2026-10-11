@@ -306,7 +306,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # 5 = statusbar, 6 = apply, 7 = springboard, 8 = internal, 9 = liquidglass,
         # 10 = icon themes, 11 = passcode themes, 12 = mobilegestalt,
         # 13 = backup, 14 = themes hub, 15 = app data,
-        # 16 = Liquid Glass Disable (Beta 1). (The iOS 18 Icons table is a
+        # 16 = Lock Screen iOS 18 (Experimental). (The iOS 18 Icons table is a
         # section inside Icon Themes, page 10.)
         self.ios_pages = QtWidgets.QStackedWidget(self)
         self.ios_pages.setStyleSheet(t("page_bg"))
@@ -344,7 +344,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             13: QCoreApplication.translate("Nugget", "Backup"),
             14: QCoreApplication.translate("Nugget", "Themes"),
             15: QCoreApplication.translate("Nugget", "App Data"),
-            16: QCoreApplication.translate("Nugget", "Liquid Glass Disable (Beta 1)"),
+            16: QCoreApplication.translate("Nugget", "Lock Screen iOS 18 (Experimental)"),
         }
         # Right-action callables resolve the page lazily (attribute access
         # builds it) so wiring the nav never constructs a page early.
@@ -480,6 +480,16 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # is over: deferred chrome theming is allowed from here on.
         self._in_initial_build = False
         self._apply_global_stylesheet()
+
+        # Perf: warm the iOS 18 icon thumbnails in idle batches so the
+        # first open of Custom Icons does not freeze menu navigation
+        # (~9 s of synchronous PNG loads otherwise). Runs once.
+        try:
+            from src.gui.ios.icon_themes import (
+                schedule_ios18_thumbnail_preload)
+            schedule_ios18_thumbnail_preload()
+        except Exception:
+            pass
 
     # ---- Lazy iOS pages ---------------------------------------------------
 

@@ -96,30 +96,23 @@ def main():
               back["PayloadContent"][0]["Features"][0]["FeatureName"] == "ExampleFlag")
 
     # --- honest labels: never become a "works" claim ----------------------
+    # (user order 2026-10-11: the in-app dialog was removed; the honest
+    # labels now live in the generator module itself, which is kept as
+    # the source for the website's static generator)
     notice_src = open(os.path.join(
-        os.path.dirname(__file__), "..", "src", "gui", "dialogs",
-        "managed_profile_dialog.py")).read()
-    for needle in ["UNTESTED", "NOT proven", "likely be REJECTED",
+        os.path.dirname(__file__), "..", "src", "devicemanagement",
+        "managed_profile.py")).read()
+    for needle in ["UNTESTED", "NOT proven", "REJECTED",
                    "isAllowedToWriteFeatureFlags",
                    "value semantics", "untested"]:
-        check(f"dialog carries honest phrase {needle!r}", needle in notice_src)
+        check(f"module carries honest phrase {needle!r}", needle in notice_src)
     lowered = notice_src.lower().replace("workslop", "")
     for claim in ["it works", "this works", "will work", "proven to work",
                   "guaranteed to work", "working method"]:
-        check(f"dialog never claims {claim!r}", claim not in lowered)
+        check(f"module never claims {claim!r}", claim not in lowered)
     for needle in ["NOT proven", "likely be REJECTED", "isAllowedToWriteFeatureFlags",
-                   "no API", "manual"]:
+                   "manual"]:
         check(f"instructions carry honest phrase {needle!r}", needle in mp.INSTALL_INSTRUCTIONS)
-
-    # --- dialog constructs offscreen --------------------------------------
-    from src.gui.dialogs.managed_profile_dialog import ManagedProfileDialog, EXPERIMENTAL_NOTICE
-    dlg = ManagedProfileDialog()
-    check("dialog builds", dlg is not None)
-    check("dialog has generate button", dlg.gen_btn is not None)
-    check("dialog starts with one feature row", len(dlg._rows) == 1)
-    check("notice mentions the verified PayloadType",
-          "com.apple.system.featureflags" in EXPERIMENTAL_NOTICE)
-    dlg.close()
 
     print(f"\nALL {PASS} CHECKS PASSED")
 

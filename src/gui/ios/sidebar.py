@@ -22,7 +22,7 @@ MENUS = [
     ("appdata", "App Data", ":/icon/hdd.svg"),
     ("themes", "Themes", ":/icon/brush.svg"),
     ("settings", "Settings", ":/icon/gear.svg"),
-    ("liquidglassdisable", "Liquid Glass Disable (Beta 1)", ":/icon/ws-glass.svg"),
+    ("liquidglassdisable", "Lock Screen iOS 18 (Experimental)", ":/icon/ws-glass.svg"),
 ]
 
 PILL_HEIGHT = 46
@@ -68,7 +68,7 @@ class WorkSlopSidebar(QWidget):
         for menu_id, label, icon_res in MENUS:
             btn_text = QCoreApplication.translate('Nugget', label)
             # Display-only wrap: the rail is fixed at 216 px, so a long
-            # label ("Liquid Glass Disable (Beta 1)") wraps before its
+            # label ("Lock Screen iOS 18 (Experimental)") wraps before its
             # parenthetical instead of clipping. MENUS keeps the
             # canonical one-line label — translations and tests look it
             # up verbatim.

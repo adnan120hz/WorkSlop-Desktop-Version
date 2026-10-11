@@ -20,7 +20,7 @@ class Section(Enum):
     SPRINGBOARD = "SpringBoard"
     FEATURE_FLAGS = "Feature Flags"
     INTERNAL = "Internal Options"
-    LIQUID_GLASS_DISABLE = "Liquid Glass Disable (Beta 1)"
+    LIQUID_GLASS_DISABLE = "Lock Screen iOS 18 (Experimental)"
 
 
 class Kind(Enum):

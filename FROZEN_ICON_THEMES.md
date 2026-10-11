@@ -40,6 +40,25 @@ Pinned by SHA-256 in `tools/test_icon_themes_frozen.py`
    target paths are unchanged. Manifest extended in the same change
    (101 new icon hashes + new `icon_themes.py` hash; all 103 old
    entries untouched).
+3. 2026-10-11 (explicit user order, revision): the "Light Rounded" and
+   "Dark Rounded" tables were REMOVED (user judged the circle-masked
+   result ugly) and replaced with a single "Tinted" table —
+   monochrome duotone variants generated from the Light PNGs (iOS 18
+   tinted style; original alpha kept, no leftover background). 101
+   Rounded PNGs deleted; 51 new Tinted PNGs in
+   `files/ios18_icons/Tinted/`; the page now threads a `tinted`
+   variant through the same Add/Add All/WebClip machinery; the
+   Light/Dark tables, the tweak model, the ZIP hash index and the
+   target paths are unchanged. Manifest updated in the same change
+   (101 Rounded hashes removed, 51 Tinted hashes added, new
+   `icon_themes.py` hash; all Light/Dark entries byte-identical).
+4. 2026-10-11 (explicit user order: fix menu-switch lag): added
+   `schedule_ios18_thumbnail_preload()` + `_warm_thumbnail()` to
+   `src/gui/ios/icon_themes.py` — warms QPixmapCache with all 152
+   thumbnails in idle batches after startup so the first open of
+   Custom Icons no longer freezes navigation (~9 s of synchronous PNG
+   loads). No visual or behavioral change to the menu itself; manifest
+   `icon_themes.py` hash regenerated in the same change.
 
 The two main modules also carry a `# FROZEN 2026-10-09 (user order)`
 header comment.
