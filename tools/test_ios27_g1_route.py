@@ -535,32 +535,44 @@ try:
     check("N48: missing pool base returns 0",
           prune_ios27_g1_backups(_n48_udid, keep=1) == 0)
 
-    # stat() raising OSError must not crash the prune (stale loop
-    # catches it and leaves the dir in place, loudly).
+    # stat() raising OSError must not crash the prune: the stale loop
+    # catches it, logs loudly, and leaves the dir in place. Patched at
+    # the public-method level on purpose — pathlib internals differ
+    # between 3.12 and 3.14 (is_dir() no longer funnels through
+    # Path.stat()), so the test must not rely on that call chain.
     n48d_tmp = tempfile.mkdtemp(prefix="ios27_g1_n48d_")
     _use_prune_base(n48d_tmp)
     _make_run(n48d_tmp, "badstat", _n48_udid, manifest=None)
     _orig_stat = pathlib.Path.stat
+    _orig_is_dir = pathlib.Path.is_dir
     _stat_calls = {"n": 0}
 
     def _flaky_stat(self):
-        # Fail on the 2nd+ stat of the "badstat" dir: the 1st call (from
-        # is_dir() during listing) succeeds so the dir reaches the stale
-        # loop, where the OSError is caught and the dir left in place.
-        # errno=ENOENT so is_dir()'s own guard treats it as "missing".
+        # Always fail for the "badstat" dir itself (children like
+        # Manifest.db keep working so _is_usable_backup behaves).
         if self.name == "badstat":
             _stat_calls["n"] += 1
-            if _stat_calls["n"] > 1:
-                raise OSError(errno.ENOENT, "simulated stat failure")
+            raise OSError(errno.EIO, "simulated stat failure")
         return _orig_stat(self)
 
+    def _flaky_is_dir(self):
+        # Force the dir past the is_dir() filter so the stale loop's
+        # OSError branch is actually exercised on every Python version.
+        if self.name == "badstat":
+            return True
+        return _orig_is_dir(self)
+
     pathlib.Path.stat = _flaky_stat
+    pathlib.Path.is_dir = _flaky_is_dir
     try:
         r_d = prune_ios27_g1_backups(_n48_udid, keep=1)
         check("N48: stat() OSError path exercised and survived",
-              isinstance(r_d, int) and _stat_calls["n"] >= 2)
+              isinstance(r_d, int) and _stat_calls["n"] >= 1
+              # os.path bypasses the patched pathlib.stat above
+              and os.path.isdir(os.path.join(n48d_tmp, "badstat")))
     finally:
         pathlib.Path.stat = _orig_stat
+        pathlib.Path.is_dir = _orig_is_dir
 finally:
     g1mod.ios27_g1_backup_base = _prune_orig_base
 
