@@ -158,27 +158,40 @@ IOS18_ICONS = [
 ]
 
 
-def icon_asset_path(slug: str, dark: bool, tinted: bool = False) -> str:
+def icon_asset_path(slug: str, dark: bool, tinted: bool = False, tinted_color: str = None) -> str:
     variant = "Dark" if dark else "Light"
     if tinted:
         variant = "Tinted"
+    if tinted_color:
+        variant = tinted_color
     return get_bundle_files(f"files/ios18_icons/{variant}/{slug}.png")
 
 
-# The three iOS 18 tables, in display order: (label, dark, tinted).
+# The iOS 18 tables, in display order: (label, dark, tinted, tinted_color).
 # Light and Dark stay first so table indices used elsewhere
 # (e.g. _ios18_tables[1] == Dark) keep working. The Tinted table
 # ships the pack's official Tinted artwork (replaces the earlier
 # self-generated duotone set, deleted 2026-10-11 by user order).
+# 7 new tinted colors added 2026-10-14 by user order.
 IOS18_VARIANTS = (
-    ("Light", False, False),
-    ("Dark", True, False),
-    ("Tinted", False, True),
+    ("Light", False, False, None),
+    ("Dark", True, False, None),
+    ("Tinted", False, True, None),
+    ("Tinted Green", False, False, "TintedGreen"),
+    ("Tinted Yellow", False, False, "TintedYellow"),
+    ("Tinted Blue", False, False, "TintedBlue"),
+    ("Tinted White", False, False, "TintedWhite"),
+    ("Tinted Gray", False, False, "TintedGray"),
+    ("Tinted Brown", False, False, "TintedBrown"),
+    ("Tinted Cream", False, False, "TintedCream"),
 )
 
 
-def _variant_label(dark: bool, tinted: bool = False) -> str:
+def _variant_label(dark: bool, tinted: bool = False, tinted_color: str = None) -> str:
     """Plain-English label for a table variant, e.g. "Tinted"."""
+    if tinted_color:
+        # "TintedGreen" -> "Tinted Green"
+        return tinted_color.replace("Tinted", "Tinted ").strip()
     if tinted:
         return "Tinted"
     return "Dark" if dark else "Light"
@@ -365,7 +378,7 @@ class IOSIconThemesPage(QWidget):
         tables_row = QHBoxLayout()
         tables_row.setSpacing(12)
         self._ios18_tables: list[QTableWidget] = []
-        for label, dark, tinted in IOS18_VARIANTS:
+        for label, dark, tinted, tinted_color in IOS18_VARIANTS:
             col = QVBoxLayout()
             col.setSpacing(8)
             variant = _tr(label)
@@ -374,11 +387,11 @@ class IOSIconThemesPage(QWidget):
                 "ios18AddAll" + label.replace(" ", ""))
             add_all_btn.setCursor(Qt.PointingHandCursor)
             add_all_btn.clicked.connect(
-                lambda _=False, d=dark, r=tinted:
-                self._use_all_icons(d, r))
+                lambda _=False, d=dark, r=tinted, tc=tinted_color:
+                self._use_all_icons(d, r, tc))
             self._ios18_add_all_buttons.append(add_all_btn)
             col.addWidget(add_all_btn)
-            table = self._build_ios18_table(dark=dark, tinted=tinted)
+            table = self._build_ios18_table(dark=dark, tinted=tinted, tinted_color=tinted_color)
             self._ios18_tables.append(table)
             col.addWidget(table)
             tables_row.addLayout(col, 1)
@@ -399,12 +412,12 @@ class IOSIconThemesPage(QWidget):
 
     # -- iOS 18 stock icon table ----------------------------------------
     def _build_ios18_table(self, dark: bool,
-                           tinted: bool = False) -> QTableWidget:
+                           tinted: bool = False, tinted_color: str = None) -> QTableWidget:
         tweak = tweaks[TweakID.IconThemes]
         table = QTableWidget(len(IOS18_ICONS), 4)
         table.setObjectName("ios18IconTable")
         table.setHorizontalHeaderLabels([
-            _tr(_variant_label(dark, tinted)), _tr("App"),
+            _tr(_variant_label(dark, tinted, tinted_color)), _tr("App"),
             _tr("Target on device"), _tr("Add"),
         ])
         table.verticalHeader().setVisible(False)
@@ -422,7 +435,7 @@ class IOSIconThemesPage(QWidget):
         for row, (name, bundle_id, slug) in enumerate(IOS18_ICONS):
             table.setRowHeight(row, 56)
             table.setCellWidget(
-                row, 0, self._icon_cell(slug, dark=dark, tinted=tinted))
+                row, 0, self._icon_cell(slug, dark=dark, tinted=tinted, tinted_color=tinted_color))
             table.setItem(row, 1, QTableWidgetItem(name))
             target_item = QTableWidgetItem(
                 webclip_target(bundle_id, name, tweak))
@@ -433,7 +446,7 @@ class IOSIconThemesPage(QWidget):
             table.setItem(row, 2, target_item)
             table.setCellWidget(
                 row, 3, self._add_cell(name, bundle_id, slug, dark,
-                                      tinted))
+                                      tinted, tinted_color))
 
         # The page itself scrolls, so the table shows every row and
         # never grows its own vertical scrollbar.
@@ -443,14 +456,14 @@ class IOSIconThemesPage(QWidget):
         return table
 
     def _pixmap(self, slug: str, dark: bool,
-                tinted: bool = False) -> QPixmap:
+                tinted: bool = False, tinted_color: str = None) -> QPixmap:
         """44px thumbnail for the iOS 18 icons table, via QPixmapCache.
 
         The page is built lazily on first navigation, so decoding happens
         on first open — and only the display-size thumbnail is cached,
         never the full-res pixmap (the old dict pinned all 102 of them).
         """
-        path = icon_asset_path(slug, dark, tinted)
+        path = icon_asset_path(slug, dark, tinted, tinted_color)
         key = f"ios18icon:{path}"
         pix = QPixmapCache.find(key)
         if pix is None:
@@ -463,10 +476,10 @@ class IOSIconThemesPage(QWidget):
         return pix
 
     def _icon_cell(self, slug: str, dark: bool,
-                   tinted: bool = False) -> QWidget:
+                   tinted: bool = False, tinted_color: str = None) -> QWidget:
         lbl = QLabel()
         lbl.setAlignment(Qt.AlignCenter)
-        pix = self._pixmap(slug, dark, tinted)
+        pix = self._pixmap(slug, dark, tinted, tinted_color)
         if pix.isNull():
             lbl.setText("—")
         else:
@@ -474,7 +487,7 @@ class IOSIconThemesPage(QWidget):
         return lbl
 
     def _add_cell(self, name: str, bundle_id: str, slug: str,
-                  dark: bool, tinted: bool = False) -> QWidget:
+                  dark: bool, tinted: bool = False, tinted_color: str = None) -> QWidget:
         box = QWidget()
         row = QHBoxLayout(box)
         row.setContentsMargins(4, 4, 4, 4)
@@ -482,7 +495,7 @@ class IOSIconThemesPage(QWidget):
         btn = QPushButton(_tr("Add"))
         btn.setObjectName("ios18AddBtn")
         btn.setCursor(Qt.PointingHandCursor)
-        available = os.path.isfile(icon_asset_path(slug, dark, tinted))
+        available = os.path.isfile(icon_asset_path(slug, dark, tinted, tinted_color))
         btn.setEnabled(available)
         if not available:
             # Audit 50: a disabled Add (e.g. no Dark artwork for
@@ -490,19 +503,19 @@ class IOSIconThemesPage(QWidget):
             # sat in the tab chain; say why and skip tab for it.
             btn.setToolTip(_tr(
                 "No {0} version of this icon in the pack.").format(
-                    _tr(_variant_label(dark, tinted))))
+                    _tr(_variant_label(dark, tinted, tinted_color))))
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         if available:
             btn.clicked.connect(
                 lambda _=False, n=name, b=bundle_id, s=slug, d=dark,
-                r=tinted: self._use_icon(n, b, s, d, r))
+                r=tinted, tc=tinted_color: self._use_icon(n, b, s, d, r, tc))
         row.addWidget(btn)
         self._ios18_add_buttons.append(btn)
         return box
 
     def _use_icon(self, name: str, bundle_id: str, slug: str, dark: bool,
-                  tinted: bool = False):
-        path = icon_asset_path(slug, dark, tinted)
+                  tinted: bool = False, tinted_color: str = None):
+        path = icon_asset_path(slug, dark, tinted, tinted_color)
         if not os.path.isfile(path):
             return
         tweak = tweaks[TweakID.IconThemes]
@@ -519,9 +532,9 @@ class IOSIconThemesPage(QWidget):
         self.refresh_themes()
         self._ios18_status.setText(_tr(
             "Added {0} ({1}) to Icon Themes.").format(
-                name, _tr(_variant_label(dark, tinted))))
+                name, _tr(_variant_label(dark, tinted, tinted_color))))
 
-    def _use_all_icons(self, dark: bool, tinted: bool = False):
+    def _use_all_icons(self, dark: bool, tinted: bool = False, tinted_color: str = None):
         tweak = tweaks[TweakID.IconThemes]
         existing = {t.bundle_id for t in tweak.themes}
         added = 0
@@ -529,7 +542,7 @@ class IOSIconThemesPage(QWidget):
         for name, bundle_id, slug in IOS18_ICONS:
             if bundle_id in existing:
                 continue
-            path = icon_asset_path(slug, dark=dark, tinted=tinted)
+            path = icon_asset_path(slug, dark=dark, tinted=tinted, tinted_color=tinted_color)
             if not os.path.isfile(path):
                 continue
             theme = IconTheme(bundle_id=bundle_id, display_name=name,

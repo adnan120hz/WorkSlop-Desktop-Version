@@ -914,6 +914,10 @@ async def _restore_g1_full(lc, backup_root: str, udid: str,
                     _watch["last_progress_at"] or _time.monotonic())
                 if silent >= stall_seconds:
                     task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
                     log_warn(f"iOS27-G1: restore stall {silent:.0f}s tanpa "
                              f"progress (batas {stall_seconds:.0f}s) — "
                              f"coba ulang dengan koneksi fresh")
@@ -941,8 +945,8 @@ async def _restore_g1_full(lc, backup_root: str, udid: str,
 
     await async_retry(
         _restore_once,
-        max_retries=max_retries,
-        should_retry=is_transient_restore_error,
+        max_retries,
+        retry_if=is_transient_restore_error,
         on_retry=_on_retry,
         on_failure=_on_failure,
     )
@@ -1059,18 +1063,22 @@ async def deliver_ios27_payload(backup_root: str, udid: str, payloads: list, *,
     async with lockdown_session(udid) as lc:
         await _restore_g1_full(
             lc, backup_root, udid, progress_callback=_restore_cb)
-        if reboot:
-            from pymobiledevice3.exceptions import ConnectionTerminatedError
-            from src.restore import reboot_device
-            try:
-                await reboot_device(True, lc)
-            except ConnectionTerminatedError:
-                # Expected: restart() routinely drops the connection
-                # mid-command. The reboot was still sent; this is not
-                # a failure.
-                log_warn("iOS27-G1: reboot command dropped the connection "
-                         "(expected — the restart was still sent); waiting "
-                         "for the device to come back online...")
+
+    if reboot:
+        from pymobiledevice3.exceptions import ConnectionTerminatedError
+        from src.restore import reboot_device
+        # Fresh session untuk reboot: lc di atas bisa stale kalau restore
+        # sempat retry (attempt 2+ pakai sesi fresh sendiri).
+        try:
+            async with lockdown_session(udid) as reboot_lc:
+                await reboot_device(True, reboot_lc)
+        except ConnectionTerminatedError:
+            # Expected: restart() routinely drops the connection
+            # mid-command. The reboot was still sent; this is not
+            # a failure.
+            log_warn("iOS27-G1: reboot command dropped the connection "
+                     "(expected — the restart was still sent); waiting "
+                     "for the device to come back online...")
 
     # The pre-reboot session is dead by definition: verify the device
     # came back with a FRESH session, outside the old context.
