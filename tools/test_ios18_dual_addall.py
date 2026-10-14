@@ -5,7 +5,7 @@ was replaced with the official catwithabaloon 2.0 pack by explicit user
 order 2026-10-11, revision 2).
 
 Run from repo root with QT_QPA_PLATFORM=offscreen.
-Proves: three tables exist with exact button names; Add All Dark adds
+Proves: ten tables exist with exact button names (Light, Dark, Tinted + 7 new tinted colors); Add All Dark adds
 all 68 dark-artwork apps (the official pack ships Dark for every app,
 including Shortcuts); Add All Light afterwards adds nothing new;
 a second Add All adds nothing; Add All Tinted adds the 67 tinted
@@ -48,21 +48,25 @@ def check(name, cond, extra=""):
         print(f"  FAIL {name} {extra}")
 
 
-# Structure: three tables (Light, Dark, Tinted),
-# three add-all buttons, exact object names, 68 rows each
-# (the Tinted table also renders 68 rows; the iOS 18 row shows
-# an em dash with its Add disabled — no Tinted artwork in pack).
-check("three tables built", len(page._ios18_tables) == 3)
-check("three add-all buttons", len(page._ios18_add_all_buttons) == 3)
+# Structure: ten tables (Light, Dark, Tinted + 7 new tinted colors),
+# ten add-all buttons, exact object names, 68 rows each
+# (2026-10-14 explicit user order: 7 new tinted variants added).
+check("ten tables built", len(page._ios18_tables) == 10)
+check("ten add-all buttons", len(page._ios18_add_all_buttons) == 10)
 names = {b.objectName() for b in page._ios18_add_all_buttons}
 check("add-all object names", names == {
     "ios18AddAllLight", "ios18AddAllDark",
-    "ios18AddAllTinted"}, str(names))
-check("row counts 68/68/68",
-      [t.rowCount() for t in page._ios18_tables] == [68, 68, 68])
+    "ios18AddAllTinted", "ios18AddAllTintedGreen",
+    "ios18AddAllTintedYellow", "ios18AddAllTintedBlue",
+    "ios18AddAllTintedWhite", "ios18AddAllTintedGray",
+    "ios18AddAllTintedBrown", "ios18AddAllTintedCream"}, str(names))
+check("row counts 68x10",
+      [t.rowCount() for t in page._ios18_tables] == [68] * 10)
 labels = [t.horizontalHeaderItem(0).text() for t in page._ios18_tables]
 check("table header labels", labels == [
-    "Light", "Dark", "Tinted"], str(labels))
+    "Light", "Dark", "Tinted", "Tinted Green", "Tinted Yellow",
+    "Tinted Blue", "Tinted White", "Tinted Gray", "Tinted Brown",
+    "Tinted Cream"], str(labels))
 
 tweak.themes = []
 
