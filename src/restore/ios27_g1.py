@@ -837,6 +837,117 @@ async def backup_ios27_full(udid: str, *,
         raise
 
 
+# ---------------------------------------------------------------------------
+# G1 full restore — method BARU 100% untuk iOS 27 (bukan GoldenNugget).
+#
+# Alur: backup full -> payload per tweak aktif -> inject -> verifikasi ->
+#       RESTORE FULL via mobilebackup2 -> reboot + notifikasi.
+# Tidak ada fase sparse-restore, tidak ada wipe selektif, tidak ada
+# protective-backup filtering. Restore memakai mobilebackup2 langsung
+# dengan stall watchdog + retry untuk error koneksi transient.
+# ---------------------------------------------------------------------------
+
+async def _restore_g1_full(lc, backup_root: str, udid: str,
+                           progress_callback=lambda x: None) -> None:
+    """Full restore backup G1 ke device via mobilebackup2.
+
+    Method baru khusus iOS 27 G1 — tidak memakai kode restore lama
+    GoldenNugget. Stall watchdog membatalkan attempt yang macet
+    (device diam terlalu lama); retry hanya untuk error koneksi
+    transient dengan sesi lockdown fresh tiap percobaan ulang.
+    """
+    import asyncio
+    import time as _time
+    from pymobiledevice3.exceptions import ConnectionTerminatedError
+    from src.exceptions.device_errors import is_transient_restore_error
+    from src.restore.restore import _start_mobilebackup2
+    from src.utils.async_retry import async_retry
+
+    max_retries = 18
+    stall_seconds = 300.0
+    try:
+        import os as _os
+        stall_seconds = float(
+            _os.environ.get("WORKSLOP_G1_RESTORE_STALL_SECONDS", "300") or 300)
+        if stall_seconds <= 0:
+            stall_seconds = 300.0
+    except Exception:
+        stall_seconds = 300.0
+
+    _watch = {"last_progress_at": None, "last_cb": None}
+    _attempt = {"n": 0}
+
+    async def _restore_once():
+        import contextlib as _cl
+        _attempt["n"] += 1
+        _watch["last_progress_at"] = _time.monotonic()
+        _watch["last_cb"] = None
+
+        def _tracking_callback(cb_arg):
+            _watch["last_progress_at"] = _time.monotonic()
+            _watch["last_cb"] = cb_arg
+            progress_callback(cb_arg)
+
+        async def _do_restore():
+            if _attempt["n"] <= 1:
+                session_cm = _cl.nullcontext(lc)
+            else:
+                from src.devicemanagement.session import lockdown_session
+                session_cm = lockdown_session(udid)
+            async with session_cm as attempt_lc:
+                async with _start_mobilebackup2(attempt_lc) as mb:
+                    await mb.restore(
+                        backup_root,
+                        system=True, copy=True, remove=False,
+                        reboot=False, source=udid,
+                        skip_apps=True,
+                        progress_callback=_tracking_callback,
+                    )
+
+        task = asyncio.ensure_future(_do_restore())
+        try:
+            while not task.done():
+                await asyncio.wait({task}, timeout=20)
+                if task.done():
+                    break
+                silent = _time.monotonic() - (
+                    _watch["last_progress_at"] or _time.monotonic())
+                if silent >= stall_seconds:
+                    task.cancel()
+                    log_warn(f"iOS27-G1: restore stall {silent:.0f}s tanpa "
+                             f"progress (batas {stall_seconds:.0f}s) — "
+                             f"coba ulang dengan koneksi fresh")
+                    raise ConnectionTerminatedError(
+                        "Device berhenti melaporkan progress restore; "
+                        "mencoba ulang dengan koneksi fresh.")
+                if _watch["last_cb"] is not None:
+                    progress_callback(_watch["last_cb"])
+                log_info(f"iOS27-G1: restore heartbeat — device diam "
+                         f"{silent:.0f}s (batas {stall_seconds:.0f}s)")
+        except asyncio.CancelledError:
+            task.cancel()
+            raise
+        return await task
+
+    def _on_retry(attempt: int, total: int, e: Exception, delay: float) -> None:
+        progress_callback(
+            f"Device belum siap, mencoba ulang ({attempt}/{max_retries})...")
+
+    def _on_failure(e: Exception) -> None:
+        if type(e).__name__ == "NotEnoughDiskSpaceError":
+            raise e
+        if not is_transient_restore_error(e):
+            raise e
+
+    await async_retry(
+        _restore_once,
+        max_retries=max_retries,
+        should_retry=is_transient_restore_error,
+        on_retry=_on_retry,
+        on_failure=_on_failure,
+    )
+
+
 async def deliver_ios27_payload(backup_root: str, udid: str, payloads: list, *,
                                 update_label=lambda x: None,
                                 restore_progress=lambda x: None,
@@ -870,7 +981,6 @@ async def deliver_ios27_payload(backup_root: str, udid: str, payloads: list, *,
     from src.devicemanagement.session import lockdown_session
     from src.restore.inject import inject_files_into_backup
     from src.restore.protective import verify_backup_payloads
-    from src.restore.restore import _restore_protective_backup
 
     if watchdog is None:
         watchdog = G1Watchdog()
@@ -947,9 +1057,8 @@ async def deliver_ios27_payload(backup_root: str, udid: str, payloads: list, *,
         restore_progress(value)
 
     async with lockdown_session(udid) as lc:
-        await _restore_protective_backup(
-            lc, backup_root, udid, reboot=False,
-            progress_callback=_restore_cb, backup_password="")
+        await _restore_g1_full(
+            lc, backup_root, udid, progress_callback=_restore_cb)
         if reboot:
             from pymobiledevice3.exceptions import ConnectionTerminatedError
             from src.restore import reboot_device
