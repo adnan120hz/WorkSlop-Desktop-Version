@@ -61,7 +61,10 @@ class UpdateCheckRunner(QObject):
         """Start a check. Returns False when one is already running."""
         if self._thread is not None:
             return False
-        thread = QThread(self)
+        # NOTE: QThread TIDAK di-parent ke self. Parenting + deleteLater
+        # menyebabkan double-delete / access violation di Windows
+        # (rc=3221226505). Lifecycle di-manage manual via _cleanup.
+        thread = QThread()
         worker = _UpdateCheckWorker()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
